@@ -14,7 +14,7 @@ export default class Output {
   constructor(renderer: Renderer) {
     this._renderer = renderer;
     // Une remise a zero par image (dans `render`) : sinon les compteurs ne
-    // montrent que le dernier appel de rendu, un quad plein ecran.
+    // montrent que le dernier appel de rendu, une passe plein ecran.
     this._renderer.info.autoReset = false;
   }
 
@@ -98,8 +98,8 @@ export default class Output {
     for (const { pipeline, ctx } of jobs) pipeline.prepare?.(frame, ctx);
 
     // Apres `prepare` : une passe hors ecran deplace viewport et scissor.
+    // Pas de clear ici : en WebGPU, vider le canvas coute une passe plein ecran. Chaque passe vide sa cible.
     this._prepareRendererState();
-    this._renderer.clear(true, true, true);
 
     for (const { pipeline, ctx } of jobs) {
       pipeline.render(frame, ctx);

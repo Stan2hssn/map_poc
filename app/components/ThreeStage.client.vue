@@ -45,7 +45,8 @@ onMounted(async () => {
     // rien de tout cela n'a de raison d'entrer dans le chunk d'entree.
     const { default: Device } = await import('@_core/systems/ThreeDevice.ts')
     device = await Device.create(canvas, {
-      antialias: true,
+      // L'antialiasing se regle sur l'EffectComposer : la derniere passe est un triangle plein ecran.
+      antialias: false,
       alpha: false,
       powerPreference: 'high-performance',
     })

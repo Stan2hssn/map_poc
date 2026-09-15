@@ -1,2 +1,4 @@
-// Backend unique : `DEVICE_CONFIG.renderer.backend` vaut "webgpu".
-export { OutputPass } from "./webgpu/OutputPass.ts";
+export { EffectComposer } from "./EffectComposer.ts";
+export { CopyPass } from "./passes/CopyPass.ts";
+export { Pass } from "./passes/Pass.ts";
+export { RenderPass } from "./passes/RenderPass.ts";

@@ -117,18 +117,19 @@ Tout ce qui est propre à un projet et touche au device passe par `DEVICE_CONFIG
 
 ## WebGL et WebGPU
 
-| `renderer.backend` | Renderer | Matériaux | `OutputPass` (`graphics/postprocessing/`) |
+| `renderer.backend` | Renderer | Matériaux | Matériaux du post-traitement (`graphics/postprocessing/materials/`) |
 |---|---|---|---|
-| `"webgl"` (défaut) | `WebGLRenderer` | GLSL, `ShaderMaterial` | `webgl/` : quad `ShaderMaterial` |
-| `"webgpu"` | `WebGPURenderer`, repli WebGL2 automatique si WebGPU manque | TSL, node materials | `webgpu/` : `QuadMesh` TSL |
+| `"webgl"` (défaut) | `WebGLRenderer` | GLSL, `ShaderMaterial` | `webgl/` : GLSL |
+| `"webgpu"` | `WebGPURenderer`, repli WebGL2 automatique si WebGPU manque | TSL, node materials | `webgpu/` : TSL |
 
-Changer de backend = deux lignes : `DEVICE_CONFIG.renderer.backend` et l'export de `postprocessing/index.ts`.
+Changer de backend = deux lignes : `DEVICE_CONFIG.renderer.backend` et l'export de `postprocessing/materials/index.ts`. Composer et passes sont communs.
 
 - `three/webgpu` est importé dynamiquement : un projet WebGL ne l'embarque pas.
 - `device.renderer` est typé `Renderer` (union). Une API propre à un backend passe par un cast : `device.renderer as WebGLRenderer`.
 - Le code GLSL (`ShaderMaterial`, `.frag`) ne tourne pas sous `WebGPURenderer`, même en repli WebGL2. Les matériaux standards (`MeshStandardMaterial`…) marchent sur les deux.
 - three-perf est WebGL seulement ; stats-gl gère les deux.
 - Tester le repli : `forceWebGL: true` dans la config passée à `ThreeDevice.create`.
+- **WebGPU, sortie écran** : tout `render` ou `clear` sur le canvas avec `outputColorSpace` sRGB passe par une cible interne pleine résolution puis une recopie (three r181). La dernière passe encode donc elle-même (voir `Pass.renderFullscreen`) et rien ne vide le canvas à part.
 
 ## Boucle par image
 
@@ -140,20 +141,23 @@ Output.update          pour chaque univers actif ET monte :
   Universe.update        InteractionManager.update(camera), puis NodeGraph.update (nodes montes)
 Output.render
   1. prepare           pipeline.prepare?.(frame, ctx) pour CHAQUE univers monte
-  2. etat du renderer  sRGB, NoToneMapping, exposition 1, viewport et scissor pleins, clear
+  2. etat du renderer  sRGB, NoToneMapping, exposition 1, viewport et scissor pleins (pas de clear)
   3. par univers monte, dans l'ordre d'activation :
      pipeline.render(frame, ctx)       scene -> cible
      pipeline.postRender?.(frame, ctx) cible -> ecran
 ```
 
-`ctx` vaut `{ scene, camera, renderer }`. Le post-traitement n'est plus dans le core : c'est une passe du pipeline de l'univers.
+`ctx` vaut `{ scene, camera, renderer }`. Chaque passe vide sa propre cible (`autoClear`). Le post-traitement n'est pas dans le core : c'est le pipeline de l'univers, `EffectComposer` (`graphics/postprocessing/`, d'après pmndrs).
 
 ```ts
-const output = new OutputPass();
-const pipeline = new PipelineBase([new ForwardRenderPass(output.target), output]);
+const pipeline = new EffectComposer([new RenderPass(), new CopyPass()], { multisampling: 0 });
 ```
 
-`OutputPass` ajuste sa cible au canvas dans `prepare`, puis la copie à l'écran en sRGB dans `postRender`. Un effet s'ajoute dans sa passe de sortie ou dans une passe insérée avant elle.
+- `prepare` : `inputBuffer` et `outputBuffer` suivent la taille du canvas (`getDrawingBufferSize`), `Pass.setSize` est appelé.
+- `render` : `RenderPass` dessine la scène dans `inputBuffer`.
+- `postRender` : chaque passe lit `ctx.inputBuffer`, écrit `ctx.outputBuffer`, puis les deux s'échangent (`needsSwap`). La dernière passe rend à l'écran (`renderToScreen`).
+- Les passes plein écran dessinent un triangle partagé (`Pass.renderFullscreen`), pas un quad.
+- Un effet = une passe plein écran de plus avant `CopyPass`, avec son matériau GLSL et TSL.
 
 ## Pipeline et passes
 
@@ -176,7 +180,7 @@ Précalculs de textures, simulations, ping-pong : tout ce qui dessine dans une `
 - elle garde les appels de rendu : les nodes décrivent le travail (cible, scène, caméra, drapeau « à redessiner ») et la passe l'exécute. `renderer.render()` n'a rien à faire dans un node.
 
 ```ts
-export class OffscreenPass implements IPass {
+export class OffscreenPass extends Pass {
   private readonly _travaux = new Set<OffscreenJob>();
   ajouter(t: OffscreenJob): void { this._travaux.add(t); }
   retirer(t: OffscreenJob): void { this._travaux.delete(t); }
@@ -192,13 +196,11 @@ export class OffscreenPass implements IPass {
     }
     renderer.setRenderTarget(cible);
   }
-  render(): void {}
-  // lifecycle, resize, dispose : vides
 }
 
 // Dans l'univers : la passe hors ecran en tete du pipeline.
 const horsEcran = new OffscreenPass();
-const pipeline = new PipelineBase([horsEcran, new ForwardRenderPass()]);
+const pipeline = new EffectComposer([horsEcran, new RenderPass(), new CopyPass()]);
 ```
 
 Implémentation complète, avec restauration de la couleur de fond et effacement à `(0, 0, 0, 0)` pour les données : `lacoste/src/graphics/passes/OffscreenPass.ts`.
@@ -258,6 +260,7 @@ Le seul mécanisme d'activation de nodes du `_core`.
 
 | Date | Modification | Fichiers | Origine | Pourquoi |
 |---|---|---|---|---|
+| 2026-09-15 | `Output` ne vide plus l'écran avant les pipelines. | `systems/Output.ts` | map | En WebGPU, ce `clear` sur le canvas sRGB passait par une cible interne MSAA HalfFloat puis une recopie : 64 % du temps d'image (5,14 → 1,82 ms, canvas 1196×1726). Chaque passe vide sa cible. Template : `EffectComposer`, `RenderPass`, `CopyPass`, triangle plein écran partagé, `antialias: false` sur le canvas. **Au sync** : un pipeline qui rend directement à l'écran garde `renderer.autoClear` actif. |
 | 2026-09-15 | Post-traitement sorti du core : étape `postRender?` sur `IPass` / `IPipeline` / `PipelineBase`, `Output` enchaîne `prepare` → `render` → `postRender` par univers. Retrait de `postFxPass`, `setPostFxEnabled`, `setFinalCorrectionEnabled`, `setPostFxGrainTexture`, `isPostFxEnabled` et de l'import de `graphics/postprocessing`. Template : `OutputPass` maison (`webgl/`, `webgpu/`), dépendance `postprocessing` retirée. | `pipeline/*`, `systems/Output.ts`, `systems/ThreeDevice.ts` | map | `pipeline.render` ne tournait jamais (court-circuité par le postFx) et le core dépendait d'une lib de post-traitement WebGL. **Au sync** : chaque projet déplace son `PostProcessingPass` dans le pipeline de ses univers (rendu écran en `postRender`) et remplace les usages de `device.postFxPass`. |
 | 2026-09-15 | Backend `webgpu` optionnel : `DEVICE_CONFIG.renderer.backend`, type `Renderer` (union), renderer créé dans `ThreeDevice.create`, `PostProcessingPass` importé par `postprocessing/index.ts`, stats-gl sur WebGPU. Section « Style de code ». | `systems/Renderer.type.ts`, `systems/ThreeDevice.ts`, `systems/Output.ts`, `systems/Runtime.ts`, `systems/DeviceConfig.type.ts`, `stats/StatsManager.ts`, `index.ts` | map | WebGPU prioritaire avec repli WebGL2 pour map, sans casser les projets WebGL. **Au sync** : cast `as WebGLRenderer` là où un projet lit une API WebGL via `device.renderer` (grass, book : `capabilities.maxSamples`). |
 | 2026-09-15 | Étape `prepare?(frame, ctx)` sur `IPass` et `IPipeline`, implémentée par `PipelineBase`, appelée par `Output.render` pour chaque univers monté avant tout rendu à l'écran. Viewport et scissor remis à plat après. | `pipeline/*`, `systems/Output.ts` | lacoste `2ba6a32` | `Output` rend par postFx ou correction finale sans passer par le pipeline de l'univers : une passe hors écran (texture précalculée, simulation) n'y tournait jamais. |
@@ -277,7 +280,7 @@ Le seul mécanisme d'activation de nodes du `_core`.
 | lacoste | `Dev/PP/RD/lacoste`, `feat/sol-timeline` | `47af303` | LUT du compositing (`onBoot`), panneau d'inclinaison (`graphics/device/TiltDebug.helper.ts`), `Timeline.contract.ts` (`graphics/devtools/`) |
 | grass | `Dev/PP/RD/grass`, `chore/core-alignement` | `b12c78d` | Panneaux PostFX, Godrays et inclinaison (`graphics/device/*Debug.helper.ts`), preset de correction, exposition, plafond tactile, `TiltWitness` (`graphics/debug/`), `Timeline.contract.ts` |
 | book | `Dev/PP/RD/book` (dépôt créé le 2026-09-15, sans remote), `chore/core-alignement` | `e21a0f3` | Comme grass |
-| map | `Dev/PV/Projects/map` (sans remote), `feat/core-webgpu` | — | Backend `webgpu`, `OutputPass` de `webgpu/` |
+| map | `Dev/PV/Projects/map` (sans remote), `feat/core-webgpu` | — | Backend `webgpu`, `EffectComposer` avec matériaux `webgpu/` |
 
 Côté projet, une seule chose varie encore sans être du `_core` : grass et book enregistrent leurs réglages par un `_saveDebug` maison dans leur univers, là où lacoste passe par `DEVICE_CONFIG.debugPersistence`. Les migrer est optionnel.
 
