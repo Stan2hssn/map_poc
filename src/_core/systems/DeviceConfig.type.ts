@@ -34,7 +34,7 @@ export interface DeviceConfig {
 
 export interface DeviceRendererConfig {
   /**
-   * Defaut `webgl`. `webgpu` exige une chaine de post-traitement TSL
+   * Defaut `webgl`. `webgpu` exige une passe de sortie TSL
    * (`graphics/postprocessing/webgpu`) et des materiaux node, pas de GLSL.
    */
   readonly backend?: RendererBackend;

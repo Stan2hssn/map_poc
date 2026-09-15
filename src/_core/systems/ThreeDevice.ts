@@ -1,20 +1,17 @@
 import {
   PCFSoftShadowMap,
   SRGBColorSpace,
-  WebGLRenderer,
-  type Texture
+  WebGLRenderer
 } from "three";
 import { OrbitCameraHelper } from "../../graphics/adapters/helpers/OrbitCamera.helper.ts";
 import { DOMInputAdapter } from "../../graphics/adapters/systems/DOMInputAdapter.ts";
 import {
-  ASSET_KEYS,
   ASSET_MANIFEST,
   type AppAssetManifest,
 } from "../../graphics/assets/assets.manifest.ts";
 import { DEBUG_CONFIG } from "../../graphics/debug/debug.config.ts";
 import { FOLDER_ID, TAB_ID } from "../../graphics/debug/Debug.id.ts";
 import { DEVICE_CONFIG } from "../../graphics/device/device.config.ts";
-import type { PostProcessingPass } from "../../graphics/postprocessing/index.ts";
 import type { UniverseId } from "../../graphics/universes/Universe.id.ts";
 import { UNIVERSE_MANIFEST } from "../../graphics/universes/universes.manifest.ts";
 import type { AssetStore } from "../assets/AssetStore.ts";
@@ -42,7 +39,6 @@ export interface IThreeDeviceSlice {
   debug: DebugManager;
   input: Input;
   stats: StatsManager;
-  readonly postFxPass: PostProcessingPass;
 }
 
 /**
@@ -119,10 +115,6 @@ export default class ThreeDevice implements IThreeDeviceSlice {
     this._runtime.raf.setStats(this.stats);
   }
 
-  get postFxPass(): PostProcessingPass {
-    return this._runtime.output.postFxPass;
-  }
-
   /**
    * L'adaptateur d'entree, pour ce qui doit lui parler depuis un geste : iOS
    * n'accorde le capteur d'inclinaison qu'a un appel issu d'un clic, et un appel
@@ -176,8 +168,6 @@ export default class ThreeDevice implements IThreeDeviceSlice {
     this.renderer.setSize(this._canvas.clientWidth, this._canvas.clientHeight, false);
     await this.assets.preloadGroup("boot");
 
-    const grainTexture = this.assets.get<Texture>(ASSET_KEYS.postfx.grainTexture);
-    this._runtime.output.setPostFxGrainTexture(grainTexture ?? null);
     DEVICE_CONFIG.onBoot?.(this);
 
     this._runtime.init();

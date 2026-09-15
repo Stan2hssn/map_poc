@@ -1,6 +1,4 @@
 import { createAssetKeys, defineAssets } from "@_core/assets/index.ts";
-import { NoColorSpace, RepeatWrapping } from "three";
-import type { Texture } from "three";
 
 export const ASSET_MANIFEST = defineAssets({
   // `group: "boot"` -> loaded before first universe mount.
@@ -12,20 +10,6 @@ export const ASSET_MANIFEST = defineAssets({
       type: "texture",
       group: "ui",
       lazy: true,
-    },
-  },
-  postfx: {
-    grainTexture: {
-      src: "/assets/Images/PostFX/grainTexture.webp",
-      type: "texture",
-      group: "boot",
-      postProcess: (resource) => {
-        const texture = resource as Texture;
-        texture.wrapS = RepeatWrapping;
-        texture.wrapT = RepeatWrapping;
-        texture.colorSpace = NoColorSpace;
-        texture.needsUpdate = true;
-      },
     },
   },
 } as const);

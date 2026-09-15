@@ -34,6 +34,10 @@ export class PipelineBase implements IPipeline {
         for (const p of this._passes) p.render(frame, ctx);
     }
 
+    postRender(frame: FrameTiming, ctx: PassContext): void {
+        for (const p of this._passes) p.postRender?.(frame, ctx);
+    }
+
     resize(width: number, height: number): void {
         for (const p of this._passes) p.resize(width, height);
     }

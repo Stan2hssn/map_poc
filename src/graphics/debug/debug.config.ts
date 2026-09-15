@@ -18,20 +18,12 @@ export const DEBUG_CONFIG: DebugConfig = {
       order: 1,
     },
     {
-      id: FOLDER_ID.POSTFX,
-      tabId: TAB_ID.RENDER,
-      label: "PostFX",
-      visible: true,
-      expanded: false,
-      order: 1,
-    },
-    {
       id: FOLDER_ID.STATS,
       tabId: TAB_ID.RENDER,
       label: "Stats",
       visible: true,
       expanded: false,
-      order: 2,
+      order: 1,
     },
   ],
 };

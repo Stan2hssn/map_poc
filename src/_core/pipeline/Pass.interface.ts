@@ -14,12 +14,13 @@ export default interface IPass {
 
   /**
    * Travail GPU hors ecran : precalculs, simulations. Appele a chaque image pour
-   * chaque univers monte, AVANT tout rendu a l'ecran — y compris quand le
-   * post-traitement remplace `render`. Doit rendre la main avec la cible de
-   * rendu par defaut active.
+   * chaque univers monte, AVANT tout rendu. Doit rendre la main avec la cible
+   * de rendu par defaut active.
    */
   prepare?(frame: FrameTiming, ctx: PassContext): void;
   render(frame: FrameTiming, ctx: PassContext): void;
+  /** Apres `render` de toutes les passes : composition vers l'ecran (post-traitement). */
+  postRender?(frame: FrameTiming, ctx: PassContext): void;
   resize(width: number, height: number): void;
   dispose(): void;
 }

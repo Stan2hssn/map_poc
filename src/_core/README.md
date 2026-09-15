@@ -72,10 +72,10 @@ Dans les faits, `graphics/` importe par chemins profonds (`@_core/nodes/...`) pl
 2. `create` construit le renderer selon `DEVICE_CONFIG.renderer.backend` (voir [WebGL et WebGPU](#webgl-et-webgpu)), puis le constructeur de `ThreeDevice` :
    - règle le renderer (sRGB, carte d'ombres et plafonds de pixel ratio lus dans `DEVICE_CONFIG.renderer`), crée l'`AssetStore` du `ASSET_MANIFEST`, le `ShaderStore`, le `StatsManager` et le `State` ;
    - déclare chaque entrée de `UNIVERSE_MANIFEST` dans le registre, sans l'instancier ;
-   - crée le `Runtime`, qui crée `Input`, `Output` (avec ses deux `PostProcessingPass`) et `RAF`.
+   - crée le `Runtime`, qui crée `Input`, `Output` et `RAF`.
 3. `init()` :
    1. taille et viewport ;
-   2. `await preloadGroup("boot")`, texture de grain, puis `DEVICE_CONFIG.onBoot(device)` ;
+   2. `await preloadGroup("boot")`, puis `DEVICE_CONFIG.onBoot(device)` ;
    3. `runtime.init()` ;
    4. `debug.setPersistence(DEVICE_CONFIG.debugPersistence)` **toujours** — les réglages enregistrés sont la configuration de la scène ;
    5. `debug.init(DEBUG_CONFIG)` **seulement si** `?debug` ; stats de base si `?stats` ;
@@ -93,8 +93,7 @@ Le `_core` importe du code projet par des chemins fixes. Pour qu'un même `_core
 | `device/device.config.ts` | `DEVICE_CONFIG: DeviceConfig` | `ThreeDevice`, `Output` |
 | `debug/debug.config.ts` | `DEBUG_CONFIG` (avec `sessionPrefix`) | `ThreeDevice`, `DebugFlags` — doit rester **léger** : il est lu avant le chargement de three |
 | `debug/Debug.id.ts` | `TAB_ID.RENDER`, `FOLDER_ID.STATS` | panneau des stats de `ThreeDevice` |
-| `postprocessing/index.ts` | `POSTFX_PRESETS.medium`, `FINAL_CORRECTION_PRESET`, `PostProcessingPass` (`render`, `resize`, `dispose`, `setGrainTexture`), **du même backend que le renderer** | `Output`, `ThreeDevice` |
-| `assets/assets.manifest.ts` | `ASSET_MANIFEST`, `ASSET_KEYS.postfx.grainTexture`, `AppAssetManifest` | `ThreeDevice` |
+| `assets/assets.manifest.ts` | `ASSET_MANIFEST`, `AppAssetManifest` | `ThreeDevice` |
 | `shaders/shaders.manifest.ts` | `SHADER_MANIFEST`, `AppShaderManifest` | `ThreeDevice` |
 | `universes/universes.manifest.ts`, `universes/Universe.id.ts` | `UNIVERSE_MANIFEST`, `UniverseId` | `ThreeDevice` |
 | `adapters/systems/DOMInputAdapter.ts` | `DOMInputAdapter` (`attach`, `dispose`) | `ThreeDevice` |
@@ -113,23 +112,22 @@ Tout ce qui est propre à un projet et touche au device passe par `DEVICE_CONFIG
 | `renderer.shadowMap` | `PCFSoftShadowMap` | `false` pour couper |
 | `renderer.toneMappingExposure` | `1`, relue à chaque image | grass, book : getter sur `SCENE_CONFIG` |
 | `debugPersistence` | aucune | lacoste : `debug.values.json` relu, écrit par la route de la sonde |
-| `onBoot(device)` | — | lacoste : LUT du compositing posées sur `device.postFxPass` |
+| `onBoot(device)` | — | lacoste : LUT du compositing |
 | `bindDebug(device)` | — | lacoste : inclinaison ; grass, book : inclinaison, PostFX, Godrays. Rend les désabonnements. |
 
 ## WebGL et WebGPU
 
-| `renderer.backend` | Renderer | Matériaux | Post-traitement (`graphics/postprocessing/`) |
+| `renderer.backend` | Renderer | Matériaux | `OutputPass` (`graphics/postprocessing/`) |
 |---|---|---|---|
-| `"webgl"` (défaut) | `WebGLRenderer` | GLSL, `ShaderMaterial` | `webgl/` : lib `postprocessing` |
-| `"webgpu"` | `WebGPURenderer`, repli WebGL2 automatique si WebGPU manque | TSL, node materials | `webgpu/` : `PostProcessing` de three |
+| `"webgl"` (défaut) | `WebGLRenderer` | GLSL, `ShaderMaterial` | `webgl/` : quad `ShaderMaterial` |
+| `"webgpu"` | `WebGPURenderer`, repli WebGL2 automatique si WebGPU manque | TSL, node materials | `webgpu/` : `QuadMesh` TSL |
 
 Changer de backend = deux lignes : `DEVICE_CONFIG.renderer.backend` et l'export de `postprocessing/index.ts`.
 
 - `three/webgpu` est importé dynamiquement : un projet WebGL ne l'embarque pas.
 - `device.renderer` est typé `Renderer` (union). Une API propre à un backend passe par un cast : `device.renderer as WebGLRenderer`.
-- Le code GLSL (`ShaderMaterial`, `final.frag`) ne tourne pas sous `WebGPURenderer`, même en repli WebGL2. Les matériaux standards (`MeshStandardMaterial`…) marchent sur les deux.
+- Le code GLSL (`ShaderMaterial`, `.frag`) ne tourne pas sous `WebGPURenderer`, même en repli WebGL2. Les matériaux standards (`MeshStandardMaterial`…) marchent sur les deux.
 - three-perf est WebGL seulement ; stats-gl gère les deux.
-- Le seuil de `BloomNode` ne réagit pas pareil selon que `WebGPURenderer` tourne en WebGPU ou en repli WebGL2 (bloom bien plus faible en WebGL2 à `threshold` égal, three r181). Calibrer les presets sur les deux.
 - Tester le repli : `forceWebGL: true` dans la config passée à `ThreeDevice.create`.
 
 ## Boucle par image
@@ -143,15 +141,19 @@ Output.update          pour chaque univers actif ET monte :
 Output.render
   1. prepare           pipeline.prepare?.(frame, ctx) pour CHAQUE univers monte
   2. etat du renderer  sRGB, NoToneMapping, exposition 1, viewport et scissor pleins, clear
-  3. un seul chemin parmi :
-     - postFx actif (defaut)            -> PostProcessingPass sur l'univers primaire
-     - sinon correction finale (defaut) -> PostProcessingPass de correction
-     - sinon                            -> pipeline.render(frame, ctx) de chaque univers monte
+  3. par univers monte, dans l'ordre d'activation :
+     pipeline.render(frame, ctx)       scene -> cible
+     pipeline.postRender?.(frame, ctx) cible -> ecran
 ```
 
-L'univers primaire est le dernier activé (`activeMounted.at(-1)`). `ctx` vaut `{ scene, camera, renderer }`.
+`ctx` vaut `{ scene, camera, renderer }`. Le post-traitement n'est plus dans le core : c'est une passe du pipeline de l'univers.
 
-**Conséquence majeure** : postFx et correction finale sont actifs par défaut, et rien n'appelle `setPostFxEnabled(false)`. **`pipeline.render` — donc `ForwardRenderPass` — ne tourne jamais dans la configuration par défaut.** Tout travail qui doit s'exécuter à chaque image indépendamment du chemin de sortie va dans `prepare`, jamais dans `render`.
+```ts
+const output = new OutputPass();
+const pipeline = new PipelineBase([new ForwardRenderPass(output.target), output]);
+```
+
+`OutputPass` ajuste sa cible au canvas dans `prepare`, puis la copie à l'écran en sRGB dans `postRender`. Un effet s'ajoute dans sa passe de sortie ou dans une passe insérée avant elle.
 
 ## Pipeline et passes
 
@@ -160,8 +162,9 @@ Un pipeline est une liste ordonnée de passes. `PipelineBase` délègue chaque m
 | Méthode de `IPass` | Quand |
 |---|---|
 | `beforeMount` / `onMounted` / `beforeUnmount` / `onUnmounted` | Cycle de vie de l'univers |
-| `prepare?(frame, ctx)` | À chaque image, **avant tout rendu à l'écran**, quel que soit le chemin de sortie |
-| `render(frame, ctx)` | À chaque image, **seulement** si postFx et correction finale sont coupés |
+| `prepare?(frame, ctx)` | À chaque image, avant tout rendu |
+| `render(frame, ctx)` | À chaque image : la scène |
+| `postRender?(frame, ctx)` | À chaque image, après `render` de toutes les passes : vers l'écran |
 | `resize`, `dispose` | Redimensionnement, destruction |
 
 ### Travail GPU hors écran (`prepare`)
@@ -247,7 +250,6 @@ Le seul mécanisme d'activation de nodes du `_core`.
 ## Pièges connus
 
 - **Deltas d'entrée** : `Input.update` remet `deltaX`, `deltaY` et `wheel` à 0 **avant** `Universe.update`. Lus en polling dans `update`, ils valent toujours 0 ; il faut s'abonner aux événements.
-- **`pipeline.render` court-circuité** par défaut (voir [Boucle par image](#boucle-par-image)).
 - **Démonter un univers ne démonte pas ses nodes** : `NodeGraph` n'a pas de méthodes de cycle de vie, et les appels `(graph as any).beforeMount?.()` de `UniverseBase` ne font rien. `_currentContractId` n'est pas remis à `null`.
 - **`InteractionManager`** n'existe que si `input` est passé au constructeur de `UniverseBase`.
 - **Le `_core` dépend de `graphics/`** : c'est une dette, pas un modèle. La liste exacte est dans [Ce qu'un projet fournit au core](#ce-quun-projet-fournit-au-core) ; un projet qui renomme ces fichiers casse le `_core`.
@@ -256,6 +258,7 @@ Le seul mécanisme d'activation de nodes du `_core`.
 
 | Date | Modification | Fichiers | Origine | Pourquoi |
 |---|---|---|---|---|
+| 2026-09-15 | Post-traitement sorti du core : étape `postRender?` sur `IPass` / `IPipeline` / `PipelineBase`, `Output` enchaîne `prepare` → `render` → `postRender` par univers. Retrait de `postFxPass`, `setPostFxEnabled`, `setFinalCorrectionEnabled`, `setPostFxGrainTexture`, `isPostFxEnabled` et de l'import de `graphics/postprocessing`. Template : `OutputPass` maison (`webgl/`, `webgpu/`), dépendance `postprocessing` retirée. | `pipeline/*`, `systems/Output.ts`, `systems/ThreeDevice.ts` | map | `pipeline.render` ne tournait jamais (court-circuité par le postFx) et le core dépendait d'une lib de post-traitement WebGL. **Au sync** : chaque projet déplace son `PostProcessingPass` dans le pipeline de ses univers (rendu écran en `postRender`) et remplace les usages de `device.postFxPass`. |
 | 2026-09-15 | Backend `webgpu` optionnel : `DEVICE_CONFIG.renderer.backend`, type `Renderer` (union), renderer créé dans `ThreeDevice.create`, `PostProcessingPass` importé par `postprocessing/index.ts`, stats-gl sur WebGPU. Section « Style de code ». | `systems/Renderer.type.ts`, `systems/ThreeDevice.ts`, `systems/Output.ts`, `systems/Runtime.ts`, `systems/DeviceConfig.type.ts`, `stats/StatsManager.ts`, `index.ts` | map | WebGPU prioritaire avec repli WebGL2 pour map, sans casser les projets WebGL. **Au sync** : cast `as WebGLRenderer` là où un projet lit une API WebGL via `device.renderer` (grass, book : `capabilities.maxSamples`). |
 | 2026-09-15 | Étape `prepare?(frame, ctx)` sur `IPass` et `IPipeline`, implémentée par `PipelineBase`, appelée par `Output.render` pour chaque univers monté avant tout rendu à l'écran. Viewport et scissor remis à plat après. | `pipeline/*`, `systems/Output.ts` | lacoste `2ba6a32` | `Output` rend par postFx ou correction finale sans passer par le pipeline de l'univers : une passe hors écran (texture précalculée, simulation) n'y tournait jamais. |
 | 2026-09-15 | Type d'asset `binary` (`ArrayBuffer`). | `assets/types.ts`, `assets/AssetStore.ts` | lacoste | Formats maison qu'aucun loader three ne couvre. |
@@ -267,14 +270,14 @@ Le seul mécanisme d'activation de nodes du `_core`.
 
 ## Projets alignés
 
-État au 2026-09-15 : backend WebGPU porté dans map seulement. lacoste, grass et book sont sur le `_core` précédent (WebGL, compatible) et restent à synchroniser.
+État au 2026-09-15 : backend WebGPU et `postRender` portés dans map seulement. lacoste, grass et book sont sur un `_core` antérieur ; leur synchronisation demande la migration décrite au journal.
 
 | Projet | Dépôt et branche | Commit d'alignement | Ce qui est sorti du `_core` vers le projet |
 |---|---|---|---|
 | lacoste | `Dev/PP/RD/lacoste`, `feat/sol-timeline` | `47af303` | LUT du compositing (`onBoot`), panneau d'inclinaison (`graphics/device/TiltDebug.helper.ts`), `Timeline.contract.ts` (`graphics/devtools/`) |
 | grass | `Dev/PP/RD/grass`, `chore/core-alignement` | `b12c78d` | Panneaux PostFX, Godrays et inclinaison (`graphics/device/*Debug.helper.ts`), preset de correction, exposition, plafond tactile, `TiltWitness` (`graphics/debug/`), `Timeline.contract.ts` |
 | book | `Dev/PP/RD/book` (dépôt créé le 2026-09-15, sans remote), `chore/core-alignement` | `e21a0f3` | Comme grass |
-| map | `Dev/PV/Projects/map` (sans remote), `feat/core-webgpu` | — | Backend `webgpu`, post-traitement `webgpu/` |
+| map | `Dev/PV/Projects/map` (sans remote), `feat/core-webgpu` | — | Backend `webgpu`, `OutputPass` de `webgpu/` |
 
 Côté projet, une seule chose varie encore sans être du `_core` : grass et book enregistrent leurs réglages par un `_saveDebug` maison dans leur univers, là où lacoste passe par `DEVICE_CONFIG.debugPersistence`. Les migrer est optionnel.
 
@@ -284,5 +287,5 @@ Côté projet, une seule chose varie encore sans être du `_core` : grass et boo
   - place `ThreeDevice` dans `graphics/` et dit le core sans Three.js ni postprocessing ;
   - cite `onUnmount` et `Universe.render`, qui n'existent pas ;
   - ignore nodes, contrats, assets, shaders, debug, stats et `prepare`.
-- `NodeContract.md` : note de conception Node / NodeGraph / Contract / Pipeline, proche du code mais rédigée comme un plan. Elle cite `remove(node)`, qui n'existe pas, et ignore le court-circuit du pipeline par le postFx.
+- `NodeContract.md` : note de conception Node / NodeGraph / Contract / Pipeline, proche du code mais rédigée comme un plan. Elle cite `remove(node)`, qui n'existe pas.
 - `docs/AUDIT_AND_PLAN.md` : **obsolète**, cite des fichiers supprimés (`pipeline/types.ts`, `Pass.base.ts`, `defineUniverse`…).

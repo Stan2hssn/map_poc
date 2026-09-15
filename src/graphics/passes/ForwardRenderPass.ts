@@ -1,29 +1,32 @@
 import type IPass from "@_core/pipeline/Pass.interface.ts";
 import type { PassContext } from "@_core/pipeline/Pass.interface.ts";
 import type { FrameTiming } from "@_core/types/Frame.type.ts";
-import type { Camera, Scene, WebGLRenderer } from "three";
+import type { Camera, RenderTarget, Scene, WebGLRenderer, WebGLRenderTarget } from "three";
 
+/** Rend la scene dans `target`, ou a l'ecran si `null`. */
 export class ForwardRenderPass implements IPass {
+  private readonly _target: RenderTarget | null;
+
+  constructor(target: RenderTarget | null = null) {
+    this._target = target;
+  }
+
   beforeMount(): Promise<void> {
     return Promise.resolve();
   }
-  onMounted(): void { }
+  onMounted(): void {}
   beforeUnmount(): Promise<void> {
     return Promise.resolve();
   }
-  onUnmounted(): void { }
+  onUnmounted(): void {}
 
   render(_frame: FrameTiming, ctx: PassContext): void {
+    // Cast WebGL valable pour les deux backends : chacun recoit sa propre classe de cible.
     const renderer = ctx.renderer as WebGLRenderer;
-    const scene = ctx.scene as Scene;
-    const camera = ctx.camera as Camera;
-    if (renderer && scene && camera) renderer.render(scene, camera);
+    renderer.setRenderTarget(this._target as WebGLRenderTarget | null);
+    renderer.render(ctx.scene as Scene, ctx.camera as Camera);
   }
 
-  resize(_width: number, _height: number): void {
-    //
-  }
-  dispose(): void {
-    //
-  }
+  resize(): void {}
+  dispose(): void {}
 }

@@ -41,7 +41,7 @@ onMounted(async () => {
   if (!canvas) return
 
   try {
-    // Import dynamique : three, postprocessing et tweakpane pesent lourd, et
+    // Import dynamique : three et tweakpane pesent lourd, et
     // rien de tout cela n'a de raison d'entrer dans le chunk d'entree.
     const { default: Device } = await import('@_core/systems/ThreeDevice.ts')
     device = await Device.create(canvas, {
