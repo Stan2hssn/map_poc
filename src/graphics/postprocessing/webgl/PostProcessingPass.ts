@@ -11,7 +11,7 @@ import {
 } from "postprocessing";
 import type { Camera, Scene, Texture, WebGLRenderer } from "three";
 import { Color, Vector2 } from "three";
-import { FinalEffect } from "../effects/index.ts";
+import { FinalEffect } from "./FinalEffect.ts";
 import type { BlendMode, PostFxConfig } from "../types.ts";
 
 function toBlendFunction(mode: BlendMode): BlendFunction {

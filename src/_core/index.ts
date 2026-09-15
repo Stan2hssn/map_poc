@@ -36,6 +36,7 @@ export { default as RAF } from "./systems/RAF.ts";
 export { default as Runtime } from "./systems/Runtime.ts";
 export { default as State } from "./systems/State.ts";
 export type { Viewport } from "./systems/State.ts";
+export type { Renderer, RendererBackend, RendererParameters } from "./systems/Renderer.type.ts";
 export type { FrameTiming } from "./types/Frame.type.ts";
 export { UniverseBase } from "./universes/Universe.base.ts";
 export type { IUniverseContract } from "./universes/UniverseContract.type.ts";

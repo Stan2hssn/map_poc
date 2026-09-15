@@ -9,14 +9,14 @@ import {
   SRGBColorSpace,
   Vector2,
   type Texture,
-  type WebGLRenderer,
 } from "three";
 import type { PassContext } from "../pipeline/Pass.interface.ts";
 import type { FrameTiming } from "../types/Frame.type.ts";
+import type { Renderer } from "./Renderer.type.ts";
 import type { UniverseBase } from "../universes/Universe.base.ts";
 
 export default class Output {
-  private readonly _renderer: WebGLRenderer;
+  private readonly _renderer: Renderer;
   private readonly _viewportSize = new Vector2();
   private readonly _activeUniverses = new Set<UniverseBase<string>>();
   private readonly _lifecycleToken = new WeakMap<UniverseBase<string>, number>();
@@ -25,7 +25,7 @@ export default class Output {
   private _postFxEnabled = true;
   private _finalCorrectionEnabled = true;
 
-  constructor(renderer: WebGLRenderer) {
+  constructor(renderer: Renderer) {
     this._renderer = renderer;
     // three remet ses compteurs a zero a CHAQUE appel de render(). L'
     // EffectComposer en fait plusieurs par image, si bien qu'un lecteur
@@ -39,7 +39,7 @@ export default class Output {
     this._finalCorrectionPass = new PostProcessingPass(FINAL_CORRECTION_PRESET);
   }
 
-  get renderer(): WebGLRenderer {
+  get renderer(): Renderer {
     return this._renderer;
   }
 

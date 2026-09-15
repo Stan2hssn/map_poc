@@ -1,5 +1,6 @@
 import type { ShadowMapType } from "three";
 import type { DebugPersistence } from "../debug/DebugValues.ts";
+import type { RendererBackend } from "./Renderer.type.ts";
 import type ThreeDevice from "./ThreeDevice.ts";
 
 /**
@@ -32,6 +33,11 @@ export interface DeviceConfig {
 }
 
 export interface DeviceRendererConfig {
+  /**
+   * Defaut `webgl`. `webgpu` exige une chaine de post-traitement TSL
+   * (`graphics/postprocessing/webgpu`) et des materiaux node, pas de GLSL.
+   */
+  readonly backend?: RendererBackend;
   /** Plafond du pixel ratio. Defaut 2. */
   readonly maxPixelRatio?: number;
   /**

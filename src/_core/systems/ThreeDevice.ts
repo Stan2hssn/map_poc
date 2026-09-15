@@ -2,8 +2,7 @@ import {
   PCFSoftShadowMap,
   SRGBColorSpace,
   WebGLRenderer,
-  type Texture,
-  type WebGLRendererParameters
+  type Texture
 } from "three";
 import { OrbitCameraHelper } from "../../graphics/adapters/helpers/OrbitCamera.helper.ts";
 import { DOMInputAdapter } from "../../graphics/adapters/systems/DOMInputAdapter.ts";
@@ -15,7 +14,7 @@ import {
 import { DEBUG_CONFIG } from "../../graphics/debug/debug.config.ts";
 import { FOLDER_ID, TAB_ID } from "../../graphics/debug/Debug.id.ts";
 import { DEVICE_CONFIG } from "../../graphics/device/device.config.ts";
-import type { PostProcessingPass } from "../../graphics/postprocessing/passes/PostProcessingPass.ts";
+import type { PostProcessingPass } from "../../graphics/postprocessing/index.ts";
 import type { UniverseId } from "../../graphics/universes/Universe.id.ts";
 import { UNIVERSE_MANIFEST } from "../../graphics/universes/universes.manifest.ts";
 import type { AssetStore } from "../assets/AssetStore.ts";
@@ -27,6 +26,7 @@ import { UniverseRegistry } from "../registries/UniverseRegistry/UniverseRegistr
 import { StatsManager } from "../stats/index.ts";
 import type { UniverseBase } from "../universes/Universe.base.ts";
 import type Input from "./Input.ts";
+import type { Renderer, RendererParameters } from "./Renderer.type.ts";
 import Runtime from "./Runtime.ts";
 import State from "./State.ts";
 import {
@@ -36,7 +36,7 @@ import {
 import { createShaderStore } from "../shaders/index.ts";
 
 export interface IThreeDeviceSlice {
-  renderer: WebGLRenderer;
+  renderer: Renderer;
   assets: AssetStore<AppAssetManifest>;
   shaders: ShaderStore<AppShaderManifest>;
   debug: DebugManager;
@@ -46,7 +46,7 @@ export interface IThreeDeviceSlice {
 }
 
 /**
- * ThreeDevice - Creates canvas + WebGLRenderer, Runtime from _core,
+ * ThreeDevice - Creates the renderer (WebGL or WebGPU), Runtime from _core,
  * registers manifest, activates initial universes.
  *
  * Identique dans tous les projets : ce qui est propre a l'un d'eux passe par
@@ -54,7 +54,7 @@ export interface IThreeDeviceSlice {
  */
 export default class ThreeDevice implements IThreeDeviceSlice {
   private readonly _canvas: HTMLCanvasElement;
-  readonly renderer: WebGLRenderer;
+  readonly renderer: Renderer;
   readonly assets: AssetStore<AppAssetManifest>;
   readonly shaders: ShaderStore<AppShaderManifest>;
   readonly debug: DebugManager;
@@ -72,12 +72,9 @@ export default class ThreeDevice implements IThreeDeviceSlice {
   private _eventsBound = false;
   private _disposed = false;
 
-  constructor(canvas: HTMLCanvasElement, config?: WebGLRendererParameters) {
+  constructor(canvas: HTMLCanvasElement, renderer: Renderer) {
     this._canvas = canvas;
-    this.renderer = new WebGLRenderer({
-      canvas,
-      ...config,
-    });
+    this.renderer = renderer;
     this.renderer.outputColorSpace = SRGBColorSpace;
 
     const rendererConfig = DEVICE_CONFIG.renderer ?? {};
@@ -153,11 +150,25 @@ export default class ThreeDevice implements IThreeDeviceSlice {
 
   static async create(
     canvas: HTMLCanvasElement,
-    config?: WebGLRendererParameters
+    config?: RendererParameters
   ): Promise<ThreeDevice> {
-    const device = new ThreeDevice(canvas, config);
+    const device = new ThreeDevice(canvas, await ThreeDevice._createRenderer(canvas, config));
     await device.init();
     return device;
+  }
+
+  // Import dynamique : un projet WebGL n'embarque pas `three/webgpu`.
+  private static async _createRenderer(
+    canvas: HTMLCanvasElement,
+    config?: RendererParameters
+  ): Promise<Renderer> {
+    if (DEVICE_CONFIG.renderer?.backend !== "webgpu") {
+      return new WebGLRenderer({ canvas, ...config });
+    }
+    const { WebGPURenderer } = await import("three/webgpu");
+    const renderer = new WebGPURenderer({ canvas, ...config });
+    await renderer.init();
+    return renderer;
   }
 
   async init(): Promise<void> {

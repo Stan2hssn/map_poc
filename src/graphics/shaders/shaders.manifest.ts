@@ -1,5 +1,5 @@
 import { createShaderKeys, createShaderStore, defineShaders } from "@_core/shaders/index.ts";
-import finalFragment from "../postprocessing/effects/shaders/final.frag?raw";
+import finalFragment from "../postprocessing/webgl/final.frag?raw";
 
 export const SHADER_MANIFEST = defineShaders({
   postfx: {

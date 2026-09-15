@@ -21,11 +21,36 @@ diff -rq -x .DS_Store ~/Dev/Templates/three-pipeline-boilerplate/src/_core src/_
 
 Un changement du `_core` qui ne vit que dans un projet est perdu pour les suivants.
 
+## Style de code
+
+S'applique au `_core` comme à `graphics/` et `app/`.
+
+- **Simple, concis, structuré.** Le code le plus court qui reste lisible gagne.
+- **Typer ce qui sert** : signatures exportées et frontières entre modules. Le reste est inféré. Pas d'interface, de générique ni de surcharge sans deuxième usage réel. Si le typage est plus long que le code qu'il décrit, il est de trop : un `as` ponctuel vaut mieux qu'un échafaudage de types.
+- **Commentaires, même règle** : une ligne, pour un *pourquoi* non évident. Ni paraphrase, ni historique (« avant, … ») — l'historique vit dans les commits et le journal ci-dessous.
+
+```ts
+// Non : 12 lignes de types et de récit pour 3 lignes utiles.
+/**
+ * Contrat structurel du renderer attendu ici. On ne l'importe pas de three
+ * parce que, historiquement, le type a changé entre deux versions et que...
+ */
+interface RendererLike { setSize(w: number, h: number, u?: boolean): void }
+type ResizeTarget<T extends RendererLike = RendererLike> = { renderer: T };
+function resize<T extends RendererLike>(t: ResizeTarget<T>, w: number, h: number): void {
+  t.renderer.setSize(w, h, false);
+}
+
+// Oui.
+// `false` : la taille CSS appartient au canvas, pas au renderer.
+const resize = (renderer: Renderer, w: number, h: number) => renderer.setSize(w, h, false);
+```
+
 ## Carte des modules
 
 | Dossier | Rôle | Exporté par `index.ts` |
 |---|---|---|
-| `systems/` | Orchestration : `ThreeDevice` (bootstrap), `Runtime`, `RAF`, `Input`, `Output`, `State` ; `DeviceConfig.type.ts`, le contrat d'extension du projet | `Input`, `Output`, `RAF`, `Runtime`, `State`, `Viewport` — **pas** `ThreeDevice` ni `DeviceConfig` (chemin profond) |
+| `systems/` | Orchestration : `ThreeDevice` (bootstrap), `Runtime`, `RAF`, `Input`, `Output`, `State` ; `DeviceConfig.type.ts`, le contrat d'extension du projet ; `Renderer.type.ts`, l'union WebGL / WebGPU | `Input`, `Output`, `RAF`, `Runtime`, `State`, `Viewport`, `Renderer`, `RendererBackend`, `RendererParameters` — **pas** `ThreeDevice` ni `DeviceConfig` (chemin profond) |
 | `universes/` | `UniverseBase` : scène, caméra, graphe de nodes, pipeline, contrats | `UniverseBase`, `IUniverseContract` |
 | `registries/` | `UniverseRegistry` : fabriques d'univers paresseuses (`define`, `getOrCreate`, `getDefaultId`) | `UniverseRegistry` |
 | `nodes/` | `NodeBase`, `Object3DNodeBase`, `InteractiveObject3DNodeBase`, `GroupNodeBase`, `NodeGroupBase`, `NodeGraph` | tous, avec leurs interfaces |
@@ -44,8 +69,8 @@ Dans les faits, `graphics/` importe par chemins profonds (`@_core/nodes/...`) pl
 ## Démarrage
 
 1. `app/pages/index.vue` monte `<ThreeStage>`. Au `nextTick`, le composant importe dynamiquement `ThreeDevice` et appelle `ThreeDevice.create(canvas, config)`.
-2. Le constructeur de `ThreeDevice` :
-   - crée le `WebGLRenderer` (sRGB, carte d'ombres et plafonds de pixel ratio lus dans `DEVICE_CONFIG.renderer`), l'`AssetStore` du `ASSET_MANIFEST`, le `ShaderStore`, le `StatsManager` et le `State` ;
+2. `create` construit le renderer selon `DEVICE_CONFIG.renderer.backend` (voir [WebGL et WebGPU](#webgl-et-webgpu)), puis le constructeur de `ThreeDevice` :
+   - règle le renderer (sRGB, carte d'ombres et plafonds de pixel ratio lus dans `DEVICE_CONFIG.renderer`), crée l'`AssetStore` du `ASSET_MANIFEST`, le `ShaderStore`, le `StatsManager` et le `State` ;
    - déclare chaque entrée de `UNIVERSE_MANIFEST` dans le registre, sans l'instancier ;
    - crée le `Runtime`, qui crée `Input`, `Output` (avec ses deux `PostProcessingPass`) et `RAF`.
 3. `init()` :
@@ -68,7 +93,7 @@ Le `_core` importe du code projet par des chemins fixes. Pour qu'un même `_core
 | `device/device.config.ts` | `DEVICE_CONFIG: DeviceConfig` | `ThreeDevice`, `Output` |
 | `debug/debug.config.ts` | `DEBUG_CONFIG` (avec `sessionPrefix`) | `ThreeDevice`, `DebugFlags` — doit rester **léger** : il est lu avant le chargement de three |
 | `debug/Debug.id.ts` | `TAB_ID.RENDER`, `FOLDER_ID.STATS` | panneau des stats de `ThreeDevice` |
-| `postprocessing/index.ts` | `POSTFX_PRESETS.medium`, `FINAL_CORRECTION_PRESET`, `PostProcessingPass` (`render`, `resize`, `dispose`, `setGrainTexture`) | `Output` |
+| `postprocessing/index.ts` | `POSTFX_PRESETS.medium`, `FINAL_CORRECTION_PRESET`, `PostProcessingPass` (`render`, `resize`, `dispose`, `setGrainTexture`), **du même backend que le renderer** | `Output`, `ThreeDevice` |
 | `assets/assets.manifest.ts` | `ASSET_MANIFEST`, `ASSET_KEYS.postfx.grainTexture`, `AppAssetManifest` | `ThreeDevice` |
 | `shaders/shaders.manifest.ts` | `SHADER_MANIFEST`, `AppShaderManifest` | `ThreeDevice` |
 | `universes/universes.manifest.ts`, `universes/Universe.id.ts` | `UNIVERSE_MANIFEST`, `UniverseId` | `ThreeDevice` |
@@ -82,6 +107,7 @@ Tout ce qui est propre à un projet et touche au device passe par `DEVICE_CONFIG
 
 | Champ | Défaut | Exemple d'usage |
 |---|---|---|
+| `renderer.backend` | `"webgl"` | map : `"webgpu"` |
 | `renderer.maxPixelRatio` | `2` | — |
 | `renderer.maxPixelRatioCoarse` | `maxPixelRatio` | grass, book : `1.5` en tactile |
 | `renderer.shadowMap` | `PCFSoftShadowMap` | `false` pour couper |
@@ -89,6 +115,22 @@ Tout ce qui est propre à un projet et touche au device passe par `DEVICE_CONFIG
 | `debugPersistence` | aucune | lacoste : `debug.values.json` relu, écrit par la route de la sonde |
 | `onBoot(device)` | — | lacoste : LUT du compositing posées sur `device.postFxPass` |
 | `bindDebug(device)` | — | lacoste : inclinaison ; grass, book : inclinaison, PostFX, Godrays. Rend les désabonnements. |
+
+## WebGL et WebGPU
+
+| `renderer.backend` | Renderer | Matériaux | Post-traitement (`graphics/postprocessing/`) |
+|---|---|---|---|
+| `"webgl"` (défaut) | `WebGLRenderer` | GLSL, `ShaderMaterial` | `webgl/` : lib `postprocessing` |
+| `"webgpu"` | `WebGPURenderer`, repli WebGL2 automatique si WebGPU manque | TSL, node materials | `webgpu/` : `PostProcessing` de three |
+
+Changer de backend = deux lignes : `DEVICE_CONFIG.renderer.backend` et l'export de `postprocessing/index.ts`.
+
+- `three/webgpu` est importé dynamiquement : un projet WebGL ne l'embarque pas.
+- `device.renderer` est typé `Renderer` (union). Une API propre à un backend passe par un cast : `device.renderer as WebGLRenderer`.
+- Le code GLSL (`ShaderMaterial`, `final.frag`) ne tourne pas sous `WebGPURenderer`, même en repli WebGL2. Les matériaux standards (`MeshStandardMaterial`…) marchent sur les deux.
+- three-perf est WebGL seulement ; stats-gl gère les deux.
+- Le seuil de `BloomNode` ne réagit pas pareil selon que `WebGPURenderer` tourne en WebGPU ou en repli WebGL2 (bloom bien plus faible en WebGL2 à `threshold` égal, three r181). Calibrer les presets sur les deux.
+- Tester le repli : `forceWebGL: true` dans la config passée à `ThreeDevice.create`.
 
 ## Boucle par image
 
@@ -214,6 +256,7 @@ Le seul mécanisme d'activation de nodes du `_core`.
 
 | Date | Modification | Fichiers | Origine | Pourquoi |
 |---|---|---|---|---|
+| 2026-09-15 | Backend `webgpu` optionnel : `DEVICE_CONFIG.renderer.backend`, type `Renderer` (union), renderer créé dans `ThreeDevice.create`, `PostProcessingPass` importé par `postprocessing/index.ts`, stats-gl sur WebGPU. Section « Style de code ». | `systems/Renderer.type.ts`, `systems/ThreeDevice.ts`, `systems/Output.ts`, `systems/Runtime.ts`, `systems/DeviceConfig.type.ts`, `stats/StatsManager.ts`, `index.ts` | map | WebGPU prioritaire avec repli WebGL2 pour map, sans casser les projets WebGL. **Au sync** : cast `as WebGLRenderer` là où un projet lit une API WebGL via `device.renderer` (grass, book : `capabilities.maxSamples`). |
 | 2026-09-15 | Étape `prepare?(frame, ctx)` sur `IPass` et `IPipeline`, implémentée par `PipelineBase`, appelée par `Output.render` pour chaque univers monté avant tout rendu à l'écran. Viewport et scissor remis à plat après. | `pipeline/*`, `systems/Output.ts` | lacoste `2ba6a32` | `Output` rend par postFx ou correction finale sans passer par le pipeline de l'univers : une passe hors écran (texture précalculée, simulation) n'y tournait jamais. |
 | 2026-09-15 | Type d'asset `binary` (`ArrayBuffer`). | `assets/types.ts`, `assets/AssetStore.ts` | lacoste | Formats maison qu'aucun loader three ne couvre. |
 | 2026-09-15 | Retrait de `nodes/helpers/Helper3DNode.interface.ts` et `universes/contrats/Contract.base.ts` (et `graphics/universes/contracts/NodeSwapContract.ts` du template). | — | grass `48cbca8` | Jamais importés. |
@@ -224,13 +267,14 @@ Le seul mécanisme d'activation de nodes du `_core`.
 
 ## Projets alignés
 
-État au 2026-09-15 : `_core` identique au template (`diff -rq` vide) dans les quatre dépôts.
+État au 2026-09-15 : backend WebGPU porté dans map seulement. lacoste, grass et book sont sur le `_core` précédent (WebGL, compatible) et restent à synchroniser.
 
 | Projet | Dépôt et branche | Commit d'alignement | Ce qui est sorti du `_core` vers le projet |
 |---|---|---|---|
 | lacoste | `Dev/PP/RD/lacoste`, `feat/sol-timeline` | `47af303` | LUT du compositing (`onBoot`), panneau d'inclinaison (`graphics/device/TiltDebug.helper.ts`), `Timeline.contract.ts` (`graphics/devtools/`) |
 | grass | `Dev/PP/RD/grass`, `chore/core-alignement` | `b12c78d` | Panneaux PostFX, Godrays et inclinaison (`graphics/device/*Debug.helper.ts`), preset de correction, exposition, plafond tactile, `TiltWitness` (`graphics/debug/`), `Timeline.contract.ts` |
 | book | `Dev/PP/RD/book` (dépôt créé le 2026-09-15, sans remote), `chore/core-alignement` | `e21a0f3` | Comme grass |
+| map | `Dev/PV/Projects/map` (sans remote), `feat/core-webgpu` | — | Backend `webgpu`, post-traitement `webgpu/` |
 
 Côté projet, une seule chose varie encore sans être du `_core` : grass et book enregistrent leurs réglages par un `_saveDebug` maison dans leur univers, là où lacoste passe par `DEVICE_CONFIG.debugPersistence`. Les migrer est optionnel.
 

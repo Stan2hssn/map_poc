@@ -1,8 +1,9 @@
 import type { WebGLRenderer } from "three";
+import type { Renderer } from "../systems/Renderer.type.ts";
 
 type StatsGl = {
   dom: HTMLElement;
-  init: (gl: WebGLRenderingContext | WebGL2RenderingContext) => void;
+  init: (target: unknown) => void;
   begin: () => void;
   end: () => void;
   update: () => void;
@@ -17,7 +18,7 @@ type ThreePerfInstance = {
 };
 
 export class StatsManager {
-  private readonly _renderer: WebGLRenderer;
+  private readonly _renderer: Renderer;
   private _basicStats: StatsGl | null = null;
   private _threePerf: ThreePerfInstance | null = null;
   private _threePerfHost: HTMLDivElement | null = null;
@@ -31,7 +32,7 @@ export class StatsManager {
   private _isInitializingBasic = false;
   private _isInitializingPerf = false;
 
-  constructor(renderer: WebGLRenderer) {
+  constructor(renderer: Renderer) {
     this._renderer = renderer;
   }
 
@@ -168,7 +169,8 @@ export class StatsManager {
     });
     this._patchPerformanceMarkers(stats);
 
-    stats.init(this._renderer.getContext());
+    // stats-gl prend le renderer WebGPU lui-meme, le contexte GL sinon.
+    stats.init("isWebGPURenderer" in this._renderer ? this._renderer : this._renderer.getContext());
     stats.dom.style.position = "fixed";
     stats.dom.style.left = "10px";
     stats.dom.style.bottom = "10px";
@@ -180,6 +182,10 @@ export class StatsManager {
   }
 
   private async _createPerfStats(): Promise<void> {
+    if ("isWebGPURenderer" in this._renderer) {
+      console.warn("[StatsManager] three-perf ne gere pas WebGPU");
+      return;
+    }
     const perfModule = await import("three-perf");
     const ThreePerfCtor = perfModule.ThreePerf as new (params: {
       renderer: WebGLRenderer;

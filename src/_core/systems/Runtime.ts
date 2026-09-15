@@ -1,4 +1,4 @@
-import type { WebGLRenderer } from "three";
+import type { Renderer } from "./Renderer.type.ts";
 import type { UniverseRegistry } from "../registries/UniverseRegistry/UniverseRegistry.ts";
 import Input from "./Input.ts";
 import Output from "./Output.ts";
@@ -9,7 +9,7 @@ import State from "./State.ts";
  * Runtime - Owns State, Input, Output, RAF, Registry. Orchestration only.
  */
 export default class Runtime<Id extends string> {
-  private readonly _renderer: WebGLRenderer;
+  private readonly _renderer: Renderer;
   private readonly _state: State;
   private readonly _input: Input;
   private readonly _output: Output;
@@ -17,7 +17,7 @@ export default class Runtime<Id extends string> {
   private readonly _registry: UniverseRegistry<Id>;
 
   constructor(
-    renderer: WebGLRenderer,
+    renderer: Renderer,
     registry: UniverseRegistry<Id>,
     state: State
   ) {
