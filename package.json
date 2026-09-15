@@ -1,0 +1,47 @@
+{
+  "name": "map",
+  "type": "module",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "nuxt dev",
+    "dev:tunnel": "nuxt dev --tunnel",
+    "dev:https": "nuxt dev --https --host",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "typecheck": "nuxt typecheck",
+    "postinstall": "nuxt prepare",
+    "assets:convert": "./scripts/convert-assets-for-prod.sh",
+    "assets:convert:clean": "CLEANUP_ORIGINALS=true ./scripts/convert-assets-for-prod.sh",
+    "assets:convert:high-quality": "WEBP_QUALITY=95 WEBM_CRF=28 ./scripts/convert-assets-for-prod.sh",
+    "prebuild": "pnpm run assets:convert",
+    "postbuild": "node scripts/prune-dist-assets-source.mjs"
+  },
+  "dependencies": {
+    "gsap": "^3.13.0",
+    "nuxt": "^4.5.2",
+    "postprocessing": "^6.37.8",
+    "stats-gl": "^3.8.0",
+    "three": "^0.181.2",
+    "three-perf": "^1.0.11",
+    "tweakpane": "^4.0.5",
+    "vue": "^3.5.34"
+  },
+  "devDependencies": {
+    "@tweakpane/core": "^2.0.5",
+    "@types/node": "^26.2.0",
+    "@types/three": "^0.181.0",
+    "sharp": "^0.33.5",
+    "typescript": "^5.9.3",
+    "vite-plugin-glsl": "^1.6.1",
+    "vue-tsc": "^3.1.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "esbuild",
+      "sharp"
+    ]
+  }
+}

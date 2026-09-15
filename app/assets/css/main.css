@@ -1,0 +1,16 @@
+:root,
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #060606;
+  color: #ffffff;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* L'application occupe le viewport : le canvas est fixe, rien ne defile. */
+body {
+  overflow: hidden;
+}
