@@ -4,6 +4,8 @@ import { intersectsBounds, tileBounds } from "./GeoProjection.ts";
 const TILE_BYTES = 256 * 256 * 4;
 const NO_DATA = -1000;
 const RETRY_DELAYS_MS = [300, 900];
+// Une reponse IGN reste parfois pendante : sans limite, elle garde un creneau indefiniment.
+const ATTEMPT_TIMEOUT_MS = 10_000;
 /** Metropole et Corse : seule zone ou HIGHRES est tente. */
 const FRANCE = { west: -5.5, east: 10, south: 41, north: 51.2 };
 
@@ -57,9 +59,12 @@ export class IgnElevationProvider implements IElevationProvider {
   private readonly _waiting: (() => void)[] = [];
   private _running = 0;
 
-  constructor(fetchImpl: typeof fetch = (...args) => globalThis.fetch(...args), maxConcurrent = 6) {
+  private readonly _timeoutMs: number;
+
+  constructor(fetchImpl: typeof fetch = (...args) => globalThis.fetch(...args), maxConcurrent = 6, timeoutMs = ATTEMPT_TIMEOUT_MS) {
     this._fetch = fetchImpl;
     this._maxConcurrent = maxConcurrent;
+    this._timeoutMs = timeoutMs;
   }
 
   async fetchTile(z: number, x: number, y: number, signal: AbortSignal): Promise<Float32Array | null> {
@@ -90,7 +95,7 @@ export class IgnElevationProvider implements IElevationProvider {
   private async _download(url: string, signal: AbortSignal): Promise<Float32Array | null> {
     for (let attempt = 0; ; attempt++) {
       try {
-        const response = await this._fetch(url, { signal });
+        const response = await this._fetch(url, { signal: AbortSignal.any([signal, AbortSignal.timeout(this._timeoutMs)]) });
         if (response.status === 404) return null;
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const buffer = await response.arrayBuffer();

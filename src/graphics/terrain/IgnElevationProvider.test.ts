@@ -124,3 +124,18 @@ test("nouvelle tentative apres une erreur serveur", async () => {
   pending[1]!.resolve(tileOf(5));
   assert.equal((await result)![0], 5);
 });
+
+test("une reponse qui ne vient pas est abandonnee puis retentee", async () => {
+  const signals: AbortSignal[] = [];
+  let calls = 0;
+  const fetchImpl = ((_url: string, init: RequestInit) => {
+    calls++;
+    if (calls > 1) return Promise.resolve(tileOf(9));
+    signals.push(init.signal!);
+    return new Promise<Response>((_, reject) => init.signal!.addEventListener("abort", () => reject(init.signal!.reason)));
+  }) as unknown as typeof fetch;
+  const data = await new IgnElevationProvider(fetchImpl, 1, 50).fetchTile(EVEREST.z, EVEREST.x, EVEREST.y, signal());
+  assert.equal(data![0], 9);
+  assert.equal(calls, 2);
+  assert.equal(signals[0]!.aborted, true);
+});
