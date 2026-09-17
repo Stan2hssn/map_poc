@@ -56,3 +56,13 @@ export function mosaicHeightAt({ data, width, height, bounds }: HeightMosaic, lo
   const bottom = data[r1 * width + c0] * (1 - fu) + data[r1 * width + c1] * fu;
   return top * (1 - fv) + bottom * fv;
 }
+
+/** Passage des uv du bloc (0..1, nord en haut) aux uv de la mosaique. */
+export function mosaicUvTransform(block: GeoBounds, mosaic: GeoBounds): { offset: [number, number]; scale: [number, number] } {
+  const spanLon = mosaic.east - mosaic.west;
+  const spanLat = mosaic.north - mosaic.south;
+  return {
+    offset: [(block.west - mosaic.west) / spanLon, (mosaic.north - block.north) / spanLat],
+    scale: [(block.east - block.west) / spanLon, (block.north - block.south) / spanLat],
+  };
+}

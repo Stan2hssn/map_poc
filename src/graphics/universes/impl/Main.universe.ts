@@ -28,7 +28,12 @@ export class MainUniverse extends UniverseBase<UniverseId> {
     scene.background = new Color(BACKGROUND);
 
     const terrain = new TerrainNode(new IgnElevationProvider());
-    const cameraNode = new MapCameraNode(device.renderer.domElement, terrain.rect, (x, z) => terrain.heightAt(x, z));
+    const cameraNode = new MapCameraNode(
+      device.renderer.domElement,
+      terrain.rect,
+      (x, z) => terrain.heightAt(x, z),
+      (dx, dz) => terrain.moveBy(dx, dz)
+    );
 
     super(
       UNIVERSE_ID.MAIN,

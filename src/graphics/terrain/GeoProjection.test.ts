@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { GeoProjection, tileBounds, tilesCovering } from "./GeoProjection.ts";
+import { containsBounds, containsPoint, expandBounds, GeoProjection, tileBounds, tilesCovering } from "./GeoProjection.ts";
 
 const GARD = { west: 3.2624, south: 43.4603, east: 4.8456, north: 44.4597 };
 const close = (a: number, b: number, eps = 1e-3) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);
@@ -34,6 +34,15 @@ test("carre centre sur l'origine de la projection", () => {
   close(r.maxX, 50);
   close(r.minZ, -50);
   close(r.maxZ, 50);
+});
+
+test("elargir, contenir", () => {
+  const b = { west: 2, east: 4, south: 40, north: 42 };
+  assert.deepEqual(expandBounds(b, 0.5), { west: 1, east: 5, south: 39, north: 43 });
+  assert.equal(containsBounds(expandBounds(b, 0.1), b), true);
+  assert.equal(containsBounds(b, expandBounds(b, 0.1)), false);
+  assert.equal(containsPoint(b, 3, 41), true);
+  assert.equal(containsPoint(b, 5, 41), false);
 });
 
 test("emprise d'une tuile WGS84G", () => {

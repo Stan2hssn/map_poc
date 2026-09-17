@@ -104,3 +104,18 @@ L'objectif devient le bloc de la capture de référence (relief sur un socle, fo
 - **Mesures** (canvas 2048 × 1536, WebGPU) : 1,1 à 2,9 ms par image de 512 à 1536 subdivisions ; 2 draw calls. Repli WebGL2 identique.
 - **Exagération** : au-delà de ×4 sur 130 km, les versants des Cévennes tournent en rideaux verticaux. C'est un effet de l'exagération, pas du rendu : à ×2, le relief est naturel.
 - **Supprimés** : `Tile.ts`, `TileTree.ts`, `TileGeometry.ts`, `TerrainMask.ts` et leurs tests (restent dans l'historique git).
+
+## Navigation dans le terrain (2026-09-17)
+
+- **Glisser** : le bloc et la caméra restent fixes, le centre géographique se déplace.
+  - Le point du sol saisi (plan y = 0) reste sous le pointeur (`nodes/cameras/TerrainDrag.helper.ts`).
+  - Un second doigt rend la main aux contrôles.
+  - Le centre reste en France métropolitaine.
+- **Caméra** : cible fixe au centre du bloc, `enablePan` coupé. Clic droit ou deux doigts : rotation ; molette ou pincement : zoom.
+- **Deux couches d'altitudes**, choisies dans le shader selon la couverture du détail :
+  - aperçu : niveau 7, ~600 m, marge de 1,5 × la taille du bloc de chaque côté, rechargé rarement ;
+  - détail : niveau 10, ~76 m, marge de 10 %.
+
+  Une couche se recharge dès que le bloc sort de sa mosaïque ; un chargement devenu inutile est annulé.
+- **Mesures** : images de 8,3 à 9,4 ms (écran 120 Hz) pendant un glisser continu de 120 km. Le détail d'une zone jamais visitée arrive ~7 s après l'arrêt, l'aperçu couvre l'attente.
+- **Limite** : chaque rechargement du détail refait la mosaïque entière (~90 tuiles, la plupart en cache HTTP). Piste si besoin : cache de tuiles en texture.

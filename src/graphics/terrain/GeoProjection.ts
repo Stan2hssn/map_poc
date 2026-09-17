@@ -77,3 +77,18 @@ export function tilesCovering(z: number, b: GeoBounds): { x: number; y: number }
   }
   return tiles;
 }
+
+/** Emprise elargie de `fraction` de sa taille de chaque cote. */
+export function expandBounds(b: GeoBounds, fraction: number): GeoBounds {
+  const dx = (b.east - b.west) * fraction;
+  const dy = (b.north - b.south) * fraction;
+  return { west: b.west - dx, east: b.east + dx, south: b.south - dy, north: b.north + dy };
+}
+
+export function containsBounds(outer: GeoBounds, inner: GeoBounds): boolean {
+  return inner.west >= outer.west && inner.east <= outer.east && inner.south >= outer.south && inner.north <= outer.north;
+}
+
+export function containsPoint(b: GeoBounds, lon: number, lat: number): boolean {
+  return lon >= b.west && lon <= b.east && lat >= b.south && lat <= b.north;
+}

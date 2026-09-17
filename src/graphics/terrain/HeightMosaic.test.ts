@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { tileBounds } from "./GeoProjection.ts";
-import { fetchMosaic, mosaicHeightAt, type HeightMosaic } from "./HeightMosaic.ts";
+import { fetchMosaic, mosaicHeightAt, mosaicUvTransform, type HeightMosaic } from "./HeightMosaic.ts";
 
 const close = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-6, `${a} != ${b}`);
 const provider = {
@@ -34,4 +34,12 @@ test("altitude bilineaire au centre des pixels", () => {
   close(mosaicHeightAt(m, 1, 1), 15);
   close(mosaicHeightAt(m, 0.5, 0.5), 20);
   close(mosaicHeightAt(m, -5, 99), 0);
+});
+
+test("uv du bloc vers uv de la mosaique", () => {
+  const mosaic = { west: 0, east: 4, south: 0, north: 4 };
+  const block = { west: 1, east: 2, south: 2, north: 3 };
+  const { offset, scale } = mosaicUvTransform(block, mosaic);
+  assert.deepEqual(offset, [0.25, 0.25]);
+  assert.deepEqual(scale, [0.25, 0.25]);
 });
