@@ -63,6 +63,8 @@ export class IgnElevationProvider implements IElevationProvider {
     for (let attempt = 0; ; attempt++) {
       try {
         const response = await this._fetch(url, { signal });
+        // Hors couverture (mer) : l'IGN repond 404, c'est une tuile sans donnee.
+        if (response.status === 404) return new Float32Array(TILE_BYTES / 4);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const buffer = await response.arrayBuffer();
         if (buffer.byteLength !== TILE_BYTES) throw new Error(`taille ${buffer.byteLength}`);

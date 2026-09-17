@@ -61,6 +61,19 @@ test("une requete en attente annulee n'est jamais lancee", async () => {
   assert.equal(pending.length, 1);
 });
 
+test("404 (hors couverture) : tuile a 0, sans nouvelle tentative", { timeout: 2000 }, async () => {
+  const { fetchImpl, pending } = fakeFetch();
+  const provider = new IgnElevationProvider(fetchImpl, 1);
+  const result = provider.fetchTile(13, 8383, 2117, new AbortController().signal);
+  await tick();
+  pending[0]!.resolve(new Response("", { status: 404 }));
+  const data = await result;
+  assert.equal(data.length, 256 * 256);
+  assert.ok(data.every((v) => v === 0));
+  await new Promise((resolve) => setTimeout(resolve, 350));
+  assert.equal(pending.length, 1);
+});
+
 test("nouvelle tentative apres un echec", async () => {
   const { fetchImpl, pending, ok } = fakeFetch();
   const provider = new IgnElevationProvider(fetchImpl, 1);
