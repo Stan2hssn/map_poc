@@ -48,16 +48,18 @@ test("France : HIGHRES seul quand la tuile est pleine", async () => {
   assert.ok(urls[0]!.includes("HIGHRES"));
 });
 
-test("les trous HIGHRES sont combles par SRTM3", async () => {
+test("les trous et les aplats a 0 de HIGHRES sont combles par SRTM3", async () => {
   const { fetchImpl } = fakeFetch((url) => {
     if (!url.includes("HIGHRES")) return tileOf(300);
     const data = new Float32Array(CELLS).fill(700);
     data[5] = -99999;
+    data[6] = 0;
     return new Response(data.buffer);
   });
   const data = await new IgnElevationProvider(fetchImpl).fetchTile(10, 1044, 261, signal());
   assert.equal(data![0], 700);
   assert.equal(data![5], 300);
+  assert.equal(data![6], 300);
 });
 
 test("hors de France : SRTM3 directement", async () => {

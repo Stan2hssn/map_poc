@@ -67,6 +67,8 @@ export class IgnElevationProvider implements IElevationProvider {
     let data: Float32Array | null = null;
     if (inRange(highres, z) && intersectsBounds(tileBounds(z, x, y), FRANCE)) {
       data = await this._layer(highres.id, z, x, y, signal);
+      // Hors de France, HIGHRES renvoie aussi des aplats a 0 (Luxembourg) : traites comme des trous.
+      data?.forEach((v, i) => v === 0 && (data![i] = NaN));
     }
     if (inRange(srtm3, z) && (!data || data.some(Number.isNaN))) {
       const fill = await this._layer(srtm3.id, z, x, y, signal);
