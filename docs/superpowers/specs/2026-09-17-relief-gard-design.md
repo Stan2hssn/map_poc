@@ -103,4 +103,4 @@ L'objectif devient le bloc de la capture de référence (relief sur un socle, fo
 - **Réglages** : exagération (jusqu'à 12), profondeur du socle, subdivisions, soleil. Enregistrés, et appliqués sans recréer la scène.
 - **Mesures** (canvas 2048 × 1536, WebGPU) : 1,1 à 2,9 ms par image de 512 à 1536 subdivisions ; 2 draw calls. Repli WebGL2 identique.
 - **Exagération** : au-delà de ×4 sur 130 km, les versants des Cévennes tournent en rideaux verticaux. C'est un effet de l'exagération, pas du rendu : à ×2, le relief est naturel.
-- **Plus utilisés** : `Tile.ts`, `TileTree.ts`, `TileGeometry.ts`, `TerrainMask.ts` et leurs tests, conservés en attendant une décision.
+- **Supprimés** : `Tile.ts`, `TileTree.ts`, `TileGeometry.ts`, `TerrainMask.ts` et leurs tests (restent dans l'historique git).
