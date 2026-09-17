@@ -8,6 +8,7 @@ import { terrainSettings } from "@graphics/materials/Terrain.material.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import { MapCameraNode } from "@graphics/nodes/cameras/MapCamera.node.ts";
 import { LabelsNode } from "@graphics/nodes/labels/Labels.node.ts";
+import { SurveyNode } from "@graphics/nodes/survey/Survey.node.ts";
 import { LightsNode } from "@graphics/nodes/lights/Lights.node.ts";
 import { TerrainNode } from "@graphics/nodes/terrain/Terrain.node.ts";
 import { EffectComposer, EffectPass, RenderPass } from "@graphics/postprocessing/index.ts";
@@ -25,6 +26,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   private readonly _lights = new LightsNode();
   private readonly _terrain: TerrainNode;
   private readonly _labels: LabelsNode;
+  private readonly _survey: SurveyNode;
   private _nodesRegistered = false;
 
   constructor(device: IThreeDeviceSlice) {
@@ -52,11 +54,12 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     this._cameraNode = cameraNode;
     this._terrain = terrain;
     this._labels = new LabelsNode(device.renderer.domElement, terrain, () => this.camera as Camera);
+    this._survey = new SurveyNode(terrain, device.renderer.domElement, () => this.camera as Camera);
     cameraNode.isActive = () => this.camera === cameraNode.camera;
 
     this.registerContract({
       id: NODE_ID.CONTRACT_BASE,
-      activeNodeIds: [NODE_ID.CAMERA_MAIN, NODE_ID.LIGHTS, NODE_ID.TERRAIN, NODE_ID.LABELS],
+      activeNodeIds: [NODE_ID.CAMERA_MAIN, NODE_ID.LIGHTS, NODE_ID.TERRAIN, NODE_ID.SURVEY, NODE_ID.LABELS],
     });
   }
 
@@ -66,7 +69,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
 
   override async beforeMount(): Promise<void> {
     if (!this._nodesRegistered) {
-      this.graph.addMany([this._cameraNode, this._lights, this._terrain, this._labels]);
+      this.graph.addMany([this._cameraNode, this._lights, this._terrain, this._survey, this._labels]);
       this._nodesRegistered = true;
     }
     await Promise.resolve(super.beforeMount());

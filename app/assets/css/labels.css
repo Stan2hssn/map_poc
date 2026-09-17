@@ -1,4 +1,4 @@
-/* Etiquettes de villes posees par `LabelsNode` au-dessus du canvas. */
+/* Etiquettes de villes (`LabelsNode`) et coordonnees des releves (`SurveyNode`), au-dessus du canvas. */
 .map-labels {
   position: absolute;
   inset: 0;
@@ -72,4 +72,32 @@
   .map-label {
     transition: none;
   }
+}
+
+.map-survey {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.map-survey__text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font: 500 0.625rem/1 var(--font-map);
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+.map-survey__text[data-side="north"] {
+  translate: -50% -100%;
+}
+
+.map-survey__text[data-side="west"] {
+  translate: -100% -50%;
 }

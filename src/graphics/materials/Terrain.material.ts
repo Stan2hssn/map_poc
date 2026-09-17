@@ -104,49 +104,59 @@ export const terrainSettings = {
   mistBlend: uniform(0),
 };
 
-export function createTerrainMaterial(): MeshStandardNodeMaterial {
-  const s = terrainSettings;
-  const read = (map: TextureNode, uv: Node) => (map.sample(uv) as TextureNode).level(float(0)).r;
-  // Hors de la mosaique du detail (en vol, elle suit avec retard), seul l'apercu compte.
-  const inside = (uv: Node) => step(0, uv.x).mul(step(uv.x, 1)).mul(step(0, uv.y)).mul(step(uv.y, 1));
-  // L'apercu est tres agrandi : une B-spline en 4 lectures bilineaires evite les facettes.
-  const smoothRead = (map: TextureNode, uv: Node, size: Node) => {
-    const p = uv.mul(size).sub(0.5);
-    const i = p.floor();
-    const f = p.sub(i);
-    const f2 = f.mul(f);
-    const f3 = f2.mul(f);
-    const w0 = f.oneMinus().pow(3).div(6);
-    const w1 = f3.mul(3).sub(f2.mul(6)).add(4).div(6);
-    const w3 = f3.div(6);
-    const g0 = w0.add(w1);
-    const g1 = g0.oneMinus();
-    const h0 = i.sub(0.5).add(w1.div(g0)).div(size);
-    const h1 = i.add(1.5).add(w3.div(g1.max(1e-4))).div(size);
-    const row = (y: Node) => read(map, vec2(h0.x, y)).mul(g0.x).add(read(map, vec2(h1.x, y)).mul(g1.x));
-    return row(h0.y).mul(g0.y).add(row(h1.y).mul(g1.y));
-  };
-  const coarseAt = (blockUv: Node, smooth: boolean) => {
-    const uv = s.coarseOffset.add(blockUv.mul(s.coarseScale));
-    return smooth ? smoothRead(s.coarseHeights, uv, s.coarseSize) : read(s.coarseHeights, uv);
-  };
-  // Le filtrage melange altitudes et zeros des trous : divise par la part de donnees, il redonne la moyenne des texels valides.
-  const metersAt = (blockUv: Node, detailed = true) => {
-    const coarse = coarseAt(blockUv, detailed);
-    if (!detailed) return coarse;
-    const uv = s.uvOffset.add(blockUv.mul(s.uvScale));
-    const weight = read(s.valid, uv).mul(inside(uv));
-    return mix(coarse, read(s.heights, uv).div(weight.max(1e-3)), weight);
-  };
-  const heightAt = (blockUv: Node, detailed = true) => metersAt(blockUv, detailed).sub(s.floor).mul(s.heightScale);
+const s = terrainSettings;
+const read = (map: TextureNode, uv: Node) => (map.sample(uv) as TextureNode).level(float(0)).r;
+// Hors de la mosaique du detail (en vol, elle suit avec retard), seul l'apercu compte.
+const inside = (uv: Node) => step(0, uv.x).mul(step(uv.x, 1)).mul(step(0, uv.y)).mul(step(uv.y, 1));
 
+// L'apercu est tres agrandi : une B-spline en 4 lectures bilineaires evite les facettes.
+function smoothRead(map: TextureNode, uv: Node, size: Node): Node {
+  const p = uv.mul(size).sub(0.5);
+  const i = p.floor();
+  const f = p.sub(i);
+  const f2 = f.mul(f);
+  const f3 = f2.mul(f);
+  const w0 = f.oneMinus().pow(3).div(6);
+  const w1 = f3.mul(3).sub(f2.mul(6)).add(4).div(6);
+  const w3 = f3.div(6);
+  const g0 = w0.add(w1);
+  const g1 = g0.oneMinus();
+  const h0 = i.sub(0.5).add(w1.div(g0)).div(size);
+  const h1 = i.add(1.5).add(w3.div(g1.max(1e-4))).div(size);
+  const row = (y: Node) => read(map, vec2(h0.x, y)).mul(g0.x).add(read(map, vec2(h1.x, y)).mul(g1.x));
+  return row(h0.y).mul(g0.y).add(row(h1.y).mul(g1.y));
+}
+
+function coarseAt(blockUv: Node, smooth: boolean): Node {
+  const uv = s.coarseOffset.add(blockUv.mul(s.coarseScale));
+  return smooth ? smoothRead(s.coarseHeights, uv, s.coarseSize) : read(s.coarseHeights, uv);
+}
+
+/**
+ * Altitude (m) au point `blockUv` du bloc, a lire dans le vertex shader. `detailed` a faux : apercu brut, moins cher.
+ * Le filtrage melange altitudes et zeros des trous : divise par la part de donnees, il redonne la moyenne des texels valides.
+ */
+export function terrainMeters(blockUv: Node, detailed = true): Node {
+  const coarse = coarseAt(blockUv, detailed);
+  if (!detailed) return coarse;
+  const uv = s.uvOffset.add(blockUv.mul(s.uvScale));
+  const weight = read(s.valid, uv).mul(inside(uv));
+  return mix(coarse, read(s.heights, uv).div(weight.max(1e-3)), weight);
+}
+
+/** Hauteur dans la scene au point `blockUv` du bloc (vertex shader). */
+export function terrainHeight(blockUv: Node, detailed = true): Node {
+  return terrainMeters(blockUv, detailed).sub(s.floor).mul(s.heightScale);
+}
+
+export function createTerrainMaterial(): MeshStandardNodeMaterial {
   const uv = positionGeometry.xz;
   // 0 sur le dessus, 1 sur les parois et le fond ; `base` vaut 1 au bas du bloc.
   const wall = normalGeometry.y.oneMinus().min(1);
   const base = positionGeometry.y.negate();
 
   const material = new MeshStandardNodeMaterial({ roughness: 0.85, metalness: 0 });
-  const meters = metersAt(uv);
+  const meters = terrainMeters(uv);
   const height = meters.sub(s.floor).mul(s.heightScale);
   const sea = float(1).sub(smoothstep(0, 1, meters));
   material.positionNode = vec3(positionGeometry.x, mix(height.sub(sea.mul(SEA_DROP)), s.baseDepth.negate(), base), positionGeometry.z);
@@ -155,8 +165,8 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
   const spread = s.texel.mul(NORMAL_SPREAD);
   const du = vec2(spread.x, 0);
   const dv = vec2(0, spread.y);
-  const dx = heightAt(uv.add(du)).sub(heightAt(uv.sub(du))).div(spread.x.mul(s.blockSize.x).mul(2));
-  const dz = heightAt(uv.add(dv)).sub(heightAt(uv.sub(dv))).div(spread.y.mul(s.blockSize.y).mul(2));
+  const dx = terrainHeight(uv.add(du)).sub(terrainHeight(uv.sub(du))).div(spread.x.mul(s.blockSize.x).mul(2));
+  const dz = terrainHeight(uv.add(dv)).sub(terrainHeight(uv.sub(dv))).div(spread.y.mul(s.blockSize.y).mul(2));
   const topNormal = vertexStage(vec3(dx.negate(), 1, dz.negate()));
   material.normalNode = normalize(cameraViewMatrix.mul(vec4(mix(topNormal, normalGeometry, wall), 0)).xyz);
 
@@ -165,7 +175,7 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
   for (const { radius, samples } of [NEAR_RING, FAR_RING]) {
     const offset = s.texel.mul(radius);
     let sum: Node = float(0);
-    for (const [cx, cy] of ring(samples)) sum = sum.add(heightAt(uv.add(vec2(cx, cy).mul(offset)), radius === NEAR_RING.radius));
+    for (const [cx, cy] of ring(samples)) sum = sum.add(terrainHeight(uv.add(vec2(cx, cy).mul(offset)), radius === NEAR_RING.radius));
     concavity = concavity.add(sum.div(samples).sub(height).div(offset.x.mul(s.blockSize.x)));
   }
   const occlusion = vertexStage(float(1).sub(concavity.mul(s.occlusion).clamp(0, 0.85)));

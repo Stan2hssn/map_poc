@@ -186,3 +186,19 @@ Constat : après un vol vers une région jamais vue, le bloc restait plat et gri
 - **Réseau** : une réponse IGN pendante est abandonnée après 10 s puis retentée. Une requête bloquée occupait un des 6 créneaux indéfiniment.
 - **Brume** : le bruit est lu dans une texture périodique générée au démarrage (256 px, 8 cellules, 3 octaves). La dérive passe par un uniform du node : le nœud TSL `time` coûtait ~2,5 ms par image.
 - **Vérifié** avec une latence simulée de 0,6 à 1,5 s par tuile : à l'arrivée, le relief est approché puis s'affine, sans aplat ni noir. Image au repos : 7,1 à 7,7 ms (1564 × 1726, boucle de la page arrêtée).
+
+## Relevés flottants (2026-09-17)
+
+Inspiration : générique de film, avec des lignes blanches, des points et des coordonnées espacées au-dessus du relief.
+
+- `nodes/survey/Survey.node.ts` :
+  - graticule drapée sur le relief (au plus 6 méridiens, pas « rond » de 15″ à 45°, `terrain/Graticule.ts`) ;
+  - lattis flottant 32 unités plus haut, qui déborde du bloc et s'efface avec la distance ;
+  - point à chaque croisement, anneau sur le plus central ;
+  - 260 grains de poussière qui suivent le sol quand il glisse ;
+  - coordonnées en capitales espacées sur les bords lointains.
+- Le shader partage `terrainHeight` avec le terrain : lignes et points suivent le relief sans lecture CPU.
+- Traces au sol en encre sombre (le relief est clair), lattis et poussière en blanc additif.
+- Coût : ≈ +1 ms par image.
+
+Ce bloc s'arrête ici ; la suite (carte plein écran) part sur une branche dédiée.

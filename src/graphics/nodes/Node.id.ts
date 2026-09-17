@@ -10,6 +10,7 @@ export const NODE_ID = {
   TERRAIN: "terrain",
   LIGHTS: "lights",
   LABELS: "labels",
+  SURVEY: "survey",
 
   CONTRACT_BASE: "contract:base",
 } as const;

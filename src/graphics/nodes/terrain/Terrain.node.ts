@@ -14,7 +14,7 @@ import {
 } from "@graphics/terrain/GeoProjection.ts";
 import { levelFor } from "@graphics/terrain/HeightMosaic.ts";
 import type { MapView } from "@graphics/universes/MapNavigator.interface.ts";
-import { MathUtils, Mesh } from "three";
+import { MathUtils, Mesh, type Object3D } from "three";
 import { TerrainHeightsHelper, type HeightsView } from "./TerrainHeights.helper.ts";
 
 const C = TERRAIN_CONFIG;
@@ -107,12 +107,22 @@ export class TerrainNode extends Object3DNodeBase {
     return !!this._flight;
   }
 
+  /** Position (unites de scene) d'un point geographique, meme hors du bloc. */
+  sceneOf(lon: number, lat: number): { x: number; z: number } {
+    const k = this.kmPerUnit;
+    return { x: this._projection.x(lon) / k, z: this._projection.z(lat) / k };
+  }
+
   /** Position (unites de scene) d'un point geographique, null hors du bloc. */
   toScene(lon: number, lat: number): { x: number; z: number } | null {
     const b = this._bounds;
     if (lon < b.west || lon > b.east || lat < b.south || lat > b.north) return null;
-    const k = this.kmPerUnit;
-    return { x: this._projection.x(lon) / k, z: this._projection.z(lat) / k };
+    return this.sceneOf(lon, lat);
+  }
+
+  /** Le bloc : sa transformation place les uv (0..1) du dessus dans la scene. */
+  get block(): Object3D {
+    return this._mesh;
   }
 
   /** Deplace le centre de (dx, dz) unites de scene. */
