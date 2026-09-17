@@ -7,7 +7,7 @@ import {
   normalGeometry,
   normalize,
   positionGeometry,
-  step,
+  positionWorld,
   texture,
   uniform,
   vec2,
@@ -16,61 +16,67 @@ import {
 } from "three/tsl";
 import { MeshStandardNodeMaterial, type Node, type TextureNode } from "three/webgpu";
 
-const METERS_TO_KM = 0.001;
-
-/** Une mosaique d'altitudes et son placement sous le bloc (uv du bloc vers uv de la texture). */
-function heightLayer() {
-  return {
-    heights: texture(new DataTexture(new Uint16Array(1), 1, 1, RedFormat, HalfFloatType)),
-    uvOffset: uniform(new Vector2(-1, -1)),
-    uvScale: uniform(new Vector2(0, 0)),
-  };
-}
-
-export type HeightLayerUniforms = ReturnType<typeof heightLayer>;
+/** Ecart des echantillons de pente, en texels : au-dela de 1, le modele est adouci. */
+const NORMAL_SPREAD = 1.5;
+/** Rayons de l'assombrissement des creux, en texels. */
+const OCCLUSION_RADII = [3, 12];
+const RING = Array.from({ length: 8 }, (_, i) => [Math.cos((i * Math.PI) / 4), Math.sin((i * Math.PI) / 4)] as const);
 
 export const terrainSettings = {
-  exaggeration: uniform(4),
-  baseDepth: uniform(4),
-  sizeKm: uniform(1),
-  coarse: heightLayer(),
-  fine: heightLayer(),
-  /** Pas des differences finies, en uv du bloc. */
-  normalStep: uniform(new Vector2(1e-3, 1e-3)),
+  heights: texture(new DataTexture(new Uint16Array(1), 1, 1, RedFormat, HalfFloatType)),
+  /** uv du bloc (0..1) vers uv de la mosaique. */
+  uvOffset: uniform(new Vector2()),
+  uvScale: uniform(new Vector2(1, 1)),
+  /** Altitude (m) posee sur le haut du socle, et unites de scene par metre. */
+  floor: uniform(0),
+  heightScale: uniform(0.001),
+  baseDepth: uniform(3),
+  blockSize: uniform(100),
+  /** Un texel de la mosaique, en uv du bloc. */
+  texel: uniform(new Vector2(1e-3, 1e-3)),
+  occlusion: uniform(1.5),
 };
 
 export function createTerrainMaterial(): MeshStandardNodeMaterial {
   const s = terrainSettings;
-  const scale = s.exaggeration.mul(METERS_TO_KM);
-
-  // Detail la ou il est charge, apercu ailleurs.
   const heightAt = (blockUv: Node, vertex = false) => {
-    const read = (layer: HeightLayerUniforms, layerUv: Node) => {
-      const sample = layer.heights.sample(layerUv) as TextureNode;
-      return (vertex ? sample.level(float(0)) : sample).r;
-    };
-    const fineUv = s.fine.uvOffset.add(blockUv.mul(s.fine.uvScale));
-    const coarseUv = s.coarse.uvOffset.add(blockUv.mul(s.coarse.uvScale));
-    const inside = step(0, fineUv.x).mul(step(fineUv.x, 1)).mul(step(0, fineUv.y)).mul(step(fineUv.y, 1));
-    return mix(read(s.coarse, coarseUv), read(s.fine, fineUv), inside).mul(scale);
+    const sample = s.heights.sample(s.uvOffset.add(blockUv.mul(s.uvScale))) as TextureNode;
+    return (vertex ? sample.level(float(0)) : sample).r.sub(s.floor).mul(s.heightScale);
   };
 
-  const blockUv = positionGeometry.xz;
+  const uv = positionGeometry.xz;
   // 0 sur le dessus, 1 sur les parois et le fond ; `base` vaut 1 au bas du bloc.
   const wall = normalGeometry.y.oneMinus().min(1);
   const base = positionGeometry.y.negate();
 
-  const material = new MeshStandardNodeMaterial({ roughness: 1, metalness: 0 });
-  material.positionNode = vec3(positionGeometry.x, mix(heightAt(blockUv, true), s.baseDepth.negate(), base), positionGeometry.z);
+  const material = new MeshStandardNodeMaterial({ roughness: 0.85, metalness: 0 });
+  material.positionNode = vec3(positionGeometry.x, mix(heightAt(uv, true), s.baseDepth.negate(), base), positionGeometry.z);
 
-  const du = vec2(s.normalStep.x, 0);
-  const dv = vec2(0, s.normalStep.y);
-  const stepKm = s.normalStep.mul(s.sizeKm).mul(2);
-  const dx = heightAt(blockUv.add(du)).sub(heightAt(blockUv.sub(du))).div(stepKm.x);
-  const dz = heightAt(blockUv.add(dv)).sub(heightAt(blockUv.sub(dv))).div(stepKm.y);
+  const height = heightAt(uv);
+  const step = s.texel.mul(NORMAL_SPREAD);
+  const du = vec2(step.x, 0);
+  const dv = vec2(0, step.y);
+  const dx = heightAt(uv.add(du)).sub(heightAt(uv.sub(du))).div(step.x.mul(s.blockSize).mul(2));
+  const dz = heightAt(uv.add(dv)).sub(heightAt(uv.sub(dv))).div(step.y.mul(s.blockSize).mul(2));
   const worldNormal = mix(vec3(dx.negate(), 1, dz.negate()), normalGeometry, wall);
   material.normalNode = normalize(cameraViewMatrix.mul(vec4(worldNormal, 0)).xyz);
-  material.colorNode = mix(color(0xe8e8e8), color(0x3a3a3a), wall);
+
+  // Creux : pente moyenne vers le haut autour du point, sur deux rayons.
+  let concavity: Node = float(0);
+  for (const radius of OCCLUSION_RADII) {
+    const offset = s.texel.mul(radius);
+    let sum: Node = float(0);
+    for (const [cx, cy] of RING) sum = sum.add(heightAt(uv.add(vec2(cx, cy).mul(offset))));
+    concavity = concavity.add(sum.div(RING.length).sub(height).div(offset.x.mul(s.blockSize)));
+  }
+  const occlusion = float(1).sub(concavity.mul(s.occlusion).clamp(0, 0.85));
+
+  material.colorNode = mix(color(0xe4e4e4).mul(occlusion), color(0x202020), wall);
+  // Parois lisibles meme a l'ombre : gris en haut, noir au pied, sans les stries des cretes voisines.
+  const depth = positionWorld.y.negate().div(s.baseDepth).clamp(0, 1);
+  material.emissiveNode = mix(color(0x3a3a3a), color(0x000000), depth.pow(0.6)).mul(wall);
+  // @ts-expect-error les types annoncent () => Node, three passe l'ombre en argument
+  material.receivedShadowNode = (shadow: Node) => mix(shadow, float(1), wall);
 
   return material;
 }

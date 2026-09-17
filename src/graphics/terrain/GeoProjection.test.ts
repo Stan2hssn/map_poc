@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { containsBounds, containsPoint, expandBounds, GeoProjection, tileBounds, tilesCovering } from "./GeoProjection.ts";
+import { containsBounds, containsPoint, expandBounds, GeoProjection, intersectsBounds, tileBounds, tilesCovering } from "./GeoProjection.ts";
 
 const GARD = { west: 3.2624, south: 43.4603, east: 4.8456, north: 44.4597 };
 const close = (a: number, b: number, eps = 1e-3) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);
@@ -43,6 +43,8 @@ test("elargir, contenir", () => {
   assert.equal(containsBounds(b, expandBounds(b, 0.1)), false);
   assert.equal(containsPoint(b, 3, 41), true);
   assert.equal(containsPoint(b, 5, 41), false);
+  assert.equal(intersectsBounds(b, { west: 3.5, east: 9, south: 41.5, north: 50 }), true);
+  assert.equal(intersectsBounds(b, { west: 4, east: 9, south: 41, north: 42 }), false);
 });
 
 test("emprise d'une tuile WGS84G", () => {

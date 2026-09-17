@@ -3,18 +3,21 @@ import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import type { SceneRect } from "@graphics/terrain/GeoProjection.ts";
 import { MathUtils, PerspectiveCamera, Vector3 } from "three";
 import { MapControls } from "three/examples/jsm/controls/MapControls.js";
-import { TerrainDragHelper } from "./TerrainDrag.helper.ts";
+import { TerrainGesturesHelper, type TerrainGestureHandlers } from "./TerrainGestures.helper.ts";
 
-const FOV = 35;
+// Focale longue : vue presque isometrique, comme la reference.
+const FOV = 20;
 // Vue de depart en diagonale, comme un bloc pose sur une table.
 const START_AZIMUTH = MathUtils.degToRad(45);
-const START_POLAR = MathUtils.degToRad(55);
+const START_POLAR = MathUtils.degToRad(57);
 const MAX_POLAR = MathUtils.degToRad(80);
 const GROUND_CLEARANCE_KM = 0.1;
+// Le bloc occupe environ 80 % du plus petit cote de l'ecran.
+const FIT_MARGIN = 1.2;
 
 /**
- * Camera fixee sur le bloc : clic droit ou deux doigts pour tourner, molette ou pincement pour zoomer.
- * Le glisser ne bouge pas la camera, il deplace le terrain (`onDrag`).
+ * Camera fixee sur le bloc : clic droit ou deux doigts pour tourner.
+ * Glisser, molette et pincement agissent sur le terrain (`gestures`), pas sur la camera.
  */
 export class MapCameraNode extends NodeBase {
   readonly camera: PerspectiveCamera;
@@ -22,47 +25,45 @@ export class MapCameraNode extends NodeBase {
   isActive: () => boolean = () => true;
   private readonly _element: HTMLElement;
   private readonly _heightAt: (x: number, z: number) => number;
-  private readonly _onDrag: (dxKm: number, dzKm: number) => void;
-  private readonly _startDistance: number;
+  private readonly _gestures: TerrainGestureHandlers;
+  private readonly _halfDiagonal: number;
   private readonly _center = new Vector3();
   private _controls: MapControls | null = null;
-  private _drag: TerrainDragHelper | null = null;
+  private _drag: TerrainGesturesHelper | null = null;
 
   constructor(
     element: HTMLElement,
     bounds: SceneRect,
     heightAt: (x: number, z: number) => number,
-    onDrag: (dxKm: number, dzKm: number) => void
+    gestures: TerrainGestureHandlers
   ) {
     super(NODE_ID.CAMERA_MAIN, "Map Camera");
     const aspect =
       globalThis.window && globalThis.window.innerHeight > 0 ? globalThis.window.innerWidth / globalThis.window.innerHeight : 16 / 9;
-    this.camera = new PerspectiveCamera(FOV, aspect, 0.01, 1000);
+    this.camera = new PerspectiveCamera(FOV, aspect, 0.01, 5000);
     this._element = element;
     this._heightAt = heightAt;
-    this._onDrag = onDrag;
+    this._gestures = gestures;
 
-    const halfDiagonal = Math.hypot(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ) / 2;
-    this._startDistance = (halfDiagonal / Math.tan(MathUtils.degToRad(FOV) / 2)) * 1.05;
+    this._halfDiagonal = Math.hypot(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ) / 2;
     this._center.set((bounds.minX + bounds.maxX) / 2, 0, (bounds.minZ + bounds.maxZ) / 2);
-    const offset = new Vector3().setFromSphericalCoords(this._startDistance, START_POLAR, START_AZIMUTH);
-    this.camera.position.copy(this._center).add(offset);
+    this.camera.position.setFromSphericalCoords(1, START_POLAR, START_AZIMUTH).add(this._center);
     this.camera.lookAt(this._center);
+    this._fit();
   }
 
   override onMounted(): void {
     super.onMounted();
     const controls = new MapControls(this.camera, this._element);
     controls.enablePan = false;
+    controls.enableZoom = false;
     controls.maxPolarAngle = MAX_POLAR;
     controls.enableDamping = true;
     controls.dampingFactor = 0.1;
-    controls.minDistance = 2;
-    controls.maxDistance = this._startDistance * 2;
     controls.target.copy(this._center);
     controls.update();
     this._controls = controls;
-    this._drag = new TerrainDragHelper(this._element, () => this.camera, this._onDrag);
+    this._drag = new TerrainGesturesHelper(this._element, () => this.camera, this._gestures);
   }
 
   override onUnmounted(): void {
@@ -90,11 +91,19 @@ export class MapCameraNode extends NodeBase {
   override resize(width: number, height: number): void {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this._fit();
   }
 
   override dispose(): void {
     this._release();
     super.dispose();
+  }
+
+  /** Recule la camera, dans sa direction actuelle, pour que le bloc tienne a l'ecran. */
+  private _fit(): void {
+    const halfFov = Math.atan(Math.tan(MathUtils.degToRad(FOV) / 2) * Math.min(1, this.camera.aspect));
+    const target = this._controls?.target ?? this._center;
+    this.camera.position.sub(target).setLength((this._halfDiagonal / Math.tan(halfFov)) * FIT_MARGIN).add(target);
   }
 
   private _release(): void {

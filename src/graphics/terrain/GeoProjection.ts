@@ -92,3 +92,7 @@ export function containsBounds(outer: GeoBounds, inner: GeoBounds): boolean {
 export function containsPoint(b: GeoBounds, lon: number, lat: number): boolean {
   return lon >= b.west && lon <= b.east && lat >= b.south && lat <= b.north;
 }
+
+export function intersectsBounds(a: GeoBounds, b: GeoBounds): boolean {
+  return a.west < b.east && a.east > b.west && a.south < b.north && a.north > b.south;
+}

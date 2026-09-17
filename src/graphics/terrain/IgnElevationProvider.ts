@@ -1,15 +1,25 @@
 import type IElevationProvider from "./ElevationProvider.interface.ts";
+import { intersectsBounds, tileBounds } from "./GeoProjection.ts";
 
 const TILE_BYTES = 256 * 256 * 4;
 const NO_DATA = -1000;
 const RETRY_DELAYS_MS = [300, 900];
+/** Metropole et Corse : seule zone ou HIGHRES est tente. */
+const FRANCE = { west: -5.5, east: 10, south: 41, north: 51.2 };
 
-export function ignTileUrl(z: number, x: number, y: number): string {
+export const IGN_LAYERS = {
+  /** RGE ALTI, France, jusqu'a ~5 m. */
+  highres: { id: "ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES", minZoom: 6, maxZoom: 14 },
+  /** SRTM, monde de 56 S a 61 N, jusqu'a ~76 m. */
+  srtm3: { id: "ELEVATION.ELEVATIONGRIDCOVERAGE.SRTM3", minZoom: 1, maxZoom: 10 },
+} as const;
+
+export function ignTileUrl(layer: string, z: number, x: number, y: number): string {
   const params = new URLSearchParams({
     SERVICE: "WMTS",
     REQUEST: "GetTile",
     VERSION: "1.0.0",
-    LAYER: "ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES",
+    LAYER: layer,
     STYLE: "normal",
     TILEMATRIXSET: "WGS84G",
     TILEMATRIX: String(z),
@@ -21,9 +31,9 @@ export function ignTileUrl(z: number, x: number, y: number): string {
 }
 
 /** Mer et hors couverture : l'IGN renvoie -99999. */
-export function cleanElevation(data: Float32Array): Float32Array {
+export function markNoData(data: Float32Array): Float32Array {
   for (let i = 0; i < data.length; i++) {
-    if (data[i] < NO_DATA) data[i] = 0;
+    if (data[i] < NO_DATA) data[i] = NaN;
   }
   return data;
 }
@@ -38,7 +48,9 @@ function wait(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-/** Tuiles WMTS de l'IGN : file limitee, annulation, deux nouvelles tentatives. */
+const inRange = (layer: { minZoom: number; maxZoom: number }, z: number) => z >= layer.minZoom && z <= layer.maxZoom;
+
+/** HIGHRES en France, trous et reste du monde en SRTM3. File limitee, annulation, nouvelles tentatives. */
 export class IgnElevationProvider implements IElevationProvider {
   private readonly _fetch: typeof fetch;
   private readonly _maxConcurrent: number;
@@ -50,25 +62,38 @@ export class IgnElevationProvider implements IElevationProvider {
     this._maxConcurrent = maxConcurrent;
   }
 
-  async fetchTile(z: number, x: number, y: number, signal: AbortSignal): Promise<Float32Array> {
+  async fetchTile(z: number, x: number, y: number, signal: AbortSignal): Promise<Float32Array | null> {
+    const { highres, srtm3 } = IGN_LAYERS;
+    let data: Float32Array | null = null;
+    if (inRange(highres, z) && intersectsBounds(tileBounds(z, x, y), FRANCE)) {
+      data = await this._layer(highres.id, z, x, y, signal);
+    }
+    if (inRange(srtm3, z) && (!data || data.some(Number.isNaN))) {
+      const fill = await this._layer(srtm3.id, z, x, y, signal);
+      if (!data) return fill;
+      if (fill) data.forEach((v, i) => Number.isNaN(v) && (data![i] = fill[i]));
+    }
+    return data;
+  }
+
+  private async _layer(layer: string, z: number, x: number, y: number, signal: AbortSignal): Promise<Float32Array | null> {
     await this._acquire(signal);
     try {
-      return await this._download(ignTileUrl(z, x, y), signal);
+      return await this._download(ignTileUrl(layer, z, x, y), signal);
     } finally {
       this._release();
     }
   }
 
-  private async _download(url: string, signal: AbortSignal): Promise<Float32Array> {
+  private async _download(url: string, signal: AbortSignal): Promise<Float32Array | null> {
     for (let attempt = 0; ; attempt++) {
       try {
         const response = await this._fetch(url, { signal });
-        // Hors couverture (mer) : l'IGN repond 404, c'est une tuile sans donnee.
-        if (response.status === 404) return new Float32Array(TILE_BYTES / 4);
+        if (response.status === 404) return null;
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const buffer = await response.arrayBuffer();
         if (buffer.byteLength !== TILE_BYTES) throw new Error(`taille ${buffer.byteLength}`);
-        return cleanElevation(new Float32Array(buffer));
+        return markNoData(new Float32Array(buffer));
       } catch (error) {
         if (signal.aborted || attempt >= RETRY_DELAYS_MS.length) throw error;
         await wait(RETRY_DELAYS_MS[attempt], signal);

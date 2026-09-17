@@ -1,17 +1,24 @@
 export const TERRAIN_CONFIG = {
-  /** Centre de depart : le Gard. */
-  center: { lon: 4.054, lat: 43.96 },
-  /** Le centre reste en France metropolitaine. */
-  centerBounds: { west: -5.2, east: 9.6, south: 41.3, north: 51.1 },
-  sizeKm: 130,
-  /**
-   * Deux couches d'altitudes : un apercu large (niveau 7, ~600 m), rechargé rarement,
-   * et le detail autour du bloc (niveau 10, ~76 m). `margin` : marge chargee de chaque cote,
-   * en fraction de la taille du bloc.
-   */
-  coarse: { zoom: 7, margin: 1.5 },
-  fine: { zoom: 10, margin: 0.1 },
+  /** Depart : mont Aigoual. */
+  center: { lon: 3.581, lat: 44.121 },
+  /** Couverture du SRTM, source hors de France. */
+  centerBounds: { west: -179, east: 179, south: -56, north: 60 },
+  /** Largeur couverte par le bloc, reglee a la molette. */
+  extentKm: 40,
+  minExtentKm: 2,
+  maxExtentKm: 2000,
+  /** Largeur a laquelle l'exageration s'applique telle quelle (voir `TerrainNode.heightScale`). */
+  referenceExtentKm: 40,
+  maxZoom: 14,
+  /** Taille du bloc dans la scene, et epaisseur du socle. */
+  blockSize: 100,
+  baseDepth: 3,
+  /** Plafond du relief affiche : les massifs ne deviennent pas des aiguilles. */
+  maxRelief: 25,
   segments: 1024,
   segmentOptions: [256, 512, 1024, 1536],
-  baseDepthKm: 4,
+  cacheTiles: 768,
+  /** Prechargement autour du bloc (fraction de sa largeur, de chaque cote) : niveau affiche, puis apercu plus large. */
+  margin: 0.25,
+  coarse: { levels: 3, margin: 1 },
 } as const;

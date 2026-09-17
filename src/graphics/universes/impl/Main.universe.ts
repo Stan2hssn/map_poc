@@ -32,7 +32,7 @@ export class MainUniverse extends UniverseBase<UniverseId> {
       device.renderer.domElement,
       terrain.rect,
       (x, z) => terrain.heightAt(x, z),
-      (dx, dz) => terrain.moveBy(dx, dz)
+      { pan: (dx, dz) => terrain.moveBy(dx, dz), zoom: (factor, x, z) => terrain.zoomAt(factor, x, z) }
     );
 
     super(
@@ -91,8 +91,8 @@ export class MainUniverse extends UniverseBase<UniverseId> {
       const bindings = [
         debug.bind(
           target,
-          terrainSettings.exaggeration as unknown as Record<string, unknown>,
-          "value",
+          terrain.settings,
+          "exaggeration",
           { label: "exageration", min: 0.5, max: 12, step: 0.1 },
           "terrain.exaggeration"
         ),
@@ -100,8 +100,15 @@ export class MainUniverse extends UniverseBase<UniverseId> {
           target,
           terrainSettings.baseDepth as unknown as Record<string, unknown>,
           "value",
-          { label: "socle (km)", min: 0.5, max: 20, step: 0.1 },
+          { label: "socle", min: 0.5, max: 20, step: 0.1 },
           "terrain.baseDepth"
+        ),
+        debug.bind(
+          target,
+          terrainSettings.occlusion as unknown as Record<string, unknown>,
+          "value",
+          { label: "creux", min: 0, max: 5, step: 0.05 },
+          "terrain.occlusion"
         ),
         debug
           .bind(target, terrain.settings, "segments", { label: "subdivisions", options: segmentOptions }, "terrain.segments")

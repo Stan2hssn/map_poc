@@ -1,14 +1,14 @@
 {
   "tweakpane": {
     "terrain": {
-      "exaggeration": 6,
+      "exaggeration": 2.5,
       "segments": 1024,
       "baseDepth": 16.8
     },
     "lights": {
-      "intensity": 3.4,
-      "azimuth": 27,
-      "elevation": 21
+      "intensity": 3.5,
+      "azimuth": 240,
+      "elevation": 35
     }
   }
 }

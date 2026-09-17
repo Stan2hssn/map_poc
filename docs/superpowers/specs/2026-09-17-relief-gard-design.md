@@ -119,3 +119,27 @@ L'objectif devient le bloc de la capture de référence (relief sur un socle, fo
   Une couche se recharge dès que le bloc sort de sa mosaïque ; un chargement devenu inutile est annulé.
 - **Mesures** : images de 8,3 à 9,4 ms (écran 120 Hz) pendant un glisser continu de 120 km. Le détail d'une zone jamais visitée arrive ~7 s après l'arrêt, l'aperçu couvre l'attente.
 - **Limite** : chaque rechargement du détail refait la mosaïque entière (~90 tuiles, la plupart en cache HTTP). Piste si besoin : cache de tuiles en texture.
+
+## Zoom, monde entier et rendu de référence (2026-09-17)
+
+Remplace les deux couches de la section précédente.
+
+- **Gestes** (`nodes/cameras/TerrainGestures.helper.ts`) : glisser déplace le centre ; molette et pincement changent la largeur couverte (2 à 2000 km) autour du point visé. La caméra ne zoome plus, elle tourne seulement.
+- **Sources** (`terrain/IgnElevationProvider.ts`) : `HIGHRES` (France, niveaux 6 à 14, ~5 m) puis `SRTM3` (56° S à 61° N, niveaux 1 à 10) pour les trous et hors de France. Le centre peut aller partout dans la couverture SRTM.
+- **Cache** (`terrain/TileCache.ts`) : 768 tuiles en demi-flottant, éviction LRU, chargements devenus inutiles annulés. Préchargement autour du bloc, du plus proche au plus loin :
+  - niveau affiché, marge de 25 % de chaque côté ;
+  - aperçu 3 niveaux plus bas, marge de 100 %.
+- **Mosaïque** (`terrain/HeightMosaic.ts`) : niveau choisi pour que le texel suive l'écart entre sommets (`levelFor`). Ce qui manque vient du premier parent chargé. Recomposée quand le bloc en sort ou que le niveau change, et au plus toutes les 150 ms pendant un chargement.
+- **Échelle verticale** :
+  - l'exagération suit la racine de la largeur (référence 40 km) ;
+  - le plancher est l'altitude minimale sous le bloc, et le relief est plafonné à 25 unités, tous deux lissés sur 150 ms. Le socle garde la même épaisseur au Mont Aigoual comme à l'Everest.
+- **Rendu** :
+  - focale 20°, bloc cadré sur le plus petit côté de l'écran ;
+  - soleil au sud-ouest (azimut 240°, élévation 35°) avec ombres portées, ciel à 0,6 ;
+  - creux assombris (deux rayons, 8 échantillons) ;
+  - parois en dégradé émissif selon la profondeur, sans ombre reçue.
+- **Mesures** (canvas 1564 × 1726, WebGPU) : 2,3 ms par image, passe d'ombre comprise (4,2 M triangles). Pendant un glisser : médiane 2,4 ms, 95e centile 2,6 ms, pic 5,4 ms à la recomposition. Une vue à 4 km ou l'Everest à 60 km sont complets en ~1 s. Repli WebGL2 identique à l'œil.
+- **Limites** :
+  - demi-flottant : précision de 1 m au-dessus de 1024 m, 2 m au-dessus de 2048 m, visible en marches seulement aux plus petites largeurs en montagne ;
+  - les tuiles `HIGHRES` en mer renvoient 404, ce qui laisse des erreurs réseau dans la console ;
+  - la brume et les étiquettes de la référence ne sont pas faites.
