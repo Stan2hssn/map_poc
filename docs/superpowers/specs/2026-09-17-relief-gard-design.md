@@ -143,3 +143,33 @@ Remplace les deux couches de la section précédente.
   - demi-flottant : précision de 1 m au-dessus de 1024 m, 2 m au-dessus de 2048 m, visible en marches seulement aux plus petites largeurs en montagne ;
   - les tuiles `HIGHRES` en mer renvoient 404, ce qui laisse des erreurs réseau dans la console ;
   - la brume et les étiquettes de la référence ne sont pas faites.
+
+## Monde, raccourcis, brume et étiquettes (2026-09-17)
+
+- **Monde entier** : la largeur va jusqu'à la circonférence (40 030 km). Au-delà d'une demi-circonférence, le bloc s'aplatit en profondeur jusqu'au rapport 2:1 (plate carrée). Le centre est ramené pour que la vue reste dans le monde (`clampCenter`) : à pleine largeur, il vaut (0, 0).
+- **Raccourcis** (`app/components/MapShortcuts.client.vue`, vues dans `config/views.config.ts`) : Paris (30 km), France (1 150 km), Monde. Le vol interpole centre et largeur (en log) ; s'il va loin, la largeur monte à mi-chemin. Un geste l'interrompt. L'interface passe par `IMapNavigator` (`universes/MapNavigator.interface.ts`), sans importer three.
+- **Altitudes en deux couches** (`nodes/terrain/TerrainHeights.helper.ts`) :
+  - détail au niveau affiché, avec ses trous (hauteur 0) et un masque de validité ;
+  - aperçu trois niveaux plus bas, complété sur CPU depuis les parents (tuiles complétées gardées en cache).
+
+  Le shader divise la hauteur filtrée par la validité filtrée (moyenne des texels valides), puis mélange avec l'aperçu. Le CPU ne fait plus que recopier des tuiles : les pics pendant un vol passent de 870 ms à moins de 80 ms.
+- **Shader** : pente et creux calculés par sommet (absents de la passe d'ombre). Creux : 4 échantillons proches dans le détail, 8 larges dans l'aperçu.
+- **Mer** : altitude ≤ 0 (SRTM3 : 0 près des côtes, sans donnée au large). Teinte plus sombre et léger décroché, pour lire côtes et continents.
+- **Brume** : bruit fractal ancré sur les coordonnées géographiques, dans la moitié basse du relief, atténué en mer. Deux échelles fondues selon la largeur, pour qu'elle reste accrochée au sol pendant le zoom. Réglable (`brume`).
+- **Villes** (`places/`) :
+  - Natural Earth v5.1.2 (7 342 villes, population d'agglomération) et `geo.api.gouv.fr` (34 969 communes), chargés au montage ;
+  - une ville présente dans les deux sources garde la plus grande population ;
+  - au plus 5 villes par vue, les plus peuplées, espacées d'au moins 120 × 70 px à l'écran, et au moins 1/200 de la population de la première.
+- **Étiquettes** (`nodes/labels/Labels.node.ts`, `app/assets/css/labels.css`) : calque DOM au-dessus du canvas. Point au sol, ligne pointillée, numéro et nom en Manrope. Les textes se posent au-dessus de la silhouette du bloc, sur trois étages alternés de gauche à droite. La caméra vise 20 unités au-dessus du bloc pour leur laisser le ciel. Fondu à l'entrée et à la sortie.
+- **Données** : HIGHRES renvoie hors de France des aplats à 0 (Luxembourg). Ils sont traités comme des trous et comblés par SRTM3.
+- **Fond** : noir pur, comme la référence (mesurée à #000000).
+- **Mesures** (canvas 1564 × 1726, WebGPU, boucle de la page active) :
+  - image au repos : ~6 ms ;
+  - glisser : 95e centile 8 ms ;
+  - vol vers le monde : pic 13 ms.
+
+  Repli WebGL2 identique à l'œil.
+- **Limites** :
+  - les lacs sans donnée SRTM (Léman) sont teintés comme la mer ;
+  - la brume est peinte sur le sol : pas de nuages flottants au-dessus du bloc ;
+  - les étiquettes ne sont pas masquées par le relief.

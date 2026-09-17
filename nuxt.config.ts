@@ -62,7 +62,7 @@ export default defineNuxtConfig({
     },
   },
 
-  css: ['~/assets/css/main.css'],
+  css: ['~/assets/css/main.css', '~/assets/css/labels.css'],
 
   build: {
     transpile: ['gsap'],
@@ -93,6 +93,10 @@ export default defineNuxtConfig({
       meta: [
         { name: 'theme-color', content: '#060606' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
+      ],
+      link: [
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Manrope:wght@500;700&display=swap' },
       ],
     },
   },

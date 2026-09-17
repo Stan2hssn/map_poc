@@ -9,6 +9,7 @@ export const NODE_ID = {
 
   TERRAIN: "terrain",
   LIGHTS: "lights",
+  LABELS: "labels",
 
   CONTRACT_BASE: "contract:base",
 } as const;
