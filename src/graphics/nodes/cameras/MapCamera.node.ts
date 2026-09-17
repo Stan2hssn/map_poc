@@ -14,6 +14,8 @@ const MAX_POLAR = MathUtils.degToRad(80);
 const GROUND_CLEARANCE_KM = 0.1;
 // Le bloc occupe environ 80 % du plus petit cote de l'ecran.
 const FIT_MARGIN = 1.2;
+// Cible au-dessus du bloc, en fraction de sa taille : le bloc descend dans le cadre, les etiquettes ont le ciel.
+const TARGET_LIFT = 0.2;
 
 /**
  * Camera fixee sur le bloc : clic droit ou deux doigts pour tourner.
@@ -46,7 +48,7 @@ export class MapCameraNode extends NodeBase {
     this._gestures = gestures;
 
     this._halfDiagonal = Math.hypot(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ) / 2;
-    this._center.set((bounds.minX + bounds.maxX) / 2, 0, (bounds.minZ + bounds.maxZ) / 2);
+    this._center.set((bounds.minX + bounds.maxX) / 2, (bounds.maxX - bounds.minX) * TARGET_LIFT, (bounds.minZ + bounds.maxZ) / 2);
     this.camera.position.setFromSphericalCoords(1, START_POLAR, START_AZIMUTH).add(this._center);
     this.camera.lookAt(this._center);
     this._fit();

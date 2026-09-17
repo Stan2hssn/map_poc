@@ -1,3 +1,7 @@
+:root {
+  --font-map: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
 :root,
 html,
 body {

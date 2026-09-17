@@ -1,3 +1,5 @@
+import { WORLD_WIDTH_KM } from "@graphics/terrain/GeoProjection.ts";
+
 export const TERRAIN_CONFIG = {
   /** Depart : mont Aigoual. */
   center: { lon: 3.581, lat: 44.121 },
@@ -6,7 +8,7 @@ export const TERRAIN_CONFIG = {
   /** Largeur couverte par le bloc, reglee a la molette. */
   extentKm: 40,
   minExtentKm: 2,
-  maxExtentKm: 2000,
+  maxExtentKm: WORLD_WIDTH_KM,
   /** Largeur a laquelle l'exageration s'applique telle quelle (voir `TerrainNode.heightScale`). */
   referenceExtentKm: 40,
   maxZoom: 14,

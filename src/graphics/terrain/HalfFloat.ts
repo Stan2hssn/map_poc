@@ -8,8 +8,6 @@ for (let i = 0; i < TO_FLOAT.length; i++) TO_FLOAT[i] = DataUtils.fromHalfFloat(
 
 export const halfToFloat = (half: number): number => TO_FLOAT[half];
 
-export const isHalfNaN = (half: number): boolean => Number.isNaN(TO_FLOAT[half]);
-
 export function encodeHalf(data: Float32Array): { data: Uint16Array; holes: boolean } {
   const out = new Uint16Array(data.length);
   let holes = false;

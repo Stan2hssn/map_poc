@@ -11,13 +11,15 @@ import { LightsNode } from "@graphics/nodes/lights/Lights.node.ts";
 import { TerrainNode } from "@graphics/nodes/terrain/Terrain.node.ts";
 import { EffectComposer, EffectPass, RenderPass } from "@graphics/postprocessing/index.ts";
 import { IgnElevationProvider } from "@graphics/terrain/IgnElevationProvider.ts";
+import type IMapNavigator from "@graphics/universes/MapNavigator.interface.ts";
+import type { MapView } from "@graphics/universes/MapNavigator.interface.ts";
 import { Color, Scene } from "three";
 import type { UniverseId } from "../Universe.id.ts";
 import { UNIVERSE_ID } from "../Universe.id.ts";
 
 const BACKGROUND = 0x000000;
 
-export class MainUniverse extends UniverseBase<UniverseId> {
+export class MainUniverse extends UniverseBase<UniverseId> implements IMapNavigator {
   private readonly _cameraNode: MapCameraNode;
   private readonly _lights = new LightsNode();
   private readonly _terrain: TerrainNode;
@@ -53,6 +55,10 @@ export class MainUniverse extends UniverseBase<UniverseId> {
       id: NODE_ID.CONTRACT_BASE,
       activeNodeIds: [NODE_ID.CAMERA_MAIN, NODE_ID.LIGHTS, NODE_ID.TERRAIN],
     });
+  }
+
+  flyTo(view: MapView): void {
+    this._terrain.flyTo(view);
   }
 
   override async beforeMount(): Promise<void> {
@@ -109,6 +115,13 @@ export class MainUniverse extends UniverseBase<UniverseId> {
           "value",
           { label: "creux", min: 0, max: 5, step: 0.05 },
           "terrain.occlusion"
+        ),
+        debug.bind(
+          target,
+          terrainSettings.mist as unknown as Record<string, unknown>,
+          "value",
+          { label: "brume", min: 0, max: 1, step: 0.01 },
+          "terrain.mist"
         ),
         debug
           .bind(target, terrain.settings, "segments", { label: "subdivisions", options: segmentOptions }, "terrain.segments")

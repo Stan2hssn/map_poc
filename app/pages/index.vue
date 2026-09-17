@@ -10,6 +10,7 @@ const started = ref(false)
 <template>
   <main class="shell">
     <ThreeStage @ready="started = true" />
+    <MapShortcuts v-if="started" />
 
     <section class="hero" :class="{ 'is-hidden': started }">
       <h1>Carte de France</h1>

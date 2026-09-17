@@ -1,5 +1,9 @@
 export const EARTH_RADIUS_KM = 6371.0088;
 const RAD = Math.PI / 180;
+export const KM_PER_DEGREE = EARTH_RADIUS_KM * RAD;
+/** Largeur du monde a l'equateur, et hauteur pole a pole. */
+export const WORLD_WIDTH_KM = 360 * KM_PER_DEGREE;
+export const WORLD_HEIGHT_KM = 180 * KM_PER_DEGREE;
 
 export interface GeoBounds {
   west: number;
@@ -15,17 +19,17 @@ export interface SceneRect {
   maxZ: number;
 }
 
-/** Projection plate locale en km : x vers l'est, z vers le sud. Ecart < 1 % sur un departement. */
+/** Projection plate carree en km, echelle juste au centre : x vers l'est, z vers le sud. */
 export class GeoProjection {
   readonly lon0: number;
   readonly lat0: number;
   private readonly _kx: number;
-  private readonly _kz = EARTH_RADIUS_KM * RAD;
+  private readonly _kz = KM_PER_DEGREE;
 
   constructor(lon0: number, lat0: number) {
     this.lon0 = lon0;
     this.lat0 = lat0;
-    this._kx = EARTH_RADIUS_KM * RAD * Math.cos(lat0 * RAD);
+    this._kx = KM_PER_DEGREE * Math.cos(lat0 * RAD);
   }
 
   x(lon: number): number {
@@ -44,10 +48,16 @@ export class GeoProjection {
     return this.lat0 - z / this._kz;
   }
 
-  /** Carre de `sizeKm` de cote centre sur l'origine. */
-  squareBounds(sizeKm: number): GeoBounds {
-    const half = sizeKm / 2;
-    return { west: this.lon(-half), east: this.lon(half), north: this.lat(-half), south: this.lat(half) };
+  /** Rectangle centre sur l'origine, borne au monde. */
+  bounds(widthKm: number, heightKm = widthKm): GeoBounds {
+    const w = widthKm / 2;
+    const h = heightKm / 2;
+    return {
+      west: Math.max(-180, this.lon(-w)),
+      east: Math.min(180, this.lon(w)),
+      north: Math.min(90, this.lat(-h)),
+      south: Math.max(-90, this.lat(h)),
+    };
   }
 
   rect(b: GeoBounds): SceneRect {
@@ -67,11 +77,24 @@ export function tileBounds(z: number, x: number, y: number): GeoBounds {
   return { west, east: west + span, north, south: north - span };
 }
 
+const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+
+/** Centre ramene pour que le rectangle reste dans `limits` et dans le monde. */
+export function clampCenter(lon: number, lat: number, widthKm: number, heightKm: number, limits: GeoBounds) {
+  const halfLat = heightKm / 2 / KM_PER_DEGREE;
+  const clampedLat = clamp(lat, Math.max(limits.south, halfLat - 90), Math.min(limits.north, 90 - halfLat));
+  const halfLon = widthKm / 2 / (KM_PER_DEGREE * Math.cos(clampedLat * RAD));
+  const clampedLon = halfLon >= 180 ? 0 : clamp(lon, Math.max(limits.west, halfLon - 180), Math.min(limits.east, 180 - halfLon));
+  return { lon: clampedLon, lat: clampedLat };
+}
+
 export function tilesCovering(z: number, b: GeoBounds): { x: number; y: number }[] {
   const span = tileSpan(z);
   const tiles: { x: number; y: number }[] = [];
-  for (let y = Math.floor((90 - b.north) / span); y <= Math.floor((90 - b.south) / span); y++) {
-    for (let x = Math.floor((b.west + 180) / span); x <= Math.floor((b.east + 180) / span); x++) {
+  const row = (lat: number) => clamp(Math.floor((90 - lat) / span), 0, 2 ** z - 1);
+  const col = (lon: number) => clamp(Math.floor((lon + 180) / span), 0, 2 ** (z + 1) - 1);
+  for (let y = row(b.north); y <= row(b.south); y++) {
+    for (let x = col(b.west); x <= col(b.east); x++) {
       tiles.push({ x, y });
     }
   }
