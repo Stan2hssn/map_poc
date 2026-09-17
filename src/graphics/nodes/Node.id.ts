@@ -7,7 +7,8 @@ export const NODE_ID = {
   CAMERA_MAIN: "camera-main",
   GRID_NODE: "grid-node",
 
-  CUBE: "cube",
+  TERRAIN: "terrain",
+  LIGHTS: "lights",
 
   CONTRACT_BASE: "contract:base",
 } as const;
