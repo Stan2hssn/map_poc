@@ -71,3 +71,18 @@ src/graphics/nodes/terrain/Terrain.node.ts
 - WebGPU absent : repli WebGL2 de `WebGPURenderer`.
 - Tests `node --test` (Node 24, types retirés nativement) sur les modules purs : projection et index de tuile, règles de l'arbre, rastérisation du masque, décodage (pas de donnée). Ces modules n'importent pas d'alias.
 - Vérification navigateur : relief visible et masqué, requêtes réseau limitées, nombre de tuiles sous budget, navigation bornée, temps d'image mesuré.
+
+## Écarts et mesures (implémentation du 2026-09-17)
+
+- **Pas de cache LRU de textures** : une tuile fusionnée libère sa texture ; la recharger passe par le cache HTTP du navigateur (21 jours).
+- **404 = pas de donnée** : hors couverture (mer), le WMTS répond 404. La tuile vaut 0 (masquée), sans nouvelle tentative. Seuls les autres échecs passent la tuile en `error`.
+- **Racines** : 15 tuiles de niveau 9 sur 20, les 5 autres étant hors du masque. Surface du masque : 5 866 km² (5 853 officiels).
+- **Programme GPU partagé** : 2 pipelines en cache pour 15 à 96 meshes.
+- **File** : 6 requêtes simultanées au plus, observé.
+- **Coût** (canvas 1564 × 1726, WebGPU, rendu manuel) : vue de départ 15 tuiles, 35 k triangles, ~3,2 ms ; vue rapprochée 59 tuiles, 136 k triangles, ~7,4 ms.
+- **Repli WebGL2** : rendu identique.
+
+Limites connues :
+- **Mémoire CPU** : chaque tuile affichée garde ses altitudes float32 (256 Ko) pour `heightAt`.
+- **Coût CPU** : il croît avec le nombre de tuiles, une draw call et un bind group chacune. Piste : atlas ou instanciation.
+- **Affinage** : un niveau à la fois, les enfants devant être tous prêts.
