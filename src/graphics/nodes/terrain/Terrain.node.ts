@@ -15,13 +15,14 @@ import {
 import { levelFor } from "@graphics/terrain/HeightMosaic.ts";
 import type { MapView } from "@graphics/universes/MapNavigator.interface.ts";
 import { MathUtils, Mesh } from "three";
-import { TerrainHeightsHelper } from "./TerrainHeights.helper.ts";
+import { TerrainHeightsHelper, type HeightsView } from "./TerrainHeights.helper.ts";
 
 const C = TERRAIN_CONFIG;
 // Temps de reponse du plancher et du relief quand la vue change.
 const RANGE_EASE_MS = 150;
-// Cellules de bruit de la brume sur la largeur du bloc (entre 1 et 2 fois ce nombre).
+// Cellules de bruit de la brume sur la largeur du bloc (entre 1 et 2 fois ce nombre), et leur derive par seconde.
 const MIST_CELLS = 3;
+const MIST_DRIFT = { x: 0.004, y: 0.0025 };
 
 /**
  * Bloc de relief fixe dans la scene, fenetre sur le terrain : glisser deplace le centre,
@@ -49,7 +50,14 @@ export class TerrainNode extends Object3DNodeBase {
   private _rangeVersion = -1;
   private _floor = 0;
   private _relief = 0;
-  private _flight: { from: MapView; to: MapView; bump: number; duration: number; elapsed: number } | null = null;
+  private _flight: {
+    from: MapView;
+    to: MapView;
+    destination: HeightsView;
+    bump: number;
+    duration: number;
+    elapsed: number;
+  } | null = null;
 
   constructor(provider: IElevationProvider) {
     const mesh = new Mesh(undefined, createTerrainMaterial());
@@ -129,7 +137,7 @@ export class TerrainNode extends Object3DNodeBase {
     const distanceKm = Math.hypot(new GeoProjection(from.lon, from.lat).x(to.lon), (to.lat - from.lat) * KM_PER_DEGREE);
     const middle = (Math.log(from.extentKm) + Math.log(to.extentKm)) / 2;
     const bump = Math.max(0, Math.log(Math.min(distanceKm * 2, C.maxExtentKm)) - middle);
-    this._flight = { from, to, bump, duration: 1400 + 500 * Math.min(bump, 3), elapsed: 0 };
+    this._flight = { from, to, destination: this._viewOf(to), bump, duration: 1400 + 500 * Math.min(bump, 3), elapsed: 0 };
   }
 
   /** Altitude affichee (unites de scene) au point (x, z) de la scene. */
@@ -150,23 +158,28 @@ export class TerrainNode extends Object3DNodeBase {
   // L'apercu est attendu : le bloc n'apparait pas a plat.
   override async beforeMount(): Promise<void> {
     if (this._heights.ready) return;
-    this._heights.update(this._bounds, this._level, this.center, false);
+    this._heights.update(this._view());
     const deadline = performance.now() + 5000;
     while (!this._heights.coarseLoaded(this._bounds, this._level) && performance.now() < deadline) {
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
-    this.update(0, Infinity);
+    this._heights.update(this._view());
+    this._easeRange(Infinity);
+    this._syncUniforms();
   }
 
   override update(_time: number, dt: number): void {
     this._fly(dt);
-    this._heights.update(this._bounds, this._level, this.center, this.flying);
+    this._heights.update(this._view(), this._flight?.destination);
     this._easeRange(dt);
+    terrainSettings.mistDrift.value.x += (MIST_DRIFT.x * dt) / 1000;
+    terrainSettings.mistDrift.value.y += (MIST_DRIFT.y * dt) / 1000;
     this._syncUniforms();
   }
 
   override dispose(): void {
     this._heights.dispose();
+    terrainSettings.mistNoise.value.dispose();
     this._mesh.geometry.dispose();
     (this._mesh.material as { dispose(): void }).dispose();
     super.dispose();
@@ -192,15 +205,27 @@ export class TerrainNode extends Object3DNodeBase {
     this._setView();
   }
 
+  private _view(): HeightsView {
+    return { bounds: this._bounds, level: this._level, center: this.center };
+  }
+
+  /** Vue d'arrivee d'un vol, bornee comme `_setView` la bornera. */
+  private _viewOf({ lon, lat, extentKm }: MapView): HeightsView {
+    const heightKm = Math.min(extentKm, WORLD_HEIGHT_KM);
+    const center = clampCenter(lon, lat, extentKm, heightKm, C.centerBounds);
+    const bounds = new GeoProjection(center.lon, center.lat).bounds(extentKm, heightKm);
+    return { bounds, level: levelFor(extentKm, this._segments || C.segments, C.maxZoom), center };
+  }
+
   private _setView(): void {
-    const heightKm = Math.min(this.extentKm, WORLD_HEIGHT_KM);
-    Object.assign(this.center, clampCenter(this.center.lon, this.center.lat, this.extentKm, heightKm, C.centerBounds));
+    const view = this._viewOf({ ...this.center, extentKm: this.extentKm });
+    Object.assign(this.center, view.center);
     this._projection = new GeoProjection(this.center.lon, this.center.lat);
-    this._bounds = this._projection.bounds(this.extentKm, heightKm);
-    this._depth = heightKm / this.extentKm;
+    this._bounds = view.bounds;
+    this._level = view.level;
+    this._depth = Math.min(this.extentKm, WORLD_HEIGHT_KM) / this.extentKm;
     this._mesh.scale.z = C.blockSize * this._depth;
     this._mesh.position.z = (-C.blockSize * this._depth) / 2;
-    this._level = levelFor(this.extentKm, this._segments || C.segments, C.maxZoom);
     this._range = null;
     this.viewVersion++;
   }

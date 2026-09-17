@@ -9,7 +9,7 @@ import {
   mosaicUvTransform,
   type HeightMosaic,
 } from "@graphics/terrain/HeightMosaic.ts";
-import { TileCache, type TileId } from "@graphics/terrain/TileCache.ts";
+import { TileCache } from "@graphics/terrain/TileCache.ts";
 import { DataTexture, HalfFloatType, LinearFilter, MathUtils, RedFormat, UnsignedByteType, type TextureDataType } from "three";
 import type { TextureNode } from "three/webgpu";
 
@@ -19,6 +19,13 @@ const RECOMPOSE_MS = 150;
 // Tuiles de l'apercu completees depuis leur parent, gardees pour les recompositions (~130 Ko chacune).
 const MAX_FILLS = 128;
 
+/** Ce que le bloc montre, ou montrera a la fin d'un vol. */
+export interface HeightsView {
+  bounds: GeoBounds;
+  level: number;
+  center: { lon: number; lat: number };
+}
+
 interface Layer {
   mosaic: HeightMosaic;
   level: number;
@@ -27,9 +34,9 @@ interface Layer {
 }
 
 /**
- * Altitudes du bloc en deux couches : le detail, avec ses trous, et un apercu complet
- * trois niveaux plus bas. Le shader passe de l'un a l'autre selon le masque du detail :
- * le CPU ne fait que recopier des tuiles.
+ * Altitudes du bloc en deux couches : le detail, avec ses trous, et un apercu toujours complet,
+ * au niveau le plus fin deja charge (trois niveaux sous le detail au mieux). Le shader passe de
+ * l'un a l'autre selon le masque du detail : ce qui manque est approche, jamais plat.
  */
 export class TerrainHeightsHelper {
   /** Incremente a chaque recomposition. */
@@ -59,12 +66,18 @@ export class TerrainHeightsHelper {
     return this._cache.pendingCount;
   }
 
-  /** Demande les tuiles, recompose ce qui doit l'etre ; `moving` espace les recompositions. */
-  update(bounds: GeoBounds, level: number, center: { lon: number; lat: number }, moving: boolean): void {
-    this._request(bounds, level, center);
-    const coarse = coarseLevel(level);
-    if (this._due(this._coarse, coarse, bounds, moving)) {
-      this._coarse = this._compose(coarse, expandBounds(bounds, 0.5), this._fills);
+  /**
+   * Demande les tuiles, recompose ce qui doit l'etre. En vol, les tuiles de `destination`
+   * passent en premier et le detail est recompose moins souvent.
+   */
+  update(view: HeightsView, destination: HeightsView | null = null): void {
+    const { bounds, level } = view;
+    const moving = !!destination;
+    this._request(destination ? [...requests(destination, true), ...requests(view, false)] : requests(view, true));
+    const area = expandBounds(bounds, 0.5);
+    const coarse = this._loadedLevel(coarseLevel(level), area);
+    if (this._due(this._coarse, coarse, bounds, false, true)) {
+      this._coarse = this._compose(coarse, area, this._fills);
       upload(terrainSettings.coarseHeights, this._coarse.mosaic.data, this._coarse.mosaic, HalfFloatType);
       for (const key of this._fills.keys()) {
         if (this._fills.size <= MAX_FILLS) break;
@@ -98,13 +111,22 @@ export class TerrainHeightsHelper {
     for (const node of [terrainSettings.heights, terrainSettings.valid, terrainSettings.coarseHeights]) node.value.dispose();
   }
 
-  private _due(layer: Layer | null, level: number, bounds: GeoBounds, moving: boolean): boolean {
+  /** `filled` : la couche complete ses tuiles depuis leurs parents, qu'une arrivee peut ameliorer. */
+  private _due(layer: Layer | null, level: number, bounds: GeoBounds, moving: boolean, filled = false): boolean {
     if (!layer) return true;
     const elapsed = performance.now() - layer.composedAt > RECOMPOSE_MS;
     const stale = layer.level !== level || !containsBounds(layer.mosaic.bounds, bounds);
     // En vol, la vue sort de la mosaique a chaque image : le bord est etire un instant.
     if (stale) return !moving || elapsed;
-    return !layer.mosaic.complete && layer.loads !== this._loads && elapsed;
+    return (filled || !layer.mosaic.complete) && layer.loads !== this._loads && elapsed;
+  }
+
+  /** Niveau le plus fin, au plus `target`, dont toutes les tuiles de `area` sont arrivees. */
+  private _loadedLevel(target: number, area: GeoBounds): number {
+    for (let z = target; z > 1; z--) {
+      if (tilesCovering(z, area).every(({ x, y }) => this._cache.get(z, x, y))) return z;
+    }
+    return 1;
   }
 
   private _compose(level: number, area: GeoBounds, fills?: Map<string, Uint16Array>): Layer {
@@ -113,25 +135,11 @@ export class TerrainHeightsHelper {
     return { mosaic, level, loads: this._loads, composedAt: performance.now() };
   }
 
-  /** Apercu large d'abord, puis le detail, chaque groupe du plus proche au plus loin. */
-  private _request(bounds: GeoBounds, level: number, center: { lon: number; lat: number }): void {
-    const areas: [number, GeoBounds][] = [
-      [coarseLevel(level), expandBounds(bounds, C.coarse.margin)],
-      [level, expandBounds(bounds, C.margin)],
-    ];
-    const groups = areas.map(([z, area]) => ({ z, tiles: tilesCovering(z, area) }));
+  private _request(groups: TileGroup[]): void {
     const key = groups.map(({ z, tiles }) => `${z}:${tiles[0]!.x},${tiles[0]!.y}:${tiles.at(-1)!.x},${tiles.at(-1)!.y}`).join("|");
     if (key === this._requested) return;
     this._requested = key;
-
-    const cos = Math.cos(MathUtils.degToRad(center.lat));
-    const distance = ({ z, x, y }: TileId) => {
-      const b = tileBounds(z, x, y);
-      return Math.hypot(((b.west + b.east) / 2 - center.lon) * cos, (b.north + b.south) / 2 - center.lat);
-    };
-    this._cache.request(
-      groups.flatMap(({ z, tiles }) => tiles.map(({ x, y }) => ({ z, x, y })).sort((a, b) => distance(a) - distance(b)))
-    );
+    this._cache.request(groups.flatMap(({ z, tiles }) => tiles.map(({ x, y }) => ({ z, x, y }))));
   }
 
   private _syncUniforms(bounds: GeoBounds): void {
@@ -144,14 +152,41 @@ export class TerrainHeightsHelper {
       s.texel.value.set(1 / m.width / scale[0], 1 / m.height / scale[1]);
     }
     if (this._coarse) {
-      const { offset, scale } = mosaicUvTransform(bounds, this._coarse.mosaic.bounds);
+      const m = this._coarse.mosaic;
+      const { offset, scale } = mosaicUvTransform(bounds, m.bounds);
       s.coarseOffset.value.set(...offset);
       s.coarseScale.value.set(...scale);
+      s.coarseSize.value.set(m.width, m.height);
     }
   }
 }
 
 const coarseLevel = (level: number) => Math.max(1, level - C.coarse.levels);
+
+interface TileGroup {
+  z: number;
+  tiles: { x: number; y: number }[];
+}
+
+/**
+ * Tuiles d'une vue par groupes : quelques niveaux tres bas (l'apercu n'est jamais vide) et
+ * le niveau juste sous l'apercu (ses tuiles sans donnee s'y completent), l'apercu large,
+ * puis le detail ; chaque groupe du plus proche au plus loin.
+ */
+function requests({ bounds, level, center }: HeightsView, detail: boolean): TileGroup[] {
+  const coarse = coarseLevel(level);
+  const wide = expandBounds(bounds, C.coarse.margin);
+  const pyramid = [...new Set([1, coarse - 6, coarse - 3, coarse - 1])].filter((z) => z >= 1 && z < coarse);
+  const areas: [number, GeoBounds][] = [...pyramid.map((z): [number, GeoBounds] => [z, wide]), [coarse, wide]];
+  if (detail) areas.push([level, expandBounds(bounds, C.margin)]);
+
+  const cos = Math.cos(MathUtils.degToRad(center.lat));
+  const distance = (z: number, { x, y }: { x: number; y: number }) => {
+    const b = tileBounds(z, x, y);
+    return Math.hypot(((b.west + b.east) / 2 - center.lon) * cos, (b.north + b.south) / 2 - center.lat);
+  };
+  return areas.map(([z, area]) => ({ z, tiles: tilesCovering(z, area).sort((a, b) => distance(z, a) - distance(z, b)) }));
+}
 
 /** Remplace l'image de la texture, ou la texture si la taille change. */
 function upload(node: TextureNode, data: Uint16Array | Uint8Array, size: HeightMosaic, type: TextureDataType): void {

@@ -173,3 +173,16 @@ Remplace les deux couches de la section précédente.
   - les lacs sans donnée SRTM (Léman) sont teintés comme la mer ;
   - la brume est peinte sur le sol : pas de nuages flottants au-dessus du bloc ;
   - les étiquettes ne sont pas masquées par le relief.
+
+## Chargement sans aplat (2026-09-17)
+
+Constat : après un vol vers une région jamais vue, le bloc restait plat et gris foncé plusieurs secondes. Les tuiles manquantes valaient 0, donc « mer », dans un creux ombré.
+
+- **Pyramide** : chaque vue demande d'abord quelques tuiles très basses (niveau 1, aperçu − 6, aperçu − 3) et le niveau juste sous l'aperçu (ses tuiles sans donnée s'y complètent), puis l'aperçu, puis le détail.
+- **Vol** : les tuiles de la destination (pyramide, aperçu, détail) passent en tête dès le départ et ne sont plus annulées en route. Le détail de la vue courante n'est pas demandé pendant le vol.
+- **Aperçu toujours complet** : il est composé au niveau le plus fin dont toutes les tuiles sont arrivées (au mieux 3 niveaux sous le détail). Il est recomposé quand un parent plus proche arrive.
+- **Lissage** : l'aperçu est lu avec une B-spline en 4 lectures bilinéaires (position, normales, anneau proche), sinon l'agrandissement donne des facettes (≈ +1 ms).
+- **Bords** : hors de la mosaïque du détail (en vol, elle suit avec retard), seul l'aperçu compte. Plus de bords étirés.
+- **Réseau** : une réponse IGN pendante est abandonnée après 10 s puis retentée. Une requête bloquée occupait un des 6 créneaux indéfiniment.
+- **Brume** : le bruit est lu dans une texture périodique générée au démarrage (256 px, 8 cellules, 3 octaves). La dérive passe par un uniform du node : le nœud TSL `time` coûtait ~2,5 ms par image.
+- **Vérifié** avec une latence simulée de 0,6 à 1,5 s par tuile : à l'arrivée, le relief est approché puis s'affine, sans aplat ni noir. Image au repos : 7,1 à 7,7 ms (1564 × 1726, boucle de la page arrêtée).
