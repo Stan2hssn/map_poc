@@ -81,6 +81,8 @@ src/graphics/nodes/terrain/Terrain.node.ts
 - **File** : 6 requêtes simultanées au plus, observé.
 - **Coût** (canvas 1564 × 1726, WebGPU, rendu manuel) : vue de départ 15 tuiles, 35 k triangles, ~3,2 ms ; vue rapprochée 59 tuiles, 136 k triangles, ~7,4 ms.
 - **Repli WebGL2** : rendu identique.
+- **Distance max** : 1,2 × la distance de cadrage initiale (~265 km), et non 200 km : à 200 km, le Gard entier ne tenait pas dans le champ.
+- **Fichiers** : `Tile.ts` ne porte que l'état (et `heightAt`) ; la géométrie partagée vit dans `TileGeometry.ts`, les meshes et textures dans `Terrain.node.ts`.
 
 Limites connues :
 - **Mémoire CPU** : chaque tuile affichée garde ses altitudes float32 (256 Ko) pour `heightAt`.
