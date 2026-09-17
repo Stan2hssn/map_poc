@@ -117,12 +117,12 @@ Tout ce qui est propre à un projet et touche au device passe par `DEVICE_CONFIG
 
 ## WebGL et WebGPU
 
-| `renderer.backend` | Renderer | Matériaux | Matériaux du post-traitement (`graphics/postprocessing/materials/`) |
-|---|---|---|---|
-| `"webgl"` (défaut) | `WebGLRenderer` | GLSL, `ShaderMaterial` | `webgl/` : GLSL |
-| `"webgpu"` | `WebGPURenderer`, repli WebGL2 automatique si WebGPU manque | TSL, node materials | `webgpu/` : TSL |
+| `renderer.backend` | Renderer | Matériaux |
+|---|---|---|
+| `"webgl"` (défaut du core) | `WebGLRenderer` | GLSL, `ShaderMaterial` |
+| `"webgpu"` | `WebGPURenderer`, repli WebGL2 automatique si WebGPU manque | TSL, node materials |
 
-Changer de backend = deux lignes : `DEVICE_CONFIG.renderer.backend` et l'export de `postprocessing/materials/index.ts`. Composer et passes sont communs.
+Le post-traitement du template (`graphics/postprocessing/`, voir son README) est en TSL : il exige `"webgpu"`. La variante WebGL (matériaux GLSL) vit sur la branche `feat/core-webgpu` du template.
 
 - `three/webgpu` est importé dynamiquement : un projet WebGL ne l'embarque pas.
 - `device.renderer` est typé `Renderer` (union). Une API propre à un backend passe par un cast : `device.renderer as WebGLRenderer`.
@@ -150,14 +150,14 @@ Output.render
 `ctx` vaut `{ scene, camera, renderer }`. Chaque passe vide sa propre cible (`autoClear`). Le post-traitement n'est pas dans le core : c'est le pipeline de l'univers, `EffectComposer` (`graphics/postprocessing/`, d'après pmndrs).
 
 ```ts
-const pipeline = new EffectComposer([new RenderPass(), new CopyPass()], { multisampling: 0 });
+const pipeline = new EffectComposer([new RenderPass(), new EffectPass([/* effets */])], { multisampling: 0 });
 ```
 
 - `prepare` : `inputBuffer` et `outputBuffer` suivent la taille du canvas (`getDrawingBufferSize`), `PassBase.setSize` est appelé.
 - `render` : `RenderPass` dessine la scène dans `inputBuffer`.
 - `postRender` : chaque passe lit `ctx.inputBuffer`, écrit `ctx.outputBuffer`, puis les deux s'échangent (`needsSwap`). La dernière passe rend à l'écran (`renderToScreen`).
 - Les passes plein écran dessinent un triangle partagé (`PassBase.renderFullscreen`), pas un quad.
-- Un effet = une passe plein écran de plus avant `CopyPass`, avec son matériau GLSL et TSL.
+- Un effet = un `IEffect` (fonction TSL de la couleur + uniforms) dans une `EffectPass`. Sans effet, `EffectPass` copie l'entrée.
 
 ## Pipeline et passes
 
@@ -200,7 +200,7 @@ export class OffscreenPass extends PassBase {
 
 // Dans l'univers : la passe hors ecran en tete du pipeline.
 const horsEcran = new OffscreenPass();
-const pipeline = new EffectComposer([horsEcran, new RenderPass(), new CopyPass()]);
+const pipeline = new EffectComposer([horsEcran, new RenderPass(), new EffectPass()]);
 ```
 
 Implémentation complète, avec restauration de la couleur de fond et effacement à `(0, 0, 0, 0)` pour les données : `lacoste/src/graphics/passes/OffscreenPass.ts`.
@@ -280,7 +280,7 @@ Le seul mécanisme d'activation de nodes du `_core`.
 | lacoste | `Dev/PP/RD/lacoste`, `feat/sol-timeline` | `47af303` | LUT du compositing (`onBoot`), panneau d'inclinaison (`graphics/device/TiltDebug.helper.ts`), `Timeline.contract.ts` (`graphics/devtools/`) |
 | grass | `Dev/PP/RD/grass`, `chore/core-alignement` | `b12c78d` | Panneaux PostFX, Godrays et inclinaison (`graphics/device/*Debug.helper.ts`), preset de correction, exposition, plafond tactile, `TiltWitness` (`graphics/debug/`), `Timeline.contract.ts` |
 | book | `Dev/PP/RD/book` (dépôt créé le 2026-09-15, sans remote), `chore/core-alignement` | `e21a0f3` | Comme grass |
-| map | `Dev/PV/Projects/map` (sans remote), `feat/core-webgpu` | — | Backend `webgpu`, `EffectComposer` avec matériaux `webgpu/` |
+| map | `Dev/PV/Projects/map` (sans remote), `feat/core-webgpu` | — | Backend `webgpu`, post-traitement TSL identique à la branche `tsl` du template |
 
 Côté projet, une seule chose varie encore sans être du `_core` : grass et book enregistrent leurs réglages par un `_saveDebug` maison dans leur univers, là où lacoste passe par `DEVICE_CONFIG.debugPersistence`. Les migrer est optionnel.
 
