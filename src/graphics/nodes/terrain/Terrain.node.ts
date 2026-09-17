@@ -2,7 +2,7 @@ import { Object3DNodeBase } from "@_core/nodes/object3d/Object3DNode.base.ts";
 import { TERRAIN_CONFIG } from "@graphics/config/terrain.config.ts";
 import { createTerrainMaterial, terrainSettings } from "@graphics/materials/Terrain.material.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
-import { createBlockGeometry } from "@graphics/terrain/BlockGeometry.ts";
+import { createGroundGeometry } from "@graphics/terrain/GroundGeometry.ts";
 import type IElevationProvider from "@graphics/terrain/ElevationProvider.interface.ts";
 import {
   clampCenter,
@@ -20,18 +20,21 @@ import { TerrainHeightsHelper, type HeightsView } from "./TerrainHeights.helper.
 const C = TERRAIN_CONFIG;
 // Temps de reponse du plancher et du relief quand la vue change.
 const RANGE_EASE_MS = 150;
+// Glisse apres un lancer : temps de freinage, et vitesse sous laquelle elle s'arrete (unites par ms).
+const GLIDE_MS = 380;
+const GLIDE_STOP = 1e-4;
 // Cellules de bruit de la brume sur la largeur du bloc (entre 1 et 2 fois ce nombre), et leur derive par seconde.
 const MIST_CELLS = 3;
 const MIST_DRIFT = { x: 0.004, y: 0.0025 };
 
 /**
- * Bloc de relief fixe dans la scene, fenetre sur le terrain : glisser deplace le centre,
- * la molette change la largeur couverte. Les tuiles autour de la fenetre sont prechargees.
- * Au-dela d'une demi-circonference, le bloc s'aplatit en profondeur jusqu'au monde entier (2:1).
+ * Sol plein ecran, fixe dans la scene, fenetre sur le terrain : glisser deplace le centre (avec
+ * glisse au relacher), la molette change la largeur de la zone de detail (le carre central).
+ * Au-dela d'une demi-circonference, elle s'aplatit en profondeur jusqu'au monde entier (2:1).
  */
 export class TerrainNode extends Object3DNodeBase {
   readonly center: { lon: number; lat: number } = { ...C.center };
-  /** Emprise maximale du bloc (carre), pour cadrer la camera. */
+  /** Zone de detail maximale (carre), pour cadrer la camera. */
   readonly rect: SceneRect;
   readonly settings = { segments: C.segments as number, exaggeration: 2.5 };
   extentKm: number = C.extentKm;
@@ -50,6 +53,7 @@ export class TerrainNode extends Object3DNodeBase {
   private _rangeVersion = -1;
   private _floor = 0;
   private _relief = 0;
+  private readonly _glide = { x: 0, z: 0 };
   private _flight: {
     from: MapView;
     to: MapView;
@@ -70,7 +74,6 @@ export class TerrainNode extends Object3DNodeBase {
     mesh.scale.set(C.blockSize, 1, C.blockSize);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    terrainSettings.baseDepth.value = C.baseDepth;
     this._setView();
     this.applySettings();
   }
@@ -93,10 +96,10 @@ export class TerrainNode extends Object3DNodeBase {
     return this._bounds;
   }
 
-  /** Dessus du bloc dans la scene, et hauteur du plus haut relief affiche. */
-  get blockTop(): SceneRect & { top: number } {
+  /** Zone de detail dans la scene. */
+  get detailRect(): SceneRect {
     const half = C.blockSize / 2;
-    return { minX: -half, maxX: half, minZ: -half * this._depth, maxZ: half * this._depth, top: this._relief * this.heightScale };
+    return { minX: -half, maxX: half, minZ: -half * this._depth, maxZ: half * this._depth };
   }
 
   get pendingCount(): number {
@@ -113,14 +116,7 @@ export class TerrainNode extends Object3DNodeBase {
     return { x: this._projection.x(lon) / k, z: this._projection.z(lat) / k };
   }
 
-  /** Position (unites de scene) d'un point geographique, null hors du bloc. */
-  toScene(lon: number, lat: number): { x: number; z: number } | null {
-    const b = this._bounds;
-    if (lon < b.west || lon > b.east || lat < b.south || lat > b.north) return null;
-    return this.sceneOf(lon, lat);
-  }
-
-  /** Le bloc : sa transformation place les uv (0..1) du dessus dans la scene. */
+  /** Le sol : sa transformation place les uv de la zone de detail (0..1) dans la scene. */
   get block(): Object3D {
     return this._mesh;
   }
@@ -128,6 +124,7 @@ export class TerrainNode extends Object3DNodeBase {
   /** Deplace le centre de (dx, dz) unites de scene. */
   moveBy(dx: number, dz: number): void {
     this._flight = null;
+    this._glide.x = this._glide.z = 0;
     this._moveCenter(dx * this.kmPerUnit, dz * this.kmPerUnit);
   }
 
@@ -140,8 +137,15 @@ export class TerrainNode extends Object3DNodeBase {
     this._moveCenter(x * shift, z * shift);
   }
 
+  /** Lance le terrain (unites de scene par ms) ; il glisse puis freine. */
+  fling(vx: number, vz: number): void {
+    this._glide.x = vx;
+    this._glide.z = vz;
+  }
+
   /** Vol vers une vue ; s'il va loin, il prend de la hauteur a mi-chemin. */
   flyTo(view: MapView): void {
+    this._glide.x = this._glide.z = 0;
     const from = { ...this.center, extentKm: this.extentKm };
     const to = { ...view, extentKm: MathUtils.clamp(view.extentKm, C.minExtentKm, C.maxExtentKm) };
     const distanceKm = Math.hypot(new GeoProjection(from.lon, from.lat).x(to.lon), (to.lat - from.lat) * KM_PER_DEGREE);
@@ -161,7 +165,7 @@ export class TerrainNode extends Object3DNodeBase {
     if (this.settings.segments === this._segments) return;
     this._segments = this.settings.segments;
     this._mesh.geometry.dispose();
-    this._mesh.geometry = createBlockGeometry(this._segments);
+    this._mesh.geometry = createGroundGeometry(this._segments, C.groundSpan);
     this._setView();
   }
 
@@ -180,6 +184,7 @@ export class TerrainNode extends Object3DNodeBase {
 
   override update(_time: number, dt: number): void {
     this._fly(dt);
+    this._glideStep(dt);
     this._heights.update(this._view(), this._flight?.destination);
     this._easeRange(dt);
     terrainSettings.mistDrift.value.x += (MIST_DRIFT.x * dt) / 1000;
@@ -199,6 +204,15 @@ export class TerrainNode extends Object3DNodeBase {
     this.center.lon = this._projection.lon(dxKm);
     this.center.lat = this._projection.lat(dzKm);
     this._setView();
+  }
+
+  private _glideStep(dt: number): void {
+    const g = this._glide;
+    if (Math.hypot(g.x, g.z) < GLIDE_STOP) return;
+    this._moveCenter(g.x * dt * this.kmPerUnit, g.z * dt * this.kmPerUnit);
+    const k = Math.exp(-dt / GLIDE_MS);
+    g.x *= k;
+    g.z *= k;
   }
 
   private _fly(dt: number): void {

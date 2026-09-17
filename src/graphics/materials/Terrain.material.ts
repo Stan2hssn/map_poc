@@ -3,11 +3,11 @@ import {
   cameraViewMatrix,
   color,
   float,
+  length,
   mix,
-  normalGeometry,
   normalize,
+  output,
   positionGeometry,
-  positionWorld,
   smoothstep,
   step,
   texture,
@@ -27,6 +27,8 @@ const FAR_RING = { radius: 12, samples: 8 };
 /** Mer (altitude <= 0) : teinte, et decroche sous la cote en unites de scene. */
 const SEA_COLOR = 0x5c5c5c;
 const SEA_DROP = 0.3;
+/** Le sol s'efface dans le fond entre ces distances du centre (unites de scene). */
+export const GROUND_FADE = { near: 70, far: 145 };
 /** Cellules de bruit sur une repetition de la texture de brume. */
 const NOISE_CELLS = 8;
 const ring = (samples: number) =>
@@ -85,7 +87,6 @@ export const terrainSettings = {
   floor: uniform(0),
   relief: uniform(1000),
   heightScale: uniform(0.001),
-  baseDepth: uniform(3),
   /** Taille du bloc dans la scene : largeur, profondeur. */
   blockSize: uniform(new Vector2(100, 100)),
   /** Un texel de la mosaique, en uv du bloc. */
@@ -144,6 +145,11 @@ export function terrainMeters(blockUv: Node, detailed = true): Node {
   return mix(coarse, read(s.heights, uv).div(weight.max(1e-3)), weight);
 }
 
+/** 1 au centre du sol, 0 au-dela de `GROUND_FADE.far`, pour un point `blockUv` du bloc. `smoothstep` veut ses bornes dans l'ordre (Metal). */
+export function groundFade(blockUv: Node): Node {
+  return smoothstep(GROUND_FADE.near, GROUND_FADE.far, length(blockUv.sub(0.5).mul(s.blockSize))).oneMinus();
+}
+
 /** Hauteur dans la scene au point `blockUv` du bloc (vertex shader). */
 export function terrainHeight(blockUv: Node, detailed = true): Node {
   return terrainMeters(blockUv, detailed).sub(s.floor).mul(s.heightScale);
@@ -151,15 +157,11 @@ export function terrainHeight(blockUv: Node, detailed = true): Node {
 
 export function createTerrainMaterial(): MeshStandardNodeMaterial {
   const uv = positionGeometry.xz;
-  // 0 sur le dessus, 1 sur les parois et le fond ; `base` vaut 1 au bas du bloc.
-  const wall = normalGeometry.y.oneMinus().min(1);
-  const base = positionGeometry.y.negate();
-
   const material = new MeshStandardNodeMaterial({ roughness: 0.85, metalness: 0 });
   const meters = terrainMeters(uv);
   const height = meters.sub(s.floor).mul(s.heightScale);
   const sea = float(1).sub(smoothstep(0, 1, meters));
-  material.positionNode = vec3(positionGeometry.x, mix(height.sub(sea.mul(SEA_DROP)), s.baseDepth.negate(), base), positionGeometry.z);
+  material.positionNode = vec3(uv.x, height.sub(sea.mul(SEA_DROP)), uv.y);
 
   // Pente et creux par sommet : moins nombreux que les pixels, et absents de la passe d'ombre.
   const spread = s.texel.mul(NORMAL_SPREAD);
@@ -167,8 +169,8 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
   const dv = vec2(0, spread.y);
   const dx = terrainHeight(uv.add(du)).sub(terrainHeight(uv.sub(du))).div(spread.x.mul(s.blockSize.x).mul(2));
   const dz = terrainHeight(uv.add(dv)).sub(terrainHeight(uv.sub(dv))).div(spread.y.mul(s.blockSize.y).mul(2));
-  const topNormal = vertexStage(vec3(dx.negate(), 1, dz.negate()));
-  material.normalNode = normalize(cameraViewMatrix.mul(vec4(mix(topNormal, normalGeometry, wall), 0)).xyz);
+  const normal = vertexStage(vec3(dx.negate(), 1, dz.negate()));
+  material.normalNode = normalize(cameraViewMatrix.mul(vec4(normal, 0)).xyz);
 
   // Creux : pente moyenne vers le haut autour du point, sur deux rayons.
   let concavity: Node = float(0);
@@ -182,23 +184,23 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
 
   // Brume : nappes de bruit dans la moitie basse du relief, qui derivent lentement.
   const low = vertexStage(meters.sub(s.floor).div(s.relief.max(1)));
-  const geo = s.geoOrigin.add(uv.mul(s.geoSize)).mul(vec2(s.geoCos, 1));
+  const lonLat = s.geoOrigin.add(uv.mul(s.geoSize));
+  const geo = lonLat.mul(vec2(s.geoCos, 1));
   const noiseAt = (scale: Node) => s.mistNoise.sample(geo.mul(scale).div(NOISE_CELLS).add(s.mistDrift)).r;
   const clouds = mix(noiseAt(s.mistScales.x), noiseAt(s.mistScales.y), s.mistBlend);
   const seaTint = vertexStage(sea);
-  const mist = smoothstep(0.45, 0.8, clouds)
-    .mul(smoothstep(0.55, 0, low))
-    .mul(seaTint.mul(-0.7).add(1))
-    .mul(s.mist)
-    .mul(wall.oneMinus());
+  const mist = smoothstep(0.45, 0.8, clouds).mul(smoothstep(0, 0.55, low).oneMinus()).mul(seaTint.mul(-0.7).add(1)).mul(s.mist);
 
   const ground = mix(color(0xe4e4e4).mul(occlusion), color(SEA_COLOR), seaTint);
-  material.colorNode = mix(mix(ground, color(0xf4f4f4), mist), color(0x202020), wall);
-  // Parois lisibles meme a l'ombre : gris en haut, noir au pied. La brume eclaire aussi les versants a l'ombre.
-  const depth = positionWorld.y.negate().div(s.baseDepth).clamp(0, 1);
-  material.emissiveNode = mix(color(0x3a3a3a), color(0x000000), depth.pow(0.6)).mul(wall).add(vec3(mist.mul(0.25)));
-  // @ts-expect-error les types annoncent () => Node, three passe l'ombre en argument
-  material.receivedShadowNode = (shadow: Node) => mix(shadow, float(1), wall);
+  material.colorNode = mix(ground, color(0xf4f4f4), mist);
+  // La brume eclaire aussi les versants a l'ombre.
+  material.emissiveNode = vec3(mist.mul(0.25));
+
+  // Le sol s'eteint vers les bords et au-dela du monde (vue mondiale), apres l'eclairage ;
+  // au carre, pour un fondu regulier a l'oeil malgre le passage en sRGB.
+  const inWorld = step(-180, lonLat.x).mul(step(lonLat.x, 180)).mul(step(-90, lonLat.y)).mul(step(lonLat.y, 90));
+  const fade = groundFade(uv).mul(inWorld);
+  material.outputNode = vec4(output.rgb.mul(fade.mul(fade)), output.a);
 
   return material;
 }

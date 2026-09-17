@@ -1,5 +1,6 @@
 import { Object3DNodeBase } from "@_core/nodes/object3d/Object3DNode.base.ts";
-import { terrainHeight, terrainSettings } from "@graphics/materials/Terrain.material.ts";
+import { TERRAIN_CONFIG } from "@graphics/config/terrain.config.ts";
+import { groundFade, terrainHeight, terrainSettings } from "@graphics/materials/Terrain.material.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import type { TerrainNode } from "@graphics/nodes/terrain/Terrain.node.ts";
 import { expandBounds } from "@graphics/terrain/GeoProjection.ts";
@@ -21,7 +22,6 @@ import {
   float,
   instancedBufferAttribute,
   length,
-  min,
   mix,
   mod,
   positionGeometry,
@@ -35,10 +35,13 @@ import {
 } from "three/tsl";
 import { LineBasicNodeMaterial, PointsNodeMaterial, type Node } from "three/webgpu";
 
-/** Au plus autant de meridiens sur la largeur du bloc. */
+/** Au plus autant de meridiens sur la largeur de la zone de detail ; le sol en porte `groundSpan` fois plus. */
 const MAX_LINES = 6;
+const SPAN = TERRAIN_CONFIG.groundSpan;
+/** Uv du sol : de `GROUND_MIN` a `GROUND_MIN + SPAN`. */
+const GROUND_MIN = 0.5 - SPAN / 2;
 /** Points par ligne drapee, et hauteur au-dessus du sol. */
-const SAMPLES = 160;
+const SAMPLES = 360;
 const LIFT = 0.15;
 /** Lignes qui flottent au-dessus du relief et debordent du bloc. */
 const FLOAT_HEIGHT = 32;
@@ -76,7 +79,7 @@ export class SurveyNode extends Object3DNodeBase {
   private readonly _blockSpace = new Group();
   private readonly _draped = new LineSegments(lineGeometry(), new LineBasicNodeMaterial(onGround));
   private readonly _floating = new LineSegments(lineGeometry(), new LineBasicNodeMaterial(additive));
-  private readonly _crossings = new InstancedBufferAttribute(new Float32Array((MAX_LINES + 2) ** 2 * 3), 3);
+  private readonly _crossings = new InstancedBufferAttribute(new Float32Array(((MAX_LINES + 1) * SPAN + 1) ** 2 * 3), 3);
   private readonly _dots: Sprite;
   private readonly _dust: Sprite;
   private readonly _clock = uniform(0);
@@ -137,18 +140,17 @@ export class SurveyNode extends Object3DNodeBase {
   }
 
   private _setupLines(): void {
-    // Drapees : x, z sont les uv du bloc ; fondu sur ses bords.
+    // Drapees : x, z sont les uv du bloc ; elles s'effacent avec le sol.
     const draped = this._draped.material as LineBasicNodeMaterial;
     const blockUv = positionGeometry.xz;
     draped.positionNode = vec3(blockUv.x, terrainHeight(blockUv).add(LIFT), blockUv.y);
-    const edge = min(min(blockUv.x, blockUv.y), min(blockUv.x.oneMinus(), blockUv.y.oneMinus()));
     draped.colorNode = color(INK);
-    draped.opacityNode = smoothstep(0, 0.05, edge).mul(0.55);
+    draped.opacityNode = groundFade(blockUv).mul(0.55);
 
     // Flottantes : dans la scene, de plus en plus transparentes en s'eloignant du centre.
     const floating = this._floating.material as LineBasicNodeMaterial;
     floating.colorNode = vec3(1);
-    floating.opacityNode = smoothstep(FLOAT_REACH, 30, length(positionWorld.xz)).mul(0.16);
+    floating.opacityNode = smoothstep(30, FLOAT_REACH, length(positionWorld.xz)).oneMinus().mul(0.16);
   }
 
   /** Croisements drapes : un point, et un anneau pour le plus central. */
@@ -161,10 +163,10 @@ export class SurveyNode extends Object3DNodeBase {
     const ring = crossing.z;
     material.sizeNode = mix(float(5), float(22), ring);
     const r = length(uv().sub(0.5));
-    const dot = smoothstep(0.5, 0.25, r);
-    const circle = smoothstep(0.05, 0, r.sub(0.44).abs()).add(smoothstep(0.12, 0.06, r));
+    const dot = smoothstep(0.25, 0.5, r).oneMinus();
+    const circle = smoothstep(0, 0.05, r.sub(0.44).abs()).oneMinus().add(smoothstep(0.06, 0.12, r).oneMinus());
     material.colorNode = color(INK);
-    material.opacityNode = mix(dot, circle, ring).mul(0.85);
+    material.opacityNode = mix(dot, circle, ring).mul(groundFade(at)).mul(0.85);
     const sprite = new Sprite(material);
     sprite.count = 0;
     return sprite;
@@ -182,10 +184,10 @@ export class SurveyNode extends Object3DNodeBase {
     const height = mix(float(3), float(48), seed.z).add(sin(this._clock.mul(0.2).add(seed.y.mul(30))).mul(1.2));
     material.positionNode = vec3(ground.x, height, ground.y);
     material.sizeNode = mix(float(1.5), float(3.5), seed.w);
-    const fade = smoothstep(DUST_REACH, DUST_REACH * 0.4, length(ground));
+    const fade = smoothstep(DUST_REACH * 0.4, DUST_REACH, length(ground)).oneMinus();
     const r = length(uv().sub(0.5));
     material.colorNode = vec3(1);
-    material.opacityNode = smoothstep(0.5, 0.1, r).mul(fade).mul(mix(float(0.15), float(0.55), seed.x)) as Node;
+    material.opacityNode = smoothstep(0.1, 0.5, r).oneMinus().mul(fade).mul(mix(float(0.15), float(0.55), seed.x)) as Node;
     const sprite = new Sprite(material);
     sprite.count = DUST;
     return sprite;
@@ -205,11 +207,13 @@ export class SurveyNode extends Object3DNodeBase {
   private _rebuild(): void {
     const terrain = this._terrain;
     const b = terrain.bounds;
+    const ground = expandBounds(b, (SPAN - 1) / 2);
     const step = graticuleStep(b, MAX_LINES);
-    const lons = graticuleValues(b.west, b.east, step);
-    const lats = graticuleValues(b.south, b.north, step);
+    const lons = graticuleValues(ground.west, ground.east, step);
+    const lats = graticuleValues(ground.south, ground.north, step);
     const u = (lon: number) => (lon - b.west) / (b.east - b.west);
     const v = (lat: number) => (b.north - lat) / (b.north - b.south);
+    const across = (t: number) => GROUND_MIN + t * SPAN;
 
     // Drapees, en uv du bloc.
     const draped: number[] = [];
@@ -220,8 +224,8 @@ export class SurveyNode extends Object3DNodeBase {
         draped.push(x0, 0, z0, x1, 0, z1);
       }
     };
-    for (const lon of lons) segment((t) => [u(lon), t]);
-    for (const lat of lats) segment((t) => [t, v(lat)]);
+    for (const lon of lons) segment((t) => [u(lon), across(t)]);
+    for (const lat of lats) segment((t) => [across(t), v(lat)]);
     setPositions(this._draped.geometry, draped);
 
     // Flottantes, dans la scene, sur une emprise plus large que le bloc.
@@ -248,9 +252,11 @@ export class SurveyNode extends Object3DNodeBase {
     this._crossings.needsUpdate = true;
     this._dots.count = count;
 
+    // Coordonnees sur les bords nord et ouest de la zone de detail.
+    const inside = (x: number) => x >= 0 && x <= 1;
     this._rebuildTexts([
-      ...lons.map((lon) => ({ text: formatDegrees(lon, step, "E", "W"), u: u(lon), v: 0, side: "north" as const })),
-      ...lats.map((lat) => ({ text: formatDegrees(lat, step, "N", "S"), u: 0, v: v(lat), side: "west" as const })),
+      ...lons.filter((lon) => inside(u(lon))).map((lon) => ({ text: formatDegrees(lon, step, "E", "W"), u: u(lon), v: 0, side: "north" as const })),
+      ...lats.filter((lat) => inside(v(lat))).map((lat) => ({ text: formatDegrees(lat, step, "N", "S"), u: 0, v: v(lat), side: "west" as const })),
     ]);
   }
 
@@ -272,7 +278,7 @@ export class SurveyNode extends Object3DNodeBase {
   }
 
   private _layoutTexts(): void {
-    const { minX, maxX, minZ, maxZ } = this._terrain.blockTop;
+    const { minX, maxX, minZ, maxZ } = this._terrain.detailRect;
     const camera = this._camera();
     const { clientWidth: width, clientHeight: height } = this._canvas;
     for (const text of this._texts) {

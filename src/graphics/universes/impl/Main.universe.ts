@@ -35,10 +35,15 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
 
     const terrain = new TerrainNode(new IgnElevationProvider());
     const cameraNode = new MapCameraNode(
+      device.input,
       device.renderer.domElement,
       terrain.rect,
       (x, z) => terrain.heightAt(x, z),
-      { pan: (dx, dz) => terrain.moveBy(dx, dz), zoom: (factor, x, z) => terrain.zoomAt(factor, x, z) }
+      {
+        pan: (dx, dz) => terrain.moveBy(dx, dz),
+        zoom: (factor, x, z) => terrain.zoomAt(factor, x, z),
+        fling: (vx, vz) => terrain.fling(vx, vz),
+      }
     );
 
     super(
@@ -53,7 +58,10 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
 
     this._cameraNode = cameraNode;
     this._terrain = terrain;
-    this._labels = new LabelsNode(device.renderer.domElement, terrain, () => this.camera as Camera);
+    // Un nom de ville clique : vol vers elle, en rapprochant la vue (sans descendre sous 8 km).
+    this._labels = new LabelsNode(device.renderer.domElement, terrain, () => this.camera as Camera, ({ lon, lat }) =>
+      terrain.flyTo({ lon, lat, extentKm: Math.min(terrain.extentKm, Math.max(8, terrain.extentKm / 4)) })
+    );
     this._survey = new SurveyNode(terrain, device.renderer.domElement, () => this.camera as Camera);
     cameraNode.isActive = () => this.camera === cameraNode.camera;
 
@@ -107,13 +115,6 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
           "exaggeration",
           { label: "exageration", min: 0.5, max: 12, step: 0.1 },
           "terrain.exaggeration"
-        ),
-        debug.bind(
-          target,
-          terrainSettings.baseDepth as unknown as Record<string, unknown>,
-          "value",
-          { label: "socle", min: 0.5, max: 20, step: 0.1 },
-          "terrain.baseDepth"
         ),
         debug.bind(
           target,

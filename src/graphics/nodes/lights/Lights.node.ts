@@ -2,8 +2,8 @@ import { Object3DNodeBase } from "@_core/nodes/object3d/Object3DNode.base.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import { DirectionalLight, Group, HemisphereLight, MathUtils } from "three";
 
-const SUN_DISTANCE = 300;
-const SHADOW_EXTENT = 80;
+const SUN_DISTANCE = 400;
+const SHADOW_EXTENT = 150;
 
 /** Soleil rasant avec ombres portees sur le bloc, et une ambiance tres faible. */
 export class LightsNode extends Object3DNodeBase {

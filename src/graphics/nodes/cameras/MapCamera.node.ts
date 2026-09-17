@@ -1,24 +1,22 @@
 import { NodeBase } from "@_core/nodes/Node.base.ts";
+import type Input from "@_core/systems/Input.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import type { SceneRect } from "@graphics/terrain/GeoProjection.ts";
-import { MathUtils, PerspectiveCamera, Vector3 } from "three";
-import { MapControls } from "three/examples/jsm/controls/MapControls.js";
+import { MathUtils, PerspectiveCamera, Vector2, Vector3 } from "three";
 import { TerrainGesturesHelper, type TerrainGestureHandlers } from "./TerrainGestures.helper.ts";
 
-// Focale longue : vue presque isometrique, comme la reference.
-const FOV = 20;
-// Vue de depart en diagonale, comme un bloc pose sur une table.
-const START_AZIMUTH = MathUtils.degToRad(45);
-const START_POLAR = MathUtils.degToRad(57);
-const MAX_POLAR = MathUtils.degToRad(80);
-const GROUND_CLEARANCE_KM = 0.1;
-// Le bloc occupe environ 80 % du plus petit cote de l'ecran.
-const FIT_MARGIN = 1.2;
-// Cible au-dessus du bloc, en fraction de sa taille : le bloc descend dans le cadre, les etiquettes ont le ciel.
-const TARGET_LIFT = 0.2;
+const FOV = 32;
+/** Vue inclinee, nord en haut de l'ecran. */
+const POLAR = MathUtils.degToRad(50);
+const GROUND_CLEARANCE = 0.5;
+/** La largeur de la zone de detail occupe l'ecran, un peu au-dela. */
+const FIT = 0.95;
+/** Parallaxe comme dans le boilerplate : decalage maximal (fraction de la distance) et temps de reponse. */
+const PARALLAX = { x: 0.06, y: 0.035 };
+const PARALLAX_EASE_MS = 350;
 
 /**
- * Camera fixee sur le bloc : clic droit ou deux doigts pour tourner.
+ * Camera fixe au-dessus de la carte, qui suit doucement la souris.
  * Glisser, molette et pincement agissent sur le terrain (`gestures`), pas sur la camera.
  */
 export class MapCameraNode extends NodeBase {
@@ -28,43 +26,35 @@ export class MapCameraNode extends NodeBase {
   private readonly _element: HTMLElement;
   private readonly _heightAt: (x: number, z: number) => number;
   private readonly _gestures: TerrainGestureHandlers;
-  private readonly _halfDiagonal: number;
-  private readonly _center = new Vector3();
-  private _controls: MapControls | null = null;
+  private readonly _width: number;
+  private readonly _target = new Vector3();
+  private readonly _parallax = new Vector2();
+  private readonly _mouse = new Vector2();
+  private _distance = 1;
   private _drag: TerrainGesturesHelper | null = null;
 
   constructor(
+    input: Input,
     element: HTMLElement,
     bounds: SceneRect,
     heightAt: (x: number, z: number) => number,
     gestures: TerrainGestureHandlers
   ) {
-    super(NODE_ID.CAMERA_MAIN, "Map Camera");
+    super(NODE_ID.CAMERA_MAIN, "Map Camera", input);
     const aspect =
       globalThis.window && globalThis.window.innerHeight > 0 ? globalThis.window.innerWidth / globalThis.window.innerHeight : 16 / 9;
-    this.camera = new PerspectiveCamera(FOV, aspect, 0.01, 5000);
+    this.camera = new PerspectiveCamera(FOV, aspect, 0.5, 2000);
     this._element = element;
     this._heightAt = heightAt;
     this._gestures = gestures;
-
-    this._halfDiagonal = Math.hypot(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ) / 2;
-    this._center.set((bounds.minX + bounds.maxX) / 2, (bounds.maxX - bounds.minX) * TARGET_LIFT, (bounds.minZ + bounds.maxZ) / 2);
-    this.camera.position.setFromSphericalCoords(1, START_POLAR, START_AZIMUTH).add(this._center);
-    this.camera.lookAt(this._center);
+    this._width = bounds.maxX - bounds.minX;
+    this._target.set((bounds.minX + bounds.maxX) / 2, 0, (bounds.minZ + bounds.maxZ) / 2);
     this._fit();
+    this._place();
   }
 
   override onMounted(): void {
     super.onMounted();
-    const controls = new MapControls(this.camera, this._element);
-    controls.enablePan = false;
-    controls.enableZoom = false;
-    controls.maxPolarAngle = MAX_POLAR;
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.1;
-    controls.target.copy(this._center);
-    controls.update();
-    this._controls = controls;
     this._drag = new TerrainGesturesHelper(this._element, () => this.camera, this._gestures);
   }
 
@@ -74,20 +64,12 @@ export class MapCameraNode extends NodeBase {
   }
 
   override update(_time: number, dt: number): void {
-    const controls = this._controls;
-    if (!controls || !this._drag) return;
-    controls.enabled = this._drag.enabled = this.isActive();
-    if (!controls.enabled) return;
-    controls.update(dt / 1000);
-
-    const floor = this._heightAt(this.camera.position.x, this.camera.position.z) + GROUND_CLEARANCE_KM;
-    if (this.camera.position.y < floor) this.camera.position.y = floor;
-
-    const near = Math.max(this.camera.position.distanceTo(controls.target) / 1000, 0.01);
-    if (Math.abs(near - this.camera.near) > near * 0.1) {
-      this.camera.near = near;
-      this.camera.updateProjectionMatrix();
-    }
+    if (!this._drag) return;
+    this._drag.enabled = this.isActive();
+    if (!this._drag.enabled) return;
+    const mouse = this._input?.mouse;
+    if (mouse) this._parallax.lerp(this._mouse.set(mouse.nx, mouse.ny), 1 - Math.exp(-dt / PARALLAX_EASE_MS));
+    this._place();
   }
 
   override resize(width: number, height: number): void {
@@ -101,17 +83,27 @@ export class MapCameraNode extends NodeBase {
     super.dispose();
   }
 
-  /** Recule la camera, dans sa direction actuelle, pour que le bloc tienne a l'ecran. */
+  /** Distance a laquelle la zone de detail remplit la largeur de l'ecran. */
   private _fit(): void {
-    const halfFov = Math.atan(Math.tan(MathUtils.degToRad(FOV) / 2) * Math.min(1, this.camera.aspect));
-    const target = this._controls?.target ?? this._center;
-    this.camera.position.sub(target).setLength((this._halfDiagonal / Math.tan(halfFov)) * FIT_MARGIN).add(target);
+    const halfFov = Math.atan(Math.tan(MathUtils.degToRad(FOV) / 2) * this.camera.aspect);
+    this._distance = (this._width / 2 / Math.tan(halfFov)) * FIT;
+  }
+
+  private _place(): void {
+    const d = this._distance;
+    const { camera } = this;
+    camera.position.set(
+      this._target.x + this._parallax.x * PARALLAX.x * d,
+      this._target.y + Math.cos(POLAR) * d + this._parallax.y * PARALLAX.y * d,
+      this._target.z + Math.sin(POLAR) * d
+    );
+    const floor = this._heightAt(camera.position.x, camera.position.z) + GROUND_CLEARANCE;
+    camera.position.y = Math.max(camera.position.y, floor);
+    camera.lookAt(this._target);
   }
 
   private _release(): void {
-    this._controls?.dispose();
     this._drag?.dispose();
-    this._controls = null;
     this._drag = null;
   }
 }

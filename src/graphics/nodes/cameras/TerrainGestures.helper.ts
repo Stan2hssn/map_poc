@@ -5,10 +5,14 @@ export interface TerrainGestureHandlers {
   pan(dx: number, dz: number): void;
   /** Facteur applique a la largeur couverte, autour du point (x, z) de la scene. */
   zoom(factor: number, x: number, z: number): void;
+  /** Vitesse au relacher d'un glisser, en unites de scene par ms. */
+  fling(vx: number, vz: number): void;
 }
 
 const MAX_STEP = 20;
 const WHEEL_SPEED = 0.0015;
+/** La vitesse de lancer est mesuree sur les derniers mouvements ; un arret plus long l'annule. */
+const FLING_WINDOW_MS = 90;
 
 /**
  * Gestes sur le terrain, la camera ne bouge pas :
@@ -28,6 +32,7 @@ export class TerrainGesturesHelper {
   private readonly _pointers = new Map<number, { x: number; y: number }>();
   private _dragging = false;
   private _pinch = 0;
+  private _moves: { dx: number; dz: number; t: number }[] = [];
 
   constructor(element: HTMLElement, camera: () => Camera, handlers: TerrainGestureHandlers) {
     this._element = element;
@@ -69,6 +74,7 @@ export class TerrainGesturesHelper {
     if (this._pointers.size !== 1 || event.button !== 0) return;
     const hit = this._ground(event.clientX, event.clientY);
     this._dragging = !!hit;
+    this._moves = [];
     if (hit) this._last.copy(hit);
   };
 
@@ -93,13 +99,27 @@ export class TerrainGesturesHelper {
     const dz = MathUtils.clamp(this._last.z - hit.z, -MAX_STEP, MAX_STEP);
     this._last.copy(hit);
     this._handlers.pan(dx, dz);
+    const t = performance.now();
+    this._moves.push({ dx, dz, t });
+    while (this._moves[0]!.t < t - FLING_WINDOW_MS) this._moves.shift();
   };
 
   private readonly _up = (event: PointerEvent): void => {
     this._pointers.delete(event.pointerId);
+    if (this._dragging) this._fling();
     this._dragging = false;
     this._pinch = 0;
   };
+
+  private _fling(): void {
+    const now = performance.now();
+    const recent = this._moves.filter((m) => m.t >= now - FLING_WINDOW_MS);
+    if (recent.length < 2) return;
+    const elapsed = Math.max(now - recent[0]!.t, 16);
+    const dx = recent.reduce((sum, m) => sum + m.dx, 0);
+    const dz = recent.reduce((sum, m) => sum + m.dz, 0);
+    this._handlers.fling(dx / elapsed, dz / elapsed);
+  }
 
   private readonly _wheel = (event: WheelEvent): void => {
     if (!this.enabled) return;

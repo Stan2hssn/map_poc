@@ -74,8 +74,10 @@ export class TerrainHeightsHelper {
     const { bounds, level } = view;
     const moving = !!destination;
     this._request(destination ? [...requests(destination, true), ...requests(view, false)] : requests(view, true));
-    const area = expandBounds(bounds, 0.5);
-    const coarse = this._loadedLevel(coarseLevel(level), area);
+    // L'apercu couvre tout le sol ; le detail, la zone centrale.
+    const area = expandBounds(bounds, (C.groundSpan - 1) / 2);
+    // Le niveau de l'apercu suit le centre de la vue ; la peripherie se complete depuis les parents.
+    const coarse = this._loadedLevel(coarseLevel(level), expandBounds(bounds, C.margin));
     if (this._due(this._coarse, coarse, bounds, false, true)) {
       this._coarse = this._compose(coarse, area, this._fills);
       upload(terrainSettings.coarseHeights, this._coarse.mosaic.data, this._coarse.mosaic, HalfFloatType);

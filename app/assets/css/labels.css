@@ -41,12 +41,26 @@
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.55);
+  transition: scale 220ms ease, box-shadow 220ms ease;
+}
+
+.map-label:has(.map-label__text:hover) .map-label__dot {
+  scale: 1.8;
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.18), 0 0 14px rgba(255, 255, 255, 0.7);
+}
+
+.map-label:has(.map-label__text:hover) .map-label__line {
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .map-label__text {
   position: absolute;
   top: 1.1em;
   left: 1.25rem;
+  padding: 0.25em 0.4em 0.3em;
+  margin: -0.25em -0.4em;
+  pointer-events: auto;
+  cursor: pointer;
   color: #fff;
   font-family: var(--font-map);
   white-space: nowrap;

@@ -12,9 +12,9 @@ export const TERRAIN_CONFIG = {
   /** Largeur a laquelle l'exageration s'applique telle quelle (voir `TerrainNode.heightScale`). */
   referenceExtentKm: 40,
   maxZoom: 14,
-  /** Taille du bloc dans la scene, et epaisseur du socle. */
+  /** Taille de la zone de detail dans la scene ; le sol s'etend sur `groundSpan` fois cette taille. */
   blockSize: 100,
-  baseDepth: 3,
+  groundSpan: 3,
   /** Plafond du relief affiche : les massifs ne deviennent pas des aiguilles. */
   maxRelief: 25,
   segments: 1024,
