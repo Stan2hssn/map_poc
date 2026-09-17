@@ -1,9 +1,9 @@
 import type { PassContext } from "@_core/pipeline/Pass.interface.ts";
 import { PipelineBase } from "@_core/pipeline/Pipeline.base.ts";
-import type { Renderer } from "@_core/systems/Renderer.type.ts";
 import type { FrameTiming } from "@_core/types/Frame.type.ts";
-import { HalfFloatType, Vector2, WebGLRenderTarget, type TextureDataType } from "three";
-import type { Pass } from "./passes/Pass.ts";
+import { HalfFloatType, RenderTarget, Vector2, type TextureDataType } from "three";
+import type { WebGPURenderer } from "three/webgpu";
+import type { PassBase } from "./passes/Pass.base.ts";
 
 interface EffectComposerOptions {
   frameBufferType?: TextureDataType;
@@ -18,16 +18,15 @@ interface EffectComposerOptions {
  * - La derniere passe rend a l'ecran.
  */
 export class EffectComposer extends PipelineBase {
-  readonly inputBuffer: WebGLRenderTarget;
-  readonly outputBuffer: WebGLRenderTarget;
-  private readonly _chain: Pass[];
+  readonly inputBuffer: RenderTarget;
+  readonly outputBuffer: RenderTarget;
+  private readonly _chain: PassBase[];
   private readonly _size = new Vector2();
 
-  // `WebGLRenderTarget` sert aussi a WebGPURenderer, qui accepte tout `RenderTarget`.
-  constructor(passes: Pass[], { frameBufferType = HalfFloatType, multisampling = 0 }: EffectComposerOptions = {}) {
+  constructor(passes: PassBase[], { frameBufferType = HalfFloatType, multisampling = 0 }: EffectComposerOptions = {}) {
     super(passes);
     this._chain = passes;
-    this.inputBuffer = new WebGLRenderTarget(1, 1, { type: frameBufferType, samples: multisampling });
+    this.inputBuffer = new RenderTarget(1, 1, { type: frameBufferType, samples: multisampling });
     this.outputBuffer = this.inputBuffer.clone();
 
     const last = passes.at(-1);
@@ -35,7 +34,7 @@ export class EffectComposer extends PipelineBase {
   }
 
   override prepare(frame: FrameTiming, ctx: PassContext): void {
-    const { x, y } = (ctx.renderer as Renderer).getDrawingBufferSize(this._size);
+    const { x, y } = (ctx.renderer as WebGPURenderer).getDrawingBufferSize(this._size);
     if (x !== this.inputBuffer.width || y !== this.inputBuffer.height) {
       this.inputBuffer.setSize(x, y);
       this.outputBuffer.setSize(x, y);

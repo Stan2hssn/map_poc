@@ -6,7 +6,7 @@ import { FOLDER_ID, TAB_ID } from "@graphics/debug/Debug.id.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import { MainCameraInputNode } from "@graphics/nodes/cameras/MainCamera.node.ts";
 import { CubeNode } from "@graphics/nodes/cube/Cube.node.ts";
-import { CopyPass, EffectComposer, RenderPass } from "@graphics/postprocessing/index.ts";
+import { EffectComposer, EffectPass, RenderPass } from "@graphics/postprocessing/index.ts";
 import { Scene } from "three";
 import type { UniverseId } from "../Universe.id.ts";
 import { UNIVERSE_ID } from "../Universe.id.ts";
@@ -21,7 +21,7 @@ export class MainUniverse extends UniverseBase<UniverseId> {
     const cameraNode = new MainCameraInputNode(device.input);
 
     const graph = new NodeGraph(scene);
-    const pipeline = new EffectComposer([new RenderPass(), new CopyPass()]);
+    const pipeline = new EffectComposer([new RenderPass(), new EffectPass()]);
 
     super(
       UNIVERSE_ID.MAIN,

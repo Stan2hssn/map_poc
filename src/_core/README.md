@@ -129,7 +129,7 @@ Changer de backend = deux lignes : `DEVICE_CONFIG.renderer.backend` et l'export 
 - Le code GLSL (`ShaderMaterial`, `.frag`) ne tourne pas sous `WebGPURenderer`, même en repli WebGL2. Les matériaux standards (`MeshStandardMaterial`…) marchent sur les deux.
 - three-perf est WebGL seulement ; stats-gl gère les deux.
 - Tester le repli : `forceWebGL: true` dans la config passée à `ThreeDevice.create`.
-- **WebGPU, sortie écran** : tout `render` ou `clear` sur le canvas avec `outputColorSpace` sRGB passe par une cible interne pleine résolution puis une recopie (three r181). La dernière passe encode donc elle-même (voir `Pass.renderFullscreen`) et rien ne vide le canvas à part.
+- **WebGPU, sortie écran** : tout `render` ou `clear` sur le canvas avec `outputColorSpace` sRGB passe par une cible interne pleine résolution puis une recopie (three r181). La dernière passe encode donc elle-même (voir `PassBase.renderFullscreen`) et rien ne vide le canvas à part.
 
 ## Boucle par image
 
@@ -153,10 +153,10 @@ Output.render
 const pipeline = new EffectComposer([new RenderPass(), new CopyPass()], { multisampling: 0 });
 ```
 
-- `prepare` : `inputBuffer` et `outputBuffer` suivent la taille du canvas (`getDrawingBufferSize`), `Pass.setSize` est appelé.
+- `prepare` : `inputBuffer` et `outputBuffer` suivent la taille du canvas (`getDrawingBufferSize`), `PassBase.setSize` est appelé.
 - `render` : `RenderPass` dessine la scène dans `inputBuffer`.
 - `postRender` : chaque passe lit `ctx.inputBuffer`, écrit `ctx.outputBuffer`, puis les deux s'échangent (`needsSwap`). La dernière passe rend à l'écran (`renderToScreen`).
-- Les passes plein écran dessinent un triangle partagé (`Pass.renderFullscreen`), pas un quad.
+- Les passes plein écran dessinent un triangle partagé (`PassBase.renderFullscreen`), pas un quad.
 - Un effet = une passe plein écran de plus avant `CopyPass`, avec son matériau GLSL et TSL.
 
 ## Pipeline et passes
@@ -180,7 +180,7 @@ Précalculs de textures, simulations, ping-pong : tout ce qui dessine dans une `
 - elle garde les appels de rendu : les nodes décrivent le travail (cible, scène, caméra, drapeau « à redessiner ») et la passe l'exécute. `renderer.render()` n'a rien à faire dans un node.
 
 ```ts
-export class OffscreenPass extends Pass {
+export class OffscreenPass extends PassBase {
   private readonly _travaux = new Set<OffscreenJob>();
   ajouter(t: OffscreenJob): void { this._travaux.add(t); }
   retirer(t: OffscreenJob): void { this._travaux.delete(t); }
