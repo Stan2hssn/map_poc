@@ -11,6 +11,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "typecheck": "nuxt typecheck",
+    "test": "node --test \"src/**/*.test.ts\"",
     "postinstall": "nuxt prepare",
     "assets:convert": "./scripts/convert-assets-for-prod.sh",
     "assets:convert:clean": "CLEANUP_ORIGINALS=true ./scripts/convert-assets-for-prod.sh",
