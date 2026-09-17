@@ -1,1 +1,12 @@
-{}
+{
+  "tweakpane": {
+    "terrain": {
+      "exaggeration": 6
+    },
+    "lights": {
+      "intensity": 3.4,
+      "azimuth": 27,
+      "elevation": 21
+    }
+  }
+}

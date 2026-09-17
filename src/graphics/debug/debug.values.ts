@@ -16,12 +16,16 @@ const ROUTE = "/__sonde/debug";
 /**
  * Reglages relus au demarrage.
  *
- * L'import est STATIQUE : Vite l'inline au build et le recharge par HMR des
- * que le fichier change. Un `fetch` aurait rendu le panneau dependant d'une
- * requete qui n'aboutit pas en production, ou il n'y a pas de pont.
+ * L'import est STATIQUE : Vite l'inline au build. Un `fetch` aurait rendu le
+ * panneau dependant d'une requete qui n'aboutit pas en production, ou il n'y a
+ * pas de pont.
  */
 export const DEBUG_VALUES: DebugValues =
   ((fichier as Record<string, unknown>)[CLE] as DebugValues | undefined) ?? {};
+
+// Chaque ecriture du panneau modifie le JSON : sans cet arret, le HMR remonte
+// jusqu'a `ThreeStage` et recree toute la scene. Les valeurs sont deja en memoire.
+import.meta.hot?.accept("../config/debug.values.json", () => {});
 
 /**
  * Ecrit les reglages dans le fichier du depot, en developpement seulement.
