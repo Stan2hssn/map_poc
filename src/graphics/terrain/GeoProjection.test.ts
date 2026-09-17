@@ -27,6 +27,15 @@ test("rect : nord en haut (minZ)", () => {
   assert.ok(r.minX < 0 && r.maxX > 0 && r.minZ < 0 && r.maxZ > 0);
 });
 
+test("carre centre sur l'origine de la projection", () => {
+  const p = new GeoProjection(4.054, 43.96);
+  const r = p.rect(p.squareBounds(100));
+  close(r.minX, -50);
+  close(r.maxX, 50);
+  close(r.minZ, -50);
+  close(r.maxZ, 50);
+});
+
 test("emprise d'une tuile WGS84G", () => {
   const b = tileBounds(9, 522, 130);
   close(b.west, 3.515625, 1e-9);

@@ -44,6 +44,12 @@ export class GeoProjection {
     return this.lat0 - z / this._kz;
   }
 
+  /** Carre de `sizeKm` de cote centre sur l'origine. */
+  squareBounds(sizeKm: number): GeoBounds {
+    const half = sizeKm / 2;
+    return { west: this.lon(-half), east: this.lon(half), north: this.lat(-half), south: this.lat(half) };
+  }
+
   rect(b: GeoBounds): SceneRect {
     return { minX: this.x(b.west), maxX: this.x(b.east), minZ: this.z(b.north), maxZ: this.z(b.south) };
   }
