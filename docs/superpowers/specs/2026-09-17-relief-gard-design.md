@@ -88,3 +88,19 @@ Limites connues :
 - **Mémoire CPU** : chaque tuile affichée garde ses altitudes float32 (256 Ko) pour `heightAt`.
 - **Coût CPU** : il croît avec le nombre de tuiles, une draw call et un bind group chacune. Piste : atlas ou instanciation.
 - **Affinage** : un niveau à la fois, les enfants devant être tous prêts.
+
+## Réorientation : bloc de relief (2026-09-17)
+
+L'objectif devient le bloc de la capture de référence (relief sur un socle, fond noir), à la place de la carte en tuiles.
+
+- **Géométrie** : `terrain/BlockGeometry.ts`, un seul mesh. Dessus en grille N × N, quatre parois et un fond ; `y = -1` marque le bas. 1024 × 1024 par défaut (1,06 M sommets, 2,1 M triangles, construits en 14 ms), réglable dans le panneau (256 à 1536).
+- **Altitudes** : `terrain/HeightMosaic.ts` assemble les tuiles IGN couvrant un carré de 130 km centré sur le Gard. Niveau 8 attendu au montage, niveau 10 (2560 × 2048, ~76 m) en arrière-plan. Une seule texture `HalfFloat`, échangée à chaque niveau.
+- **Shader** (`materials/Terrain.material.ts`) :
+  - le dessus et le haut des parois prennent l'altitude × exagération ; le bas descend à la profondeur du socle ;
+  - normales par différences centrales sur le dessus, normales de la géométrie sur les parois ;
+  - dessus `#e8e8e8`, parois `#3a3a3a`.
+- **Navigation** : glisser = déplacement, clic droit ou deux doigts = rotation (au plus 80° depuis la verticale), molette = zoom. Vue de départ en diagonale.
+- **Réglages** : exagération (jusqu'à 12), profondeur du socle, subdivisions, soleil. Enregistrés, et appliqués sans recréer la scène.
+- **Mesures** (canvas 2048 × 1536, WebGPU) : 1,1 à 2,9 ms par image de 512 à 1536 subdivisions ; 2 draw calls. Repli WebGL2 identique.
+- **Exagération** : au-delà de ×4 sur 130 km, les versants des Cévennes tournent en rideaux verticaux. C'est un effet de l'exagération, pas du rendu : à ×2, le relief est naturel.
+- **Plus utilisés** : `Tile.ts`, `TileTree.ts`, `TileGeometry.ts`, `TerrainMask.ts` et leurs tests, conservés en attendant une décision.

@@ -2,6 +2,7 @@ import type { IThreeDeviceSlice } from "@/_core/systems/ThreeDevice.ts";
 import type { DebugTarget } from "@_core/debug/index.ts";
 import { NodeGraph } from "@_core/nodes/NodeGraph.ts";
 import { UniverseBase } from "@_core/universes/Universe.base.ts";
+import { TERRAIN_CONFIG } from "@graphics/config/terrain.config.ts";
 import { FOLDER_ID, TAB_ID } from "@graphics/debug/Debug.id.ts";
 import { terrainSettings } from "@graphics/materials/Terrain.material.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
@@ -14,7 +15,7 @@ import { Color, Scene } from "three";
 import type { UniverseId } from "../Universe.id.ts";
 import { UNIVERSE_ID } from "../Universe.id.ts";
 
-const BACKGROUND = 0xdcd9d4;
+const BACKGROUND = 0x000000;
 
 export class MainUniverse extends UniverseBase<UniverseId> {
   private readonly _cameraNode: MapCameraNode;
@@ -26,11 +27,8 @@ export class MainUniverse extends UniverseBase<UniverseId> {
     const scene = new Scene();
     scene.background = new Color(BACKGROUND);
 
-    // La camera n'est lue par le terrain qu'apres le montage.
-    const cameraRef: { node: MapCameraNode | null } = { node: null };
-    const terrain = new TerrainNode(new IgnElevationProvider(), () => cameraRef.node!.camera);
+    const terrain = new TerrainNode(new IgnElevationProvider());
     const cameraNode = new MapCameraNode(device.renderer.domElement, terrain.rect, (x, z) => terrain.heightAt(x, z));
-    cameraRef.node = cameraNode;
 
     super(
       UNIVERSE_ID.MAIN,
@@ -81,20 +79,34 @@ export class MainUniverse extends UniverseBase<UniverseId> {
       ["intensity", { label: "soleil intensite", min: 0, max: 10, step: 0.1 }],
     ] as const;
 
+    const terrain = this._terrain;
+    const segmentOptions = Object.fromEntries(TERRAIN_CONFIG.segmentOptions.map((n) => [`${n} x ${n}`, n]));
+
     const declare = (target: DebugTarget | null) => {
       const bindings = [
         debug.bind(
           target,
           terrainSettings.exaggeration as unknown as Record<string, unknown>,
           "value",
-          { label: "exageration", min: 0.5, max: 6, step: 0.1 },
+          { label: "exageration", min: 0.5, max: 12, step: 0.1 },
           "terrain.exaggeration"
         ),
+        debug.bind(
+          target,
+          terrainSettings.baseDepth as unknown as Record<string, unknown>,
+          "value",
+          { label: "socle (km)", min: 0.5, max: 20, step: 0.1 },
+          "terrain.baseDepth"
+        ),
+        debug
+          .bind(target, terrain.settings, "segments", { label: "subdivisions", options: segmentOptions }, "terrain.segments")
+          .on("change", () => terrain.applySettings()),
         ...sunControls.map(([key, options]) =>
           debug.bind(target, lights.settings, key, options, `lights.${key}`).on("change", () => lights.apply())
         ),
       ];
       lights.apply();
+      terrain.applySettings();
       return () => {
         for (const binding of bindings) binding.dispose();
       };

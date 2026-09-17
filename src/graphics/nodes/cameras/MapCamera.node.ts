@@ -5,11 +5,14 @@ import { MathUtils, PerspectiveCamera, Vector3 } from "three";
 import { MapControls } from "three/examples/jsm/controls/MapControls.js";
 
 const FOV = 35;
-const TILT = MathUtils.degToRad(50);
+// Vue de depart en diagonale, comme un bloc pose sur une table.
+const START_AZIMUTH = MathUtils.degToRad(45);
+const START_POLAR = MathUtils.degToRad(55);
+const MAX_POLAR = MathUtils.degToRad(80);
 const GROUND_CLEARANCE_KM = 0.1;
 const TARGET_FOLLOW = 0.2;
 
-/** Vue inclinee nord en haut : glisser pour se deplacer, molette ou pincement pour zoomer. */
+/** Glisser pour se deplacer, clic droit ou deux doigts pour tourner, molette ou pincement pour zoomer. */
 export class MapCameraNode extends NodeBase {
   readonly camera: PerspectiveCamera;
   /** Faux pendant que la camera orbitale de debug (Shift+C) a la main. */
@@ -31,22 +34,23 @@ export class MapCameraNode extends NodeBase {
     this._bounds = bounds;
     this._heightAt = heightAt;
 
-    const half = Math.max(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ) / 2;
-    this._startDistance = (half / Math.tan(MathUtils.degToRad(FOV) / 2)) * 1.1;
+    const halfDiagonal = Math.hypot(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ) / 2;
+    this._startDistance = (halfDiagonal / Math.tan(MathUtils.degToRad(FOV) / 2)) * 1.05;
     this._start.set((bounds.minX + bounds.maxX) / 2, 0, (bounds.minZ + bounds.maxZ) / 2);
-    this.camera.position.copy(this._start).add(new Vector3(0, Math.cos(TILT), Math.sin(TILT)).multiplyScalar(this._startDistance));
+    const offset = new Vector3().setFromSphericalCoords(this._startDistance, START_POLAR, START_AZIMUTH);
+    this.camera.position.copy(this._start).add(offset);
     this.camera.lookAt(this._start);
   }
 
   override onMounted(): void {
     super.onMounted();
     const controls = new MapControls(this.camera, this._element);
-    controls.enableRotate = false;
+    controls.maxPolarAngle = MAX_POLAR;
     controls.zoomToCursor = true;
     controls.enableDamping = true;
     controls.dampingFactor = 0.1;
     controls.minDistance = 0.5;
-    controls.maxDistance = this._startDistance * 1.2;
+    controls.maxDistance = this._startDistance * 2;
     controls.target.copy(this._start);
     controls.update();
     this._controls = controls;

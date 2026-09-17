@@ -6,7 +6,7 @@ import { DirectionalLight, Group, HemisphereLight, MathUtils } from "three";
 export class LightsNode extends Object3DNodeBase {
   readonly settings = { azimuth: 315, elevation: 45, intensity: 3 };
   private readonly _sun = new DirectionalLight(0xffffff);
-  private readonly _sky = new HemisphereLight(0xffffff, 0xb9b2a6, 0.6);
+  private readonly _sky = new HemisphereLight(0xffffff, 0x000000, 0.4);
 
   constructor() {
     const group = new Group();

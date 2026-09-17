@@ -1,38 +1,44 @@
-import { DataTexture, DoubleSide, RedFormat, Vector2, type Texture } from "three";
-import { attribute, cameraViewMatrix, float, normalize, positionLocal, positionWorld, texture, uniform, uv, vec2, vec3, vec4 } from "three/tsl";
-import { MeshStandardNodeMaterial, type Node } from "three/webgpu";
+import { DataTexture, HalfFloatType, RedFormat, Vector2 } from "three";
+import { cameraViewMatrix, color, float, mix, normalGeometry, normalize, positionGeometry, texture, uniform, vec2, vec3, vec4 } from "three/tsl";
+import { MeshStandardNodeMaterial, type Node, type TextureNode } from "three/webgpu";
 
 const METERS_TO_KM = 0.001;
-const TEXEL_UV = 1 / 256;
 
-/** Partages par toutes les tuiles : un seul programme GPU pour toutes. */
 export const terrainSettings = {
-  exaggeration: uniform(2),
-  mask: texture(new DataTexture(new Uint8Array([255]), 1, 1, RedFormat)),
-  maskOrigin: uniform(new Vector2()),
-  maskSize: uniform(new Vector2(1, 1)),
+  exaggeration: uniform(4),
+  baseDepth: uniform(4),
+  heights: texture(new DataTexture(new Uint16Array(1), 1, 1, RedFormat, HalfFloatType)),
+  /** Carre du bloc (0..1) vers les uv de la mosaique. */
+  uvOffset: uniform(new Vector2()),
+  uvScale: uniform(new Vector2(1, 1)),
+  texelUv: uniform(new Vector2(1, 1)),
+  texelKm: uniform(new Vector2(1, 1)),
 };
 
-export function createTerrainMaterial(heights: Texture, texelKm: Vector2, skirtDepthKm: number): MeshStandardNodeMaterial {
-  const texel = uniform(texelKm);
-  const skirtDepth = uniform(skirtDepthKm);
-  const scale = terrainSettings.exaggeration.mul(METERS_TO_KM);
-  const heightAt = (offset: Node) => texture(heights, uv().add(offset)).r.mul(scale);
+export function createTerrainMaterial(): MeshStandardNodeMaterial {
+  const s = terrainSettings;
+  const scale = s.exaggeration.mul(METERS_TO_KM);
+  const mosaicUv = s.uvOffset.add(positionGeometry.xz.mul(s.uvScale));
+  const heightAt = (offset: Node) => s.heights.sample(mosaicUv.add(offset)).r.mul(scale);
+  // 0 sur le dessus, 1 sur les parois et le fond (normales de la geometrie).
+  const wall = normalGeometry.y.oneMinus().min(1);
+  // 1 au bas des parois et au fond.
+  const base = positionGeometry.y.negate();
 
-  const material = new MeshStandardNodeMaterial({ color: 0xf1efea, roughness: 1, metalness: 0, side: DoubleSide });
+  const material = new MeshStandardNodeMaterial({ roughness: 1, metalness: 0 });
 
-  const height = texture(heights, uv()).level(float(0)).r.mul(scale);
-  material.positionNode = positionLocal.add(vec3(0, height.sub(attribute("skirt", "float").mul(skirtDepth)), 0));
+  // Lecture en phase vertex : niveau de mip explicite.
+  const height = (s.heights.sample(mosaicUv) as TextureNode).level(float(0)).r.mul(scale);
+  material.positionNode = vec3(positionGeometry.x, mix(height, s.baseDepth.negate(), base), positionGeometry.z);
 
-  // Differences centrales : normale monde de y = f(x, z), puis repere vue.
-  const dx = heightAt(vec2(TEXEL_UV, 0)).sub(heightAt(vec2(-TEXEL_UV, 0))).div(texel.x.mul(2));
-  const dz = heightAt(vec2(0, TEXEL_UV)).sub(heightAt(vec2(0, -TEXEL_UV))).div(texel.y.mul(2));
-  const normalWorld = vec3(dx.negate(), 1, dz.negate());
-  material.normalNode = normalize(cameraViewMatrix.mul(vec4(normalWorld, 0)).xyz);
-
-  const maskUv = positionWorld.xz.sub(terrainSettings.maskOrigin).div(terrainSettings.maskSize);
-  material.opacityNode = terrainSettings.mask.sample(maskUv).r;
-  material.alphaTest = 0.5;
+  // Dessus : differences centrales dans la mosaique ; parois : normale de la geometrie.
+  const du = vec2(s.texelUv.x, 0);
+  const dv = vec2(0, s.texelUv.y);
+  const dx = heightAt(du).sub(heightAt(du.negate())).div(s.texelKm.x.mul(2));
+  const dz = heightAt(dv).sub(heightAt(dv.negate())).div(s.texelKm.y.mul(2));
+  const worldNormal = mix(vec3(dx.negate(), 1, dz.negate()), normalGeometry, wall);
+  material.normalNode = normalize(cameraViewMatrix.mul(vec4(worldNormal, 0)).xyz);
+  material.colorNode = mix(color(0xe8e8e8), color(0x3a3a3a), wall);
 
   return material;
 }

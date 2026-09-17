@@ -2,140 +2,102 @@ import { Object3DNodeBase } from "@_core/nodes/object3d/Object3DNode.base.ts";
 import { TERRAIN_CONFIG } from "@graphics/config/terrain.config.ts";
 import { createTerrainMaterial, terrainSettings } from "@graphics/materials/Terrain.material.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
+import { createBlockGeometry } from "@graphics/terrain/BlockGeometry.ts";
 import type IElevationProvider from "@graphics/terrain/ElevationProvider.interface.ts";
-import { GeoProjection, type SceneRect } from "@graphics/terrain/GeoProjection.ts";
-import { fetchIgnContour, maskCovers, rasterizeMask, type MaskGrid } from "@graphics/terrain/TerrainMask.ts";
-import { TILE_SIZE, type Tile } from "@graphics/terrain/Tile.ts";
-import { createTileGeometry } from "@graphics/terrain/TileGeometry.ts";
-import { TileTree } from "@graphics/terrain/TileTree.ts";
-import { DataTexture, DataUtils, Group, HalfFloatType, LinearFilter, Mesh, RedFormat, Vector2, Vector3, type Camera } from "three";
-import type { MeshStandardNodeMaterial } from "three/webgpu";
+import { GeoProjection, type GeoBounds, type SceneRect } from "@graphics/terrain/GeoProjection.ts";
+import { fetchMosaic, mosaicHeightAt, type HeightMosaic } from "@graphics/terrain/HeightMosaic.ts";
+import { DataTexture, DataUtils, HalfFloatType, LinearFilter, Mesh, RedFormat } from "three";
 
-const geometry = createTileGeometry(TERRAIN_CONFIG.segments);
-const SKIRT_RATIO = 0.05;
-
-function toHalfFloat(data: Float32Array): Uint16Array {
-  const out = new Uint16Array(data.length);
-  for (let i = 0; i < data.length; i++) out[i] = DataUtils.toHalfFloat(data[i]);
-  return out;
-}
-
-function linearTexture(texture: DataTexture): DataTexture {
+function heightTexture({ data, width, height }: HeightMosaic): DataTexture {
+  const half = new Uint16Array(data.length);
+  for (let i = 0; i < data.length; i++) half[i] = DataUtils.toHalfFloat(data[i]);
+  const texture = new DataTexture(half, width, height, RedFormat, HalfFloatType);
   texture.minFilter = LinearFilter;
   texture.magFilter = LinearFilter;
-  // Lignes de largeur quelconque (masque R8) : sans cela, le repli WebGL2 les decale.
-  texture.unpackAlignment = 1;
   texture.needsUpdate = true;
   return texture;
 }
 
-/** Relief du departement : tuiles IGN chargees et affinees selon la camera. */
+/** Bloc de relief : une grille deplacee sur GPU par les altitudes IGN, chargees en direct. */
 export class TerrainNode extends Object3DNodeBase {
   readonly projection: GeoProjection;
+  readonly bounds: GeoBounds;
   readonly rect: SceneRect;
-  private readonly _group: Group;
+  readonly settings = { segments: TERRAIN_CONFIG.segments as number };
+  private readonly _mesh: Mesh;
   private readonly _provider: IElevationProvider;
-  private readonly _camera: () => Camera;
-  private readonly _meshes = new Map<Tile, Mesh>();
-  private readonly _cameraPosition = new Vector3();
-  private readonly _lastCamera = new Vector3(Infinity, 0, 0);
-  private _tree: TileTree | null = null;
-  private _maskTexture: DataTexture | null = null;
-  private _dirty = true;
+  private readonly _loading = new AbortController();
+  private _mosaic: HeightMosaic | null = null;
+  private _segments = 0;
 
-  constructor(provider: IElevationProvider, camera: () => Camera) {
-    const group = new Group();
-    super(NODE_ID.TERRAIN, "Terrain", group);
-    const { west, east, south, north } = TERRAIN_CONFIG.bounds;
-    this.projection = new GeoProjection((west + east) / 2, (south + north) / 2);
-    this.rect = this.projection.rect(TERRAIN_CONFIG.bounds);
-    this._group = group;
+  constructor(provider: IElevationProvider) {
+    const mesh = new Mesh(undefined, createTerrainMaterial());
+    super(NODE_ID.TERRAIN, "Terrain", mesh);
+    const { lon, lat } = TERRAIN_CONFIG.center;
+    this.projection = new GeoProjection(lon, lat);
+    this.bounds = this.projection.squareBounds(TERRAIN_CONFIG.sizeKm);
+    this.rect = this.projection.rect(this.bounds);
+    this._mesh = mesh;
     this._provider = provider;
-    this._camera = camera;
-  }
-
-  get tileCount(): number {
-    return this._tree?.visibleCount ?? 0;
+    mesh.position.set(this.rect.minX, 0, this.rect.minZ);
+    mesh.scale.set(TERRAIN_CONFIG.sizeKm, 1, TERRAIN_CONFIG.sizeKm);
+    terrainSettings.baseDepth.value = TERRAIN_CONFIG.baseDepthKm;
+    this.applySettings();
   }
 
   /** Altitude affichee (km, exageration comprise). */
   heightAt(x: number, z: number): number {
-    return ((this._tree?.heightAt(x, z) ?? 0) * terrainSettings.exaggeration.value) / 1000;
+    if (!this._mosaic) return 0;
+    const meters = mosaicHeightAt(this._mosaic, this.projection.lon(x), this.projection.lat(z));
+    return (meters * terrainSettings.exaggeration.value) / 1000;
   }
 
-  override async beforeMount(): Promise<void> {
-    if (this._tree) return;
-    const mask = await this._loadMask();
-    const { minX, minZ, maxX, maxZ } = this.rect;
-    this._maskTexture = linearTexture(new DataTexture(mask.data, mask.width, mask.height, RedFormat));
-    terrainSettings.mask.value = this._maskTexture;
-    terrainSettings.maskOrigin.value.set(minX, minZ);
-    terrainSettings.maskSize.value.set(maxX - minX, maxZ - minZ);
+  applySettings(): void {
+    if (this.settings.segments === this._segments) return;
+    this._segments = this.settings.segments;
+    this._mesh.geometry.dispose();
+    this._mesh.geometry = createBlockGeometry(this._segments);
+  }
 
-    this._tree = new TileTree(TERRAIN_CONFIG.bounds, this.projection, TERRAIN_CONFIG, {
-      accept: (tile) => maskCovers(mask, tile.rect),
-      load: (tile) => this._provider.fetchTile(tile.z, tile.x, tile.y, tile.controller.signal),
-      loaded: () => {
-        this._dirty = true;
-      },
-      setVisible: (tile, visible) => {
-        if (visible) this._meshFor(tile).visible = true;
-        else if (this._meshes.has(tile)) this._meshes.get(tile)!.visible = false;
-      },
-      release: (tile) => this._disposeMesh(tile),
+  // Le premier niveau est attendu, les suivants affinent le bloc en arriere-plan.
+  override async beforeMount(): Promise<void> {
+    if (this._mosaic) return;
+    const [first, ...rest] = TERRAIN_CONFIG.zooms;
+    await this._load(first);
+    void (async () => {
+      for (const z of rest) await this._load(z);
+    })().catch((error) => {
+      if (!this._loading.signal.aborted) console.warn("[Terrain] affinage interrompu", error);
     });
   }
 
-  // Recalcul seulement quand la camera bouge ou qu'une tuile aboutit.
-  override update(): void {
-    if (!this._tree) return;
-    this._camera().getWorldPosition(this._cameraPosition);
-    if (!this._dirty && this._cameraPosition.distanceToSquared(this._lastCamera) < 1e-8) return;
-    this._dirty = false;
-    this._lastCamera.copy(this._cameraPosition);
-    this._tree.update(this._cameraPosition);
-  }
-
   override dispose(): void {
-    this._tree?.dispose();
-    this._maskTexture?.dispose();
+    this._loading.abort();
+    this._mesh.geometry.dispose();
+    (this._mesh.material as { dispose(): void }).dispose();
+    terrainSettings.heights.value.dispose();
     super.dispose();
   }
 
-  private async _loadMask(): Promise<MaskGrid> {
-    try {
-      const contour = await fetchIgnContour(TERRAIN_CONFIG.departement);
-      return rasterizeMask(contour, this.projection, this.rect, TERRAIN_CONFIG.maskSize);
-    } catch (error) {
-      console.warn("[Terrain] contour indisponible, rectangle complet", error);
-      return { data: new Uint8Array([255]), width: 1, height: 1, rect: this.rect };
-    }
-  }
+  private async _load(z: number): Promise<void> {
+    const mosaic = await fetchMosaic(this._provider, z, this.bounds, this._loading.signal);
+    const { bounds: m, width, height } = mosaic;
+    const spanLon = m.east - m.west;
+    const spanLat = m.north - m.south;
+    const b = this.bounds;
+    const s = terrainSettings;
 
-  private _meshFor(tile: Tile): Mesh {
-    const existing = this._meshes.get(tile);
-    if (existing) return existing;
+    s.uvOffset.value.set((b.west - m.west) / spanLon, (m.north - b.north) / spanLat);
+    s.uvScale.value.set((b.east - b.west) / spanLon, (b.north - b.south) / spanLat);
+    s.texelUv.value.set(1 / width, 1 / height);
+    s.texelKm.value.set(
+      this.projection.x(m.west + spanLon / width) - this.projection.x(m.west),
+      this.projection.z(m.north - spanLat / height) - this.projection.z(m.north)
+    );
 
-    const { minX, minZ, maxX, maxZ } = tile.rect;
-    const width = maxX - minX;
-    const depth = maxZ - minZ;
-    const heights = linearTexture(new DataTexture(toHalfFloat(tile.heights!), TILE_SIZE, TILE_SIZE, RedFormat, HalfFloatType));
-    const material = createTerrainMaterial(heights, new Vector2(width / TILE_SIZE, depth / TILE_SIZE), tile.size * SKIRT_RATIO);
-    const mesh = new Mesh(geometry, material);
-    mesh.position.set(minX, 0, minZ);
-    mesh.scale.set(width, 1, depth);
-    mesh.userData.heights = heights;
-    this._group.add(mesh);
-    this._meshes.set(tile, mesh);
-    return mesh;
-  }
-
-  private _disposeMesh(tile: Tile): void {
-    const mesh = this._meshes.get(tile);
-    if (!mesh) return;
-    this._group.remove(mesh);
-    (mesh.material as MeshStandardNodeMaterial).dispose();
-    (mesh.userData.heights as DataTexture).dispose();
-    this._meshes.delete(tile);
+    const previous = s.heights.value;
+    s.heights.value = heightTexture(mosaic);
+    previous.dispose();
+    this._mosaic = mosaic;
   }
 }

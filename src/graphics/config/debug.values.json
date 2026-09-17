@@ -1,7 +1,8 @@
 {
   "tweakpane": {
     "terrain": {
-      "exaggeration": 6
+      "exaggeration": 6,
+      "segments": 1024
     },
     "lights": {
       "intensity": 3.4,

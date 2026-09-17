@@ -1,15 +1,10 @@
-import type { GeoBounds } from "@graphics/terrain/GeoProjection.ts";
-
 export const TERRAIN_CONFIG = {
-  departement: "30",
-  /** Emprise du Gard (contour ADMIN EXPRESS, EPSG:4326). */
-  bounds: { west: 3.2624, south: 43.4603, east: 4.8456, north: 44.4597 } satisfies GeoBounds,
-  rootZoom: 9,
-  maxZoom: 13,
-  /** Subdivise sous ce rapport distance / taille de tuile, fusionne au-dessus de `merge`. */
-  split: 1.5,
-  merge: 3,
-  maxVisible: 300,
-  segments: 32,
-  maskSize: 1024,
+  /** Centre du Gard. */
+  center: { lon: 4.054, lat: 43.96 },
+  sizeKm: 130,
+  /** Niveaux IGN charges l'un apres l'autre : apercu rapide, puis detail (~76 m au niveau 10). */
+  zooms: [8, 10],
+  segments: 1024,
+  segmentOptions: [256, 512, 1024, 1536],
+  baseDepthKm: 4,
 } as const;
