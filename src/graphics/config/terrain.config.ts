@@ -23,4 +23,10 @@ export const TERRAIN_CONFIG = {
   /** Prechargement autour du bloc (fraction de sa largeur, de chaque cote) : niveau affiche, puis apercu plus large. */
   margin: 0.25,
   coarse: { levels: 3, margin: 1 },
+  /**
+   * Zone dessinee, a la Chartogne-Taillet : ellipse autour de la vue (unites de scene), bord fondu
+   * sur `softness` de son rayon et rendu irregulier par un bruit d'amplitude `jitter`.
+   * Au-dela, le relief reste nu : ni encre, ni bati.
+   */
+  mask: { center: [0, -12], radius: [60, 48], softness: 0.35, jitter: 0.15 },
 } as const;

@@ -173,6 +173,14 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     this.debugSubscribe({ tabId: TAB_ID.UNIVERSE, folderId: FOLDER_ID.UNIVERSE_MAIN, mount: declare });
 
     const buildings = this._buildings;
+    const asRecord = (value: object) => value as unknown as Record<string, unknown>;
+    const maskControls = [
+      [asRecord(terrainSettings.maskRadius.value), "x", { label: "masque largeur", min: 10, max: 200, step: 1 }, "mask.radiusX"],
+      [asRecord(terrainSettings.maskRadius.value), "y", { label: "masque profondeur", min: 10, max: 200, step: 1 }, "mask.radiusY"],
+      [asRecord(terrainSettings.maskCenter.value), "y", { label: "masque centre", min: -80, max: 40, step: 1 }, "mask.centerY"],
+      [asRecord(terrainSettings.maskSoftness), "value", { label: "masque fondu", min: 0.02, max: 1, step: 0.01 }, "mask.softness"],
+      [asRecord(terrainSettings.maskJitter), "value", { label: "masque bord", min: 0, max: 0.6, step: 0.01 }, "mask.jitter"],
+    ] as const;
     const declareBuildings = (target: DebugTarget | null) => {
       const bindings = [
         debug.bind(
@@ -183,6 +191,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
           "buildings.technique"
         ),
         debug.bind(target, buildings.settings, "height", { label: "hauteur", min: 0.5, max: 4, step: 0.1 }, "buildings.height"),
+        ...maskControls.map(([object, key, options, path]) => debug.bind(target, object, key, options, path)),
         ...(target ? this._monitors(target) : []),
       ];
       return () => {

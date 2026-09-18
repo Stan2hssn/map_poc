@@ -40,6 +40,7 @@ export class BuildingsNode extends Object3DNodeBase {
   private readonly _wall = createWallMaterial();
   private _wanted = "";
   private _frame = 0;
+  private readonly _uv = new Vector4();
 
   constructor(terrain: TerrainNode) {
     const group = new Group();
@@ -78,17 +79,12 @@ export class BuildingsNode extends Object3DNodeBase {
     const width = b.east - b.west;
     const depth = b.south - b.north;
     for (const [key, tile] of this._tiles) {
-      const shown = visible.has(key);
+      const { geo } = tile;
+      this._uv.set((geo.west - b.west) / width, (geo.north - b.north) / depth, (geo.east - geo.west) / width, (geo.south - geo.north) / depth);
+      const shown = visible.has(key) && this._inMask(this._uv);
       for (const mesh of tile.meshes) {
         mesh.visible = shown;
-        if (!shown) continue;
-        const { geo } = tile;
-        (mesh.userData.tileUv as Vector4).set(
-          (geo.west - b.west) / width,
-          (geo.north - b.north) / depth,
-          (geo.east - geo.west) / width,
-          (geo.south - geo.north) / depth
-        );
+        if (shown) (mesh.userData.tileUv as Vector4).copy(this._uv);
       }
       if (!shown) continue;
       tile.usedAt = this._frame;
@@ -155,6 +151,19 @@ export class BuildingsNode extends Object3DNodeBase {
     mesh.visible = false;
     this._group.add(mesh);
     return mesh;
+  }
+
+  /** Tuile (origine et taille en uv du bloc) touchant la zone dessinee, bord irregulier compris. */
+  private _inMask(uv: Vector4): boolean {
+    const s = terrainSettings;
+    const block = s.blockSize.value;
+    const center = s.maskCenter.value;
+    const radius = s.maskRadius.value;
+    const x0 = (uv.x - 0.5) * block.x;
+    const z0 = (uv.y - 0.5) * block.y;
+    const x = MathUtils.clamp(center.x, x0, x0 + uv.z * block.x);
+    const z = MathUtils.clamp(center.y, z0, z0 + uv.w * block.y);
+    return Math.hypot((x - center.x) / radius.x, (z - center.y) / radius.y) < 1 + s.maskJitter.value / 2;
   }
 
   /** Oublie les tuiles les moins recemment vues au-dela du plafond. */
