@@ -10,6 +10,8 @@ export const landcoverUrl = (z: number, x: number, y: number) => `https://data.g
 
 /** Zoom maximal du PLAN IGN, et taille a laquelle une tuile est dessinee. */
 const MAX_ZOOM = 16;
+/** Au centre, deux niveaux plus fins : le PLAN IGN ne garde tout le bati qu'a partir du 14-15. */
+const FOCUS_LEVELS = 2;
 const TILE_PX = 512;
 const EARTH_CIRCUMFERENCE_M = 40_075_016.7;
 
@@ -39,6 +41,9 @@ export function landcoverZoom(bounds: GeoBounds, widthPx: number): number {
   const z = Math.round(Math.log2((EARTH_CIRCUMFERENCE_M * Math.cos(lat * RAD)) / (TILE_PX * metersPerPixel)));
   return clamp(z, 0, MAX_ZOOM);
 }
+
+/** Niveau fin, dessine sur la zone centrale par-dessus le niveau `z` d'ensemble. */
+export const fineZoom = (z: number): number => Math.min(MAX_ZOOM, z + FOCUS_LEVELS);
 
 const tileX = (lon: number, n: number) => ((lon + 180) / 360) * n;
 const tileY = (lat: number, n: number) => ((1 - Math.log(Math.tan(lat * RAD) + 1 / Math.cos(lat * RAD)) / Math.PI) / 2) * n;
@@ -88,22 +93,12 @@ export interface Canvas {
   height: number;
 }
 
-const roadWidth = (feature: VectorFeature, fallback: number) => {
-  const symbo = String(feature.properties.symbo ?? "");
-  return ROAD_WIDTH_M.find(([pattern]) => pattern.test(symbo))?.[1] ?? fallback;
-};
-
-/**
- * Dessine une tuile : bati, vegetation et eau sur `areas` (rouge, vert, bleu additionnes),
- * routes et chemins en blanc sur `roads`.
- */
-export function drawLandcoverTile(areas: Pen, roads: Pen, layers: Map<string, VectorLayer>, z: number, tile: TileXY, canvas: Canvas): void {
+/** Trace le contour d'une entite de la tuile dans l'image `canvas`. */
+export function tileTracer(z: number, tile: TileXY, canvas: Canvas): (pen: Pen, feature: VectorFeature, extent: number) => void {
   const { bounds, width, height } = canvas;
   const sx = width / (bounds.east - bounds.west);
   const sy = height / (bounds.north - bounds.south);
-  const metersPerPixel = ((bounds.east - bounds.west) * RAD * 6_378_137 * Math.cos(((bounds.north + bounds.south) / 2) * RAD)) / width;
-
-  const trace = (pen: Pen, feature: VectorFeature, extent: number) => {
+  return (pen, feature, extent) => {
     pen.beginPath();
     for (const part of feature.geometry) {
       for (let i = 0; i < part.length; i += 2) {
@@ -115,6 +110,21 @@ export function drawLandcoverTile(areas: Pen, roads: Pen, layers: Map<string, Ve
       }
     }
   };
+}
+
+const roadWidth = (feature: VectorFeature, fallback: number) => {
+  const symbo = String(feature.properties.symbo ?? "");
+  return ROAD_WIDTH_M.find(([pattern]) => pattern.test(symbo))?.[1] ?? fallback;
+};
+
+/**
+ * Dessine une tuile : bati, vegetation et eau sur `areas` (rouge, vert, bleu additionnes),
+ * routes et chemins en blanc sur `roads`.
+ */
+export function drawLandcoverTile(areas: Pen, roads: Pen, layers: Map<string, VectorLayer>, z: number, tile: TileXY, canvas: Canvas): void {
+  const { bounds, width } = canvas;
+  const metersPerPixel = ((bounds.east - bounds.west) * RAD * 6_378_137 * Math.cos(((bounds.north + bounds.south) / 2) * RAD)) / width;
+  const trace = tileTracer(z, tile, canvas);
   const fillLayer = (name: string, color: string) => {
     const layer = layers.get(name);
     if (!layer) return;

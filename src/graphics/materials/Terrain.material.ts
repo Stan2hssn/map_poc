@@ -1,15 +1,24 @@
 import { DataTexture, HalfFloatType, LinearFilter, Matrix4, RedFormat, RepeatWrapping, RGBAFormat, UnsignedByteType, Vector2, Vector3 } from "three";
 import {
+  Break,
+  cameraPosition,
   cameraViewMatrix,
   abs,
   color,
   float,
+  Fn,
   fwidth,
+  If,
+  int,
   length,
+  log2,
+  Loop,
+  max,
   mix,
   normalize,
   output,
   positionGeometry,
+  positionWorld,
   smoothstep,
   step,
   texture,
@@ -20,6 +29,7 @@ import {
   vertexStage,
 } from "three/tsl";
 import { MeshStandardNodeMaterial, type Node, type TextureNode } from "three/webgpu";
+import { PEAK_CELL } from "@graphics/terrain/Buildings.ts";
 
 /** Ecart des echantillons de pente, en texels : au-dela de 1, le modele est adouci. */
 const NORMAL_SPREAD = 1.5;
@@ -40,6 +50,15 @@ const PAPER = 0xf7f4ec;
 const HATCHES_PER_CELL = 30;
 /** Cellules de bruit sur une repetition de la texture de brume. */
 const NOISE_CELLS = 8;
+/** Bati en relief, facon maquette d'argile. */
+export const CLAY = 0xece8e1;
+/** Parallaxe : pas au plus par cellule de sommets, puis par texel vers le sol, et vers le soleil ; penombre par metre parcouru. */
+const COARSE_STEPS = 24;
+const PARALLAX_STEPS = 48;
+const SHADOW_STEPS = 10;
+const SHADOW_SOFTNESS = 0.12;
+/** Creux au pied du bati : hauteurs moyennes sur un anneau (rayon en texels, lu a 2^lod texels), ecart (m) ou il sature, force. */
+const CONTACT = { radius: 5, lod: 2.5, rangeM: 25, strength: 0.45 };
 const ring = (samples: number) =>
   Array.from({ length: samples }, (_, i) => [Math.cos((i * 2 * Math.PI) / samples), Math.sin((i * 2 * Math.PI) / samples)] as const);
 
@@ -123,6 +142,20 @@ export const terrainSettings = {
   landcoverOffset: uniform(new Vector2()),
   landcoverScale: uniform(new Vector2(1, 1)),
   landcoverStrength: uniform(1),
+  /** Hauteurs du bati (m) sur la zone fine, leur cadrage en uv du bloc, taille en texels, plus grande hauteur (m). */
+  buildingHeights: texture(new DataTexture(new Uint8Array(1), 1, 1, RedFormat, UnsignedByteType)),
+  buildingOffset: uniform(new Vector2()),
+  buildingScale: uniform(new Vector2(1, 1)),
+  buildingSize: uniform(new Vector2(1, 1)),
+  buildingMax: uniform(0),
+  /** Sommets par cellule de `PEAK_CELL` texels, etendus aux voisines : la ou la parallaxe peut s'arreter. */
+  buildingPeaks: texture(new DataTexture(new Uint8Array(1), 1, 1, RedFormat, UnsignedByteType)),
+  /** Unites de scene par metre de bati (0 : pas de bati), apparition de 0 a 1, parallaxe (1) ou volumes a part (0). */
+  buildingUnits: uniform(0),
+  buildingGrow: uniform(0),
+  parallax: uniform(0),
+  /** Direction du soleil, vers lui. */
+  sun: uniform(new Vector3(0, 1, 0)),
 };
 
 const s = terrainSettings;
@@ -214,9 +247,119 @@ function drawLandcover(relief: Node, blockUv: Node, geo: Node): Node {
   paper = mix(paper, color(WATER), fill.b.mul(0.55));
   paper = mix(paper, color(INK), fill.b.mul(horizontal).mul(0.3));
   paper = mix(paper, color(PAPER), fill.a.mul(0.85));
-  paper = mix(paper, color(INK), fill.r.mul(0.42));
-  paper = mix(paper, color(INK_DARK), outline.r.mul(0.85));
+  // En relief, le bati devient argile : son dessin a plat s'efface.
+  const flat = s.buildingGrow.oneMinus();
+  paper = mix(paper, color(INK), fill.r.mul(0.42).mul(flat));
+  paper = mix(paper, color(INK_DARK), outline.r.mul(0.85).mul(flat));
   return mix(relief, paper, s.landcoverStrength);
+}
+
+/** Hauteur du bati (m) au point `at` de sa texture, et sommet de sa cellule. */
+const buildingMeters = (at: Node, lod: Node) => (s.buildingHeights.sample(at) as TextureNode).level(lod).r.mul(255);
+const peakMeters = (at: Node) => (s.buildingPeaks.sample(at) as TextureNode).level(float(0)).r.mul(255);
+const buildingsOn = (at: Node) => s.parallax.mul(s.buildingUnits).mul(s.buildingMax).mul(inside(at)).greaterThan(0);
+
+/**
+ * Parallaxe du bati depuis le sol : le rayon qui touche le sol en ce pixel est remonte jusqu'a la hauteur
+ * du plus haut batiment, puis redescendu vers le sol ; le premier batiment qu'il traverse est ce que l'on voit.
+ * D'abord une cellule de sommets par pas, jusqu'a la premiere qui peut l'arreter, puis un texel par pas.
+ * Hauteurs mesurees au-dessus du plan tangent au sol (`normal`).
+ * Rend (uv du point touche, hauteur en m, 0 si rien, sinon 1 + part de mur).
+ * Lectures a niveau de mip explicite : les boucles s'arretent a des pas differents selon les pixels.
+ */
+const parallaxHit = Fn(([at, normal, lod]: [Node, Node, Node]) => {
+  const hit = vec4(0).toVar();
+  If(buildingsOn(at), () => {
+    const dir = normalize(positionWorld.sub(cameraPosition));
+    const perUnit = dir.xz.div(s.blockSize).mul(s.buildingScale);
+    const texelsPerUnit = length(perUnit.mul(s.buildingSize)).max(1e-6);
+    // Hauteur du rayon (m) par unite parcourue vers la camera.
+    const climb = dir.dot(normal).negate().div(normal.y).max(0.05).div(s.buildingUnits);
+    const top = s.buildingMax.div(climb);
+    const cell = float(PEAK_CELL).div(texelsPerUnit).max(top.div(COARSE_STEPS));
+    const entry = float(0).toVar();
+    Loop(COARSE_STEPS, ({ i }) => {
+      const distance = top.sub(cell.mul(float(i)));
+      If(distance.lessThanEqual(0), () => {
+        Break();
+      });
+      // Bas du pas sous le sommet de la cellule : un batiment peut arreter le rayon ici.
+      If(distance.sub(cell).max(0).mul(climb).lessThan(peakMeters(at.sub(perUnit.mul(distance)))), () => {
+        entry.assign(distance);
+        Break();
+      });
+    });
+
+    If(entry.greaterThan(0), () => {
+      const steps = entry.mul(texelsPerUnit).ceil().clamp(1, PARALLAX_STEPS);
+      const spacing = entry.div(steps);
+      const lastGap = float(0).toVar();
+      const lastHeight = float(0).toVar();
+      Loop({ start: int(0), end: int(PARALLAX_STEPS), condition: "<=" }, ({ i }) => {
+        const index = float(i);
+        If(index.greaterThan(steps), () => {
+          Break();
+        });
+        // Dernier pas exactement sur le sol : un arrondi l'y ferait passer dessous.
+        const distance = entry.mul(index.div(steps).oneMinus());
+        const height = buildingMeters(at.sub(perUnit.mul(distance)), lod);
+        const gap = climb.mul(distance).sub(height);
+        // Nettement sous un toit : le sol lui-meme n'est pas un batiment.
+        If(gap.lessThan(-0.05), () => {
+          const t = lastGap.div(lastGap.sub(gap).max(1e-4));
+          const back = distance.add(spacing.mul(t.oneMinus())).min(entry);
+          // Mur : la hauteur a monte plus vite que le rayon n'est descendu.
+          const wall = smoothstep(0.5, 1.5, height.sub(lastHeight).div(climb.mul(spacing)));
+          hit.assign(vec4(at.sub(perUnit.mul(back)), climb.mul(back), wall.add(1)));
+          Break();
+        });
+        lastGap.assign(gap);
+        lastHeight.assign(height);
+      });
+    });
+  });
+  return hit;
+});
+
+/** Normale (monde) du bati au point `at` : vers le haut sur les toits, selon la pente des hauteurs sur les murs. */
+function buildingNormal(at: Node, wall: Node, lod: Node): Node {
+  const texel = vec2(1).div(s.buildingSize);
+  const across = (offset: Node) => buildingMeters(at.add(offset), lod).sub(buildingMeters(at.sub(offset), lod));
+  const perUnit = s.buildingScale.div(s.blockSize);
+  const outward = vec3(across(vec2(texel.x, 0)).mul(perUnit.x).negate(), 0, across(vec2(0, texel.y)).mul(perUnit.y).negate());
+  // Pente nulle (milieu d'un aplat) : le mur fait face a la camera.
+  const facing = normalize(cameraPosition.sub(positionWorld)).mul(vec3(1e-4, 0, 1e-4));
+  return normalize(mix(vec3(0, 1, 0), normalize(outward.add(facing)), wall));
+}
+
+/**
+ * Part de soleil au point `at`, a `meters` au-dessus du sol : ombres douces du bati, marchees vers le soleil
+ * jusqu'au sommet des cellules voisines (les ombres des tours isolees s'arretent la).
+ */
+const parallaxLight = Fn(([at, meters, lod]: [Node, Node, Node]) => {
+  const lit = float(1).toVar();
+  If(buildingsOn(at).and(s.sun.y.greaterThan(0.05)), () => {
+    const reach = peakMeters(at).sub(meters).max(0).mul(s.buildingUnits).div(s.sun.y);
+    const perUnit = s.sun.xz.div(s.blockSize).mul(s.buildingScale);
+    Loop(SHADOW_STEPS, ({ i }) => {
+      const distance = float(i).add(1).div(SHADOW_STEPS).mul(reach);
+      const ray = meters.add(s.sun.y.mul(distance).div(s.buildingUnits)).add(1);
+      const spread = distance.div(s.buildingUnits).mul(SHADOW_SOFTNESS).max(1);
+      lit.assign(lit.min(ray.sub(buildingMeters(at.add(perUnit.mul(distance)), lod)).div(spread).add(0.5).clamp(0, 1)));
+    });
+  });
+  return lit;
+});
+
+/** Creux au pied du bati : plus sombre la ou les batiments voisins depassent le point. */
+function contactShade(at: Node, meters: Node, lod: Node): Node {
+  // Quatre lectures en croix plutot qu'un mip grossier, qui dessinerait ses texels en carres.
+  const reach = vec2(CONTACT.radius).div(s.buildingSize).mul(lod.exp2());
+  const level = lod.add(CONTACT.lod);
+  let around: Node = float(0);
+  for (const [x, y] of ring(4)) around = around.add(buildingMeters(at.add(reach.mul(vec2(x, y))), level));
+  const depth = around.div(4).sub(meters).div(CONTACT.rangeM).clamp(0, 1);
+  return float(1).sub(depth.mul(CONTACT.strength).mul(s.buildingGrow).mul(inside(at)));
 }
 
 export function createTerrainMaterial(): MeshStandardNodeMaterial {
@@ -236,7 +379,6 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
   const dx = terrainHeight(blockUv.add(du)).sub(terrainHeight(blockUv.sub(du))).div(spread.x.mul(s.blockSize.x).mul(2));
   const dz = terrainHeight(blockUv.add(dv)).sub(terrainHeight(blockUv.sub(dv))).div(spread.y.mul(s.blockSize.y).mul(2));
   const normal = vertexStage(vec3(dx.negate(), 1, dz.negate()));
-  material.normalNode = normalize(cameraViewMatrix.mul(vec4(normal, 0)).xyz);
 
   // Creux : pente moyenne vers le haut autour du point, sur deux rayons.
   let concavity: Node = float(0);
@@ -259,8 +401,28 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
   const hilly = smoothstep(80, 600, s.relief);
   const mist = smoothstep(0.45, 0.8, clouds).mul(smoothstep(0, 0.55, low).oneMinus()).mul(seaTint.mul(-0.7).add(1)).mul(s.mist).mul(hilly);
 
+  // Bati : parallaxe (sinon volumes a part) ; ombres, creux et normales la ou un batiment est touche.
+  const at = s.buildingOffset.add(uv.mul(s.buildingScale));
+  const lod = log2(max(fwidth(at.x), fwidth(at.y)).mul(s.buildingSize.x).max(1));
+  const hit = parallaxHit(at, normal, lod).toVar();
+  const onBuilding = step(0.5, hit.w);
+  const surface = mix(at, hit.xy, onBuilding);
+  const hitMeters = hit.z;
+  const light = parallaxLight(surface, hitMeters, lod).toVar();
+  // Pentes du bati lues seulement sur un batiment touche.
+  const worldNormal = Fn(() => {
+    const n = normalize(normal).toVar();
+    If(onBuilding.greaterThan(0), () => {
+      n.assign(buildingNormal(hit.xy, hit.w.sub(1).max(0), lod));
+    });
+    return n;
+  })();
+  material.normalNode = normalize(cameraViewMatrix.mul(vec4(worldNormal, 0)).xyz);
+  // @ts-expect-error @types/three type ce rappel sans parametre ; three lui passe l'ombre recue.
+  material.receivedShadowNode = Fn(([shadow]: [Node]) => shadow.mul(light));
+
   const relief = mix(color(0xe4e4e4).mul(occlusion), color(SEA_COLOR), seaTint);
-  const land = drawLandcover(relief, uv, geo);
+  const land = mix(drawLandcover(relief, uv, geo), color(CLAY), onBuilding).mul(contactShade(surface, hitMeters, lod));
   material.colorNode = mix(land, color(0xf4f4f4), mist);
   // La brume eclaire aussi les versants a l'ombre.
   material.emissiveNode = vec3(mist.mul(0.25));

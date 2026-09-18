@@ -4,8 +4,10 @@ import { NodeGraph } from "@_core/nodes/NodeGraph.ts";
 import { UniverseBase } from "@_core/universes/Universe.base.ts";
 import { TERRAIN_CONFIG } from "@graphics/config/terrain.config.ts";
 import { FOLDER_ID, TAB_ID } from "@graphics/debug/Debug.id.ts";
+import { RenderStatsHelper } from "@graphics/debug/RenderStats.helper.ts";
 import { terrainSettings } from "@graphics/materials/Terrain.material.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
+import { BuildingsNode } from "@graphics/nodes/buildings/Buildings.node.ts";
 import { MapCameraNode } from "@graphics/nodes/cameras/MapCamera.node.ts";
 import { LabelsNode } from "@graphics/nodes/labels/Labels.node.ts";
 import { SurveyNode } from "@graphics/nodes/survey/Survey.node.ts";
@@ -16,6 +18,7 @@ import { IgnElevationProvider } from "@graphics/terrain/IgnElevationProvider.ts"
 import type IMapNavigator from "@graphics/universes/MapNavigator.interface.ts";
 import type { MapView } from "@graphics/universes/MapNavigator.interface.ts";
 import { Color, Scene, type Camera } from "three";
+import type { WebGPURenderer } from "three/webgpu";
 import type { UniverseId } from "../Universe.id.ts";
 import { UNIVERSE_ID } from "../Universe.id.ts";
 
@@ -27,6 +30,8 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   private readonly _terrain: TerrainNode;
   private readonly _labels: LabelsNode;
   private readonly _survey: SurveyNode;
+  private readonly _buildings: BuildingsNode;
+  private readonly _renderStats: RenderStatsHelper;
   private _nodesRegistered = false;
 
   constructor(device: IThreeDeviceSlice) {
@@ -64,11 +69,14 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       terrain.flyTo({ lon, lat, extentKm: Math.min(terrain.extentKm, Math.max(8, terrain.extentKm / 4)) })
     );
     this._survey = new SurveyNode(terrain, device.renderer.domElement, () => this.camera as Camera);
+    this._buildings = new BuildingsNode(terrain);
+    // map tourne sur WebGPURenderer (WebGPU ou son repli WebGL2).
+    this._renderStats = new RenderStatsHelper(device.renderer as WebGPURenderer);
     cameraNode.isActive = () => this.camera === cameraNode.camera;
 
     this.registerContract({
       id: NODE_ID.CONTRACT_BASE,
-      activeNodeIds: [NODE_ID.CAMERA_MAIN, NODE_ID.LIGHTS, NODE_ID.TERRAIN, NODE_ID.SURVEY, NODE_ID.LABELS],
+      activeNodeIds: [NODE_ID.CAMERA_MAIN, NODE_ID.LIGHTS, NODE_ID.TERRAIN, NODE_ID.BUILDINGS, NODE_ID.SURVEY, NODE_ID.LABELS],
     });
   }
 
@@ -78,7 +86,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
 
   override async beforeMount(): Promise<void> {
     if (!this._nodesRegistered) {
-      this.graph.addMany([this._cameraNode, this._lights, this._terrain, this._survey, this._labels]);
+      this.graph.addMany([this._cameraNode, this._lights, this._terrain, this._buildings, this._survey, this._labels]);
       this._nodesRegistered = true;
     }
     await Promise.resolve(super.beforeMount());
@@ -86,6 +94,11 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
 
   protected override getAssetPreloadGroups(): string[] {
     return ["universe:main"];
+  }
+
+  override update(time: number, dt: number): void {
+    super.update(time, dt);
+    this._renderStats.update(dt);
   }
 
   override onMounted(): void {
@@ -107,6 +120,10 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
 
     const terrain = this._terrain;
     const segmentOptions = Object.fromEntries(TERRAIN_CONFIG.segmentOptions.map((n) => [`${n} x ${n}`, n]));
+    const applySun = () => {
+      lights.apply();
+      lights.directionTo(terrainSettings.sun.value);
+    };
 
     const declare = (target: DebugTarget | null) => {
       const bindings = [
@@ -142,10 +159,10 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
           .bind(target, terrain.settings, "segments", { label: "subdivisions", options: segmentOptions }, "terrain.segments")
           .on("change", () => terrain.applySettings()),
         ...sunControls.map(([key, options]) =>
-          debug.bind(target, lights.settings, key, options, `lights.${key}`).on("change", () => lights.apply())
+          debug.bind(target, lights.settings, key, options, `lights.${key}`).on("change", applySun)
         ),
       ];
-      lights.apply();
+      applySun();
       terrain.applySettings();
       return () => {
         for (const binding of bindings) binding.dispose();
@@ -154,5 +171,81 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
 
     declare(null);
     this.debugSubscribe({ tabId: TAB_ID.UNIVERSE, folderId: FOLDER_ID.UNIVERSE_MAIN, mount: declare });
+
+    const buildings = this._buildings;
+    const declareBuildings = (target: DebugTarget | null) => {
+      const bindings = [
+        debug.bind(
+          target,
+          buildings.settings,
+          "technique",
+          { label: "technique", options: { aucune: "none", parallaxe: "parallax", extrusion: "extrusion" } },
+          "buildings.technique"
+        ),
+        debug.bind(target, buildings.settings, "height", { label: "hauteur", min: 0.5, max: 4, step: 0.1 }, "buildings.height"),
+        ...(target ? this._monitors(target) : []),
+      ];
+      return () => {
+        for (const binding of bindings) binding.dispose();
+      };
+    };
+    declareBuildings(null);
+    this.debugSubscribe({ tabId: TAB_ID.UNIVERSE, folderId: FOLDER_ID.BUILDINGS, mount: declareBuildings });
+  }
+
+  /** Mesures en lecture seule : cadence, GPU, dessin, et ce que coute le bati. */
+  private _monitors(target: DebugTarget): { dispose(): void }[] {
+    const frame = this._renderStats.values;
+    const buildings = this._buildings.stats;
+    const terrain = this._terrain.settings;
+    const readout = {
+      get fps() {
+        return frame.fps;
+      },
+      get image() {
+        return frame.frameMs;
+      },
+      get gpu() {
+        return frame.gpuMs;
+      },
+      get dessins() {
+        return frame.drawCalls;
+      },
+      get triangles() {
+        return frame.triangles;
+      },
+      get sol() {
+        return (terrain.segments + 1) ** 2;
+      },
+      get bati() {
+        return buildings.vertices;
+      },
+      get batiments() {
+        return buildings.buildings;
+      },
+      get tuiles() {
+        return buildings.tiles;
+      },
+      get memoire() {
+        return buildings.memoryMb;
+      },
+    };
+    const count = (v: number) => (v >= 1e6 ? `${(v / 1e6).toFixed(2)} M` : v >= 1e3 ? `${(v / 1e3).toFixed(1)} k` : v.toFixed(0));
+    const ms = (v: number) => `${v.toFixed(2)} ms`;
+    const monitor = (key: keyof typeof readout, label: string, format: (v: number) => string) =>
+      target.addBinding(readout, key, { readonly: true, label, format });
+    return [
+      monitor("fps", "fps", (v) => v.toFixed(0)),
+      monitor("image", "image", ms),
+      monitor("gpu", "gpu", (v) => (v ? ms(v) : "-")),
+      target.addBinding(readout, "gpu", { readonly: true, label: "gpu (graphe)", view: "graph", min: 0, max: 16 }),
+      monitor("dessins", "appels de dessin", count),
+      monitor("triangles", "triangles", count),
+      monitor("sol", "sommets sol", count),
+      monitor("bati", "sommets bati", count),
+      monitor("batiments", "batiments", count),
+      monitor("tuiles", "tuiles", count),
+      monitor("memoire", "memoire bati", (v) => `${v.toFixed(1)} Mo`),
+    ];
   }
 }

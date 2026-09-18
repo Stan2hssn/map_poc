@@ -18,6 +18,14 @@ export const DEBUG_CONFIG: DebugConfig = {
       order: 1,
     },
     {
+      id: FOLDER_ID.BUILDINGS,
+      tabId: TAB_ID.UNIVERSE,
+      label: "Elevations",
+      visible: true,
+      expanded: true,
+      order: 2,
+    },
+    {
       id: FOLDER_ID.STATS,
       tabId: TAB_ID.RENDER,
       label: "Stats",

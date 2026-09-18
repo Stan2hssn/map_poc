@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isDebugRequested, isStatsRequested } from '@_core/debug/DebugFlags.ts'
 import type ThreeDevice from '@_core/systems/ThreeDevice.ts'
 
 const emit = defineEmits<{ ready: []; failed: [] }>()
@@ -49,6 +50,8 @@ onMounted(async () => {
       antialias: false,
       alpha: false,
       powerPreference: 'high-performance',
+      // Temps GPU par image, pour le panneau : seulement quand on le demande.
+      trackTimestamp: isDebugRequested() || isStatsRequested(),
     })
   } catch (error) {
     // Sans contexte, la page reste entiere : seul le canvas manque.

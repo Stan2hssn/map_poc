@@ -1,6 +1,6 @@
 import { Object3DNodeBase } from "@_core/nodes/object3d/Object3DNode.base.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
-import { DirectionalLight, Group, HemisphereLight, MathUtils } from "three";
+import { DirectionalLight, Group, HemisphereLight, MathUtils, type Vector3 } from "three";
 
 const SUN_DISTANCE = 400;
 const SHADOW_EXTENT = 150;
@@ -25,6 +25,11 @@ export class LightsNode extends Object3DNodeBase {
     shadow.normalBias = 0.05;
     group.add(this._sun, this._sun.target, this._sky);
     this.apply();
+  }
+
+  /** Direction du soleil (vers lui), normee, dans `target`. */
+  directionTo(target: Vector3): Vector3 {
+    return target.copy(this._sun.position).normalize();
   }
 
   /** Azimut en degres depuis le nord, dans le sens horaire. */

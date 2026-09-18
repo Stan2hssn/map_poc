@@ -43,10 +43,13 @@ export class TerrainNode extends Object3DNodeBase {
   viewVersion = 0;
   /** Camera depuis laquelle la grille de l'ecran est projetee sur le sol. */
   projectFrom: (() => Camera) | null = null;
+  /** Texture de donnees, hauteurs et volumes du bati. */
+  readonly landcover = new LandcoverHelper();
+  /** Dessiner aussi les hauteurs du bati (bati en relief a l'ecran). */
+  withBuildingHeights = false;
   private readonly _mesh: Mesh;
   private readonly _blockSpace = new Group();
   private readonly _heights: TerrainHeightsHelper;
-  private readonly _landcover = new LandcoverHelper();
   private _projection = new GeoProjection(this.center.lon, this.center.lat);
   private _bounds: GeoBounds = this._projection.bounds(this.extentKm);
   /** Profondeur du bloc rapportee a sa largeur. */
@@ -193,7 +196,7 @@ export class TerrainNode extends Object3DNodeBase {
     this._fly(dt);
     this._glideStep(dt);
     this._heights.update(this._view(), this._flight?.destination);
-    this._landcover.update(this._bounds);
+    this.landcover.update(this._bounds, this.withBuildingHeights);
     this._easeRange(dt);
     terrainSettings.mistDrift.value.x += (MIST_DRIFT.x * dt) / 1000;
     terrainSettings.mistDrift.value.y += (MIST_DRIFT.y * dt) / 1000;
@@ -202,7 +205,7 @@ export class TerrainNode extends Object3DNodeBase {
 
   override dispose(): void {
     this._heights.dispose();
-    this._landcover.dispose();
+    this.landcover.dispose();
     terrainSettings.mistNoise.value.dispose();
     this._mesh.geometry.dispose();
     (this._mesh.material as { dispose(): void }).dispose();
