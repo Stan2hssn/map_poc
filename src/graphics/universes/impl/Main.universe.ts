@@ -131,6 +131,13 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
           { label: "brume", min: 0, max: 1, step: 0.01 },
           "terrain.mist"
         ),
+        debug.bind(
+          target,
+          terrainSettings.landcoverStrength as unknown as Record<string, unknown>,
+          "value",
+          { label: "donnees", min: 0, max: 1, step: 0.01 },
+          "terrain.landcover"
+        ),
         debug
           .bind(target, terrain.settings, "segments", { label: "subdivisions", options: segmentOptions }, "terrain.segments")
           .on("change", () => terrain.applySettings()),

@@ -1,8 +1,10 @@
-import { DataTexture, HalfFloatType, LinearFilter, Matrix4, RedFormat, RepeatWrapping, UnsignedByteType, Vector2, Vector3 } from "three";
+import { DataTexture, HalfFloatType, LinearFilter, Matrix4, RedFormat, RepeatWrapping, RGBAFormat, UnsignedByteType, Vector2, Vector3 } from "three";
 import {
   cameraViewMatrix,
+  abs,
   color,
   float,
+  fwidth,
   length,
   mix,
   normalize,
@@ -29,6 +31,13 @@ const SEA_COLOR = 0x5c5c5c;
 const SEA_DROP = 0.3;
 /** Le sol s'efface dans le fond entre ces distances du centre (unites de scene). */
 export const GROUND_FADE = { near: 70, far: 145 };
+/** Texture de donnees : encre du bati et de ses contours, eau, vegetation, routes couleur papier. */
+const INK = 0x24345c;
+const INK_DARK = 0x141c33;
+const WATER = 0x7d8db0;
+const PAPER = 0xf7f4ec;
+/** Hachures par cellule de bruit de brume (3 a 6 cellules sur la largeur de la vue). */
+const HATCHES_PER_CELL = 30;
 /** Cellules de bruit sur une repetition de la texture de brume. */
 const NOISE_CELLS = 8;
 const ring = (samples: number) =>
@@ -109,6 +118,11 @@ export const terrainSettings = {
   viewProjectionInverse: uniform(new Matrix4()),
   /** Au-dela, un rayon qui rase l'horizon s'arrete. */
   groundReach: uniform(320),
+  /** Texture de donnees (R bati, G vegetation, B eau, A routes) et son cadrage en uv du bloc. */
+  landcover: texture(new DataTexture(new Uint8Array(4), 1, 1, RGBAFormat, UnsignedByteType)),
+  landcoverOffset: uniform(new Vector2()),
+  landcoverScale: uniform(new Vector2(1, 1)),
+  landcoverStrength: uniform(1),
 };
 
 const s = terrainSettings;
@@ -170,6 +184,41 @@ function groundFromScreen(screen: Node): Node {
   return s.viewOrigin.add(ray.mul(distance));
 }
 
+/** Hachures : 1 sur les traits, epais de `width` (fraction de l'ecart), lisses a l'ecran. */
+function hatch(coord: Node, width = 0.12): Node {
+  const distance = abs(coord.add(0.5).fract().sub(0.5));
+  const aa = fwidth(coord);
+  return smoothstep(float(width), aa.add(width), distance).oneMinus();
+}
+
+/**
+ * Dessine la texture de donnees sur le relief, facon carte imprimee : vegetation hachuree, eau en traits
+ * horizontaux, routes en reserve de papier, bati a l'encre bleue cerne plus fonce.
+ * Hachures accrochees au sol, fondues entre deux echelles pendant le zoom (comme la brume).
+ */
+function drawLandcover(relief: Node, blockUv: Node, geo: Node): Node {
+  const at = s.landcoverOffset.add(blockUv.mul(s.landcoverScale));
+  const data = s.landcover.sample(at).mul(inside(at));
+  const edge = fwidth(data).max(1e-3);
+  const fill = smoothstep(edge.negate().add(0.5), edge.add(0.5), data);
+  const outline = smoothstep(vec4(0), edge.mul(1.5), abs(data.sub(0.5))).oneMinus();
+  const lines = (along: (g: Node) => Node) => {
+    const at = (scale: Node) => hatch(along(geo.mul(scale).mul(HATCHES_PER_CELL)));
+    return mix(at(s.mistScales.x), at(s.mistScales.y), s.mistBlend);
+  };
+  const diagonal = lines((g) => g.x.add(g.y));
+  const horizontal = lines((g) => g.y);
+
+  let paper: Node = mix(relief, color(0xcfd5e2), fill.g.mul(0.35));
+  paper = mix(paper, color(INK), fill.g.mul(diagonal).mul(0.45));
+  paper = mix(paper, color(WATER), fill.b.mul(0.55));
+  paper = mix(paper, color(INK), fill.b.mul(horizontal).mul(0.3));
+  paper = mix(paper, color(PAPER), fill.a.mul(0.85));
+  paper = mix(paper, color(INK), fill.r.mul(0.42));
+  paper = mix(paper, color(INK_DARK), outline.r.mul(0.85));
+  return mix(relief, paper, s.landcoverStrength);
+}
+
 export function createTerrainMaterial(): MeshStandardNodeMaterial {
   const ground = groundFromScreen(positionGeometry.xz);
   const blockUv = ground.xz.div(s.blockSize).add(0.5);
@@ -206,9 +255,12 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
   const noiseAt = (scale: Node) => s.mistNoise.sample(geo.mul(scale).div(NOISE_CELLS).add(s.mistDrift)).r;
   const clouds = mix(noiseAt(s.mistScales.x), noiseAt(s.mistScales.y), s.mistBlend);
   const seaTint = vertexStage(sea);
-  const mist = smoothstep(0.45, 0.8, clouds).mul(smoothstep(0, 0.55, low).oneMinus()).mul(seaTint.mul(-0.7).add(1)).mul(s.mist);
+  // Pas de brume sur une vue plate (une ville) : elle n'aurait pas de creux ou se loger.
+  const hilly = smoothstep(80, 600, s.relief);
+  const mist = smoothstep(0.45, 0.8, clouds).mul(smoothstep(0, 0.55, low).oneMinus()).mul(seaTint.mul(-0.7).add(1)).mul(s.mist).mul(hilly);
 
-  const land = mix(color(0xe4e4e4).mul(occlusion), color(SEA_COLOR), seaTint);
+  const relief = mix(color(0xe4e4e4).mul(occlusion), color(SEA_COLOR), seaTint);
+  const land = drawLandcover(relief, uv, geo);
   material.colorNode = mix(land, color(0xf4f4f4), mist);
   // La brume eclaire aussi les versants a l'ombre.
   material.emissiveNode = vec3(mist.mul(0.25));

@@ -15,6 +15,7 @@ import {
 import { levelFor } from "@graphics/terrain/HeightMosaic.ts";
 import type { MapView } from "@graphics/universes/MapNavigator.interface.ts";
 import { Group, MathUtils, Mesh, type Camera, type Object3D } from "three";
+import { LandcoverHelper } from "./Landcover.helper.ts";
 import { TerrainHeightsHelper, type HeightsView } from "./TerrainHeights.helper.ts";
 
 const C = TERRAIN_CONFIG;
@@ -45,6 +46,7 @@ export class TerrainNode extends Object3DNodeBase {
   private readonly _mesh: Mesh;
   private readonly _blockSpace = new Group();
   private readonly _heights: TerrainHeightsHelper;
+  private readonly _landcover = new LandcoverHelper();
   private _projection = new GeoProjection(this.center.lon, this.center.lat);
   private _bounds: GeoBounds = this._projection.bounds(this.extentKm);
   /** Profondeur du bloc rapportee a sa largeur. */
@@ -191,6 +193,7 @@ export class TerrainNode extends Object3DNodeBase {
     this._fly(dt);
     this._glideStep(dt);
     this._heights.update(this._view(), this._flight?.destination);
+    this._landcover.update(this._bounds);
     this._easeRange(dt);
     terrainSettings.mistDrift.value.x += (MIST_DRIFT.x * dt) / 1000;
     terrainSettings.mistDrift.value.y += (MIST_DRIFT.y * dt) / 1000;
@@ -199,6 +202,7 @@ export class TerrainNode extends Object3DNodeBase {
 
   override dispose(): void {
     this._heights.dispose();
+    this._landcover.dispose();
     terrainSettings.mistNoise.value.dispose();
     this._mesh.geometry.dispose();
     (this._mesh.material as { dispose(): void }).dispose();
