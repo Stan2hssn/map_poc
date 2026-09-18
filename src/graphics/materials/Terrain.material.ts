@@ -12,6 +12,7 @@ import {
   int,
   length,
   log2,
+  luminance,
   Loop,
   max,
   mix,
@@ -19,6 +20,7 @@ import {
   output,
   positionGeometry,
   positionWorld,
+  screenCoordinate,
   smoothstep,
   step,
   texture,
@@ -30,6 +32,7 @@ import {
 } from "three/tsl";
 import { MeshStandardNodeMaterial, type Node, type TextureNode } from "three/webgpu";
 import { TERRAIN_CONFIG } from "@graphics/config/terrain.config.ts";
+import { inkCoverage, inkOnPaper, inkSettings, paperAt } from "@graphics/postprocessing/effects/InkStyle.ts";
 import { PEAK_CELL } from "@graphics/terrain/Buildings.ts";
 
 /** Ecart des echantillons de pente, en texels : au-dela de 1, le modele est adouci. */
@@ -53,17 +56,16 @@ const HATCHES_PER_CELL = 30;
 const NOISE_CELLS = 8;
 /** Bati en relief, facon maquette d'argile. */
 export const CLAY = 0xece8e1;
-/** Parallaxe : pas au plus par cellule de sommets, puis par texel vers le sol, et vers le soleil ; penombre par metre parcouru. */
-const COARSE_STEPS = 24;
-const PARALLAX_STEPS = 48;
-const SHADOW_STEPS = 10;
-const SHADOW_SOFTNESS = 0.12;
+/** Parallaxe : bornes des boucles (les pas reels sont des reglages, `terrainSettings.parallax*`). */
+const MAX_COARSE_STEPS = 48;
+const MAX_FINE_STEPS = 96;
+const MAX_SHADOW_STEPS = 24;
 /** Bruit du bord du masque : une repetition de la texture de bruit sur ce nombre d'unites, et sa derive par rapport a la brume. */
 const MASK_NOISE_UNITS = 60;
 const MASK_DRIFT = 4;
 const M = TERRAIN_CONFIG.mask;
 /** Creux au pied du bati : hauteurs moyennes sur un anneau (rayon en texels, lu a 2^lod texels), ecart (m) ou il sature, force. */
-const CONTACT = { radius: 5, lod: 2.5, rangeM: 25, strength: 0.45 };
+const CONTACT = { radius: 5, lod: 2.5, rangeM: 25 };
 const ring = (samples: number) =>
   Array.from({ length: samples }, (_, i) => [Math.cos((i * 2 * Math.PI) / samples), Math.sin((i * 2 * Math.PI) / samples)] as const);
 
@@ -161,13 +163,27 @@ export const terrainSettings = {
   parallax: uniform(0),
   /** Direction du soleil, vers lui. */
   sun: uniform(new Vector3(0, 1, 0)),
-  /** Zone dessinee (voir `TERRAIN_CONFIG.mask`). */
-  maskCenter: uniform(new Vector2(...M.center)),
+  /** Zone dessinee (voir `TERRAIN_CONFIG.mask`) ; centre pose chaque image sous la camera principale. */
+  maskCenter: uniform(new Vector2()),
+  maskShift: uniform(M.shift as number),
   maskRadius: uniform(new Vector2(...M.radius)),
   maskSoftness: uniform(M.softness as number),
   maskJitter: uniform(M.jitter as number),
   /** Dessin a l'encre (0 ou 1) : hachures a la plume du bati, sol qui s'efface vers le papier (blanc) plutot que vers le noir. */
   pen: uniform(0),
+  /** Encre dessinee ici meme (parallaxe, une seule passe) plutot que par l'effet plein ecran. */
+  inkDirect: uniform(0),
+  /**
+   * Parallaxe, de quoi arbitrer qualite et cout : pas par cellule de sommets et par texel (au plus),
+   * pas vers le soleil (0 : sans ombres du bati) et penombre par metre, decalage du niveau de mip
+   * (plus haut : moins de lectures fines, bords plus doux), force du creux au pied du bati.
+   */
+  coarseSteps: uniform(24),
+  fineSteps: uniform(48),
+  shadowSteps: uniform(10),
+  shadowSoftness: uniform(0.12),
+  lodBias: uniform(0),
+  contact: uniform(0.45),
 };
 
 const s = terrainSettings;
@@ -176,7 +192,7 @@ const read = (map: TextureNode, uv: Node) => (map.sample(uv) as TextureNode).lev
 const inside = (uv: Node) => step(0, uv.x).mul(step(uv.x, 1)).mul(step(0, uv.y)).mul(step(uv.y, 1));
 
 /**
- * 1 dans la zone dessinee, 0 au-dela, au point `xz` de la scene : ellipse autour de la vue, bord fondu,
+ * 1 dans la zone dessinee, 0 au-dela, au point `xz` de la scene : disque sous la camera, bord fondu,
  * irregulier et qui respire lentement. Lisible aussi dans le vertex shader.
  */
 export function drawnMask(xz: Node): Node {
@@ -248,6 +264,10 @@ function hatch(coord: Node, width: Node | number = 0.12): Node {
   return smoothstep(w, aa.add(w), distance).oneMinus();
 }
 
+/** Encre directe : distance (unites de scene) ou le trait s'affine ; hachures des murs, plus serrees que celles du sol. */
+const INK_DISTANCE = { near: 60, far: 220 };
+const WALL_HATCHES = 5;
+
 /** Traits a la plume accroches au sol, le long de `along` (degres, longitude x cosinus) ; deux echelles fondues pendant le zoom. */
 export function penLines(along: Node, width: Node | number = 0.12): Node {
   const at = (scale: Node) => hatch(along.mul(scale).mul(HATCHES_PER_CELL), width);
@@ -259,14 +279,22 @@ export function penLines(along: Node, width: Node | number = 0.12): Node {
  * horizontaux, routes en reserve de papier, bati a l'encre bleue cerne plus fonce.
  * Hachures accrochees au sol, fondues entre deux echelles pendant le zoom (comme la brume).
  */
-function drawLandcover(relief: Node, blockUv: Node, geo: Node, drawn: Node): Node {
+/** Texture de donnees au point `blockUv` : aplats (bords nets a toute echelle) et contours, par canal. */
+function landcoverAt(blockUv: Node): { fill: Node; outline: Node } {
   const at = s.landcoverOffset.add(blockUv.mul(s.landcoverScale));
   const data = s.landcover.sample(at).mul(inside(at));
   const edge = fwidth(data).max(1e-3);
-  const fill = smoothstep(edge.negate().add(0.5), edge.add(0.5), data);
-  const outline = smoothstep(vec4(0), edge.mul(1.5), abs(data.sub(0.5))).oneMinus();
-  const diagonal = penLines(geo.x.add(geo.y));
-  const horizontal = penLines(geo.y);
+  return {
+    fill: smoothstep(edge.negate().add(0.5), edge.add(0.5), data),
+    outline: smoothstep(vec4(0), edge.mul(1.5), abs(data.sub(0.5))).oneMinus(),
+  };
+}
+
+function drawLandcover(relief: Node, { fill, outline }: { fill: Node; outline: Node }, geo: Node, drawn: Node): Node {
+  // A l'encre directe, vegetation et eau prennent leurs propres motifs (`inkCoverage`).
+  const hatched = s.inkDirect.oneMinus();
+  const diagonal = penLines(geo.x.add(geo.y)).mul(hatched);
+  const horizontal = penLines(geo.y).mul(hatched);
 
   let paper: Node = mix(relief, color(0xcfd5e2), fill.g.mul(0.35));
   paper = mix(paper, color(INK), fill.g.mul(diagonal).mul(0.45));
@@ -302,11 +330,11 @@ const parallaxHit = Fn(([at, normal, lod, units]: [Node, Node, Node, Node]) => {
     // Hauteur du rayon (m) par unite parcourue vers la camera.
     const climb = dir.dot(normal).negate().div(normal.y).max(0.05).div(units);
     const top = s.buildingMax.div(climb);
-    const cell = float(PEAK_CELL).div(texelsPerUnit).max(top.div(COARSE_STEPS));
+    const cell = float(PEAK_CELL).div(texelsPerUnit).max(top.div(s.coarseSteps));
     const entry = float(0).toVar();
-    Loop(COARSE_STEPS, ({ i }) => {
+    Loop(MAX_COARSE_STEPS, ({ i }) => {
       const distance = top.sub(cell.mul(float(i)));
-      If(distance.lessThanEqual(0), () => {
+      If(distance.lessThanEqual(0).or(float(i).greaterThanEqual(s.coarseSteps)), () => {
         Break();
       });
       // Bas du pas sous le sommet de la cellule : un batiment peut arreter le rayon ici.
@@ -317,11 +345,11 @@ const parallaxHit = Fn(([at, normal, lod, units]: [Node, Node, Node, Node]) => {
     });
 
     If(entry.greaterThan(0), () => {
-      const steps = entry.mul(texelsPerUnit).ceil().clamp(1, PARALLAX_STEPS);
+      const steps = entry.mul(texelsPerUnit).ceil().clamp(1, s.fineSteps);
       const spacing = entry.div(steps);
       const lastGap = float(0).toVar();
       const lastHeight = float(0).toVar();
-      Loop({ start: int(0), end: int(PARALLAX_STEPS), condition: "<=" }, ({ i }) => {
+      Loop({ start: int(0), end: int(MAX_FINE_STEPS), condition: "<=" }, ({ i }) => {
         const index = float(i);
         If(index.greaterThan(steps), () => {
           Break();
@@ -364,13 +392,16 @@ function buildingNormal(at: Node, wall: Node, lod: Node): Node {
  */
 const parallaxLight = Fn(([at, meters, lod, units]: [Node, Node, Node, Node]) => {
   const lit = float(1).toVar();
-  If(buildingsOn(at, units).and(s.sun.y.greaterThan(0.05)), () => {
+  If(buildingsOn(at, units).and(s.sun.y.greaterThan(0.05)).and(s.shadowSteps.greaterThan(0)), () => {
     const reach = peakMeters(at).sub(meters).max(0).mul(units).div(s.sun.y);
     const perUnit = s.sun.xz.div(s.blockSize).mul(s.buildingScale);
-    Loop(SHADOW_STEPS, ({ i }) => {
-      const distance = float(i).add(1).div(SHADOW_STEPS).mul(reach);
+    Loop(MAX_SHADOW_STEPS, ({ i }) => {
+      If(float(i).greaterThanEqual(s.shadowSteps), () => {
+        Break();
+      });
+      const distance = float(i).add(1).div(s.shadowSteps).mul(reach);
       const ray = meters.add(s.sun.y.mul(distance).div(units)).add(1);
-      const spread = distance.div(units).mul(SHADOW_SOFTNESS).max(1);
+      const spread = distance.div(units).mul(s.shadowSoftness).max(1);
       lit.assign(lit.min(ray.sub(buildingMeters(at.add(perUnit.mul(distance)), lod)).div(spread).add(0.5).clamp(0, 1)));
     });
   });
@@ -385,7 +416,7 @@ function contactShade(at: Node, meters: Node, lod: Node, drawn: Node): Node {
   let around: Node = float(0);
   for (const [x, y] of ring(4)) around = around.add(buildingMeters(at.add(reach.mul(vec2(x, y))), level));
   const depth = around.div(4).sub(meters).div(CONTACT.rangeM).clamp(0, 1);
-  return float(1).sub(depth.mul(CONTACT.strength).mul(s.buildingGrow).mul(drawn).mul(inside(at)));
+  return float(1).sub(depth.mul(s.contact).mul(s.buildingGrow).mul(drawn).mul(inside(at)));
 }
 
 export function createTerrainMaterial(): MeshStandardNodeMaterial {
@@ -429,7 +460,7 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
 
   // Bati : parallaxe (sinon volumes a part) ; ombres, creux et normales la ou un batiment est touche.
   const at = s.buildingOffset.add(uv.mul(s.buildingScale));
-  const lod = log2(max(fwidth(at.x), fwidth(at.y)).mul(s.buildingSize.x).max(1));
+  const lod = log2(max(fwidth(at.x), fwidth(at.y)).mul(s.buildingSize.x).max(1)).add(s.lodBias).max(0);
   const drawn = drawnMask(vertexStage(ground.xz));
   const units = s.buildingUnits.mul(drawn);
   const hit = parallaxHit(at, normal, lod, units).toVar();
@@ -450,7 +481,8 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
   material.receivedShadowNode = Fn(([shadow]: [Node]) => shadow.mul(light));
 
   const relief = mix(color(0xe4e4e4).mul(occlusion), color(SEA_COLOR), seaTint);
-  const land = mix(drawLandcover(relief, uv, geo, drawn), color(CLAY), onBuilding).mul(contactShade(surface, hitMeters, lod, drawn));
+  const cover = landcoverAt(uv);
+  const land = mix(drawLandcover(relief, cover, geo, drawn), color(CLAY), onBuilding).mul(contactShade(surface, hitMeters, lod, drawn));
   material.colorNode = mix(land, color(0xf4f4f4), mist);
   // La brume eclaire aussi les versants a l'ombre.
   material.emissiveNode = vec3(mist.mul(0.25));
@@ -459,7 +491,28 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
   // ou vers le papier a l'encre ; au carre, pour un fondu regulier a l'oeil malgre le passage en sRGB.
   const inWorld = step(-180, lonLat.x).mul(step(lonLat.x, 180)).mul(step(-90, lonLat.y)).mul(step(lonLat.y, 90));
   const fade = groundFade(uv).mul(inWorld);
-  material.outputNode = vec4(mix(vec3(s.pen), output.rgb, fade.mul(fade)), output.a);
+  // A l'encre, le relief aussi disparait hors de la zone dessinee : il ne reste que le papier.
+  const shown = fade.mul(fade).mul(mix(float(1), drawn, s.pen));
+  const lit = mix(vec3(s.pen), output.rgb, shown);
+
+  // Encre directe (parallaxe) : tout le dessin dans cette passe, sans normales ni profondeur a relire.
+  const pixel = screenCoordinate.xy;
+  const tone = luminance(output.rgb).max(0).pow(1 / 2.2);
+  const far = smoothstep(INK_DISTANCE.near, INK_DISTANCE.far, length(positionWorld.sub(cameraPosition)));
+  const wall = hit.w.sub(1).max(0).mul(onBuilding);
+  // Murs : traits accroches au mur, le long de sa base (degres, longitude x cosinus).
+  const hitBlock = hit.xy.sub(s.buildingOffset).div(s.buildingScale);
+  const hitGeo = s.geoOrigin.add(hitBlock.mul(s.geoSize)).mul(vec2(s.geoCos, 1));
+  const along = hitGeo.dot(vec2(worldNormal.z.negate(), worldNormal.x.negate())).mul(s.mistScales.x).mul(HATCHES_PER_CELL * WALL_HATCHES);
+  const open = onBuilding.oneMinus().mul(drawn);
+  const coverage = inkCoverage(tone, pixel, { far, wall, along, vegetation: cover.fill.g.mul(open), water: cover.fill.b.mul(open) });
+  // Contours par derivees : silhouettes, sauts de hauteur et aretes, sans relire de voisins.
+  const silhouette = fwidth(onBuilding).min(1);
+  const jump = smoothstep(0.35, 0.7, fwidth(hitMeters).div(hitMeters.max(4)).mul(3));
+  const crease = smoothstep(0.35, 0.7, length(fwidth(worldNormal)).mul(1.5));
+  const edges = max(silhouette, max(jump, crease)).mul(drawn);
+  const inked = inkOnPaper(max(coverage, edges).mul(shown), pixel, paperAt(pixel, shown.oneMinus()));
+  material.outputNode = vec4(mix(lit, inked, s.inkDirect), output.a);
 
   return material;
 }

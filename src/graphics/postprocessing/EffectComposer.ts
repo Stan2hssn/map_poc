@@ -17,7 +17,7 @@ interface EffectComposerOptions {
  *
  * - `render` : les passes de scene ecrivent `inputBuffer`.
  * - `postRender` : chaque passe lit l'entree, ecrit la sortie, puis les deux s'echangent.
- * - La derniere passe rend a l'ecran.
+ * - La derniere passe active rend a l'ecran.
  * - `normalDepth` : `inputBuffer` porte deux textures (`output`, `normal`) et une profondeur ; les passes
  *   les retrouvent dans `ctx.sceneBuffer`, meme apres les echanges.
  */
@@ -40,11 +40,12 @@ export class EffectComposer extends PipelineBase {
       this.inputBuffer.depthTexture = new DepthTexture(1, 1);
     }
 
-    const last = passes.at(-1);
-    if (last) last.renderToScreen = true;
   }
 
   override prepare(frame: FrameTiming, ctx: PassContext): void {
+    // La derniere passe active rend a l'ecran : une passe coupee n'en ajoute pas une de copie.
+    const last = this._chain.findLast((pass) => pass.enabled);
+    for (const pass of this._chain) pass.renderToScreen = pass === last;
     const { x, y } = (ctx.renderer as WebGPURenderer).getDrawingBufferSize(this._size);
     if (x !== this.inputBuffer.width || y !== this.inputBuffer.height) {
       this.inputBuffer.setSize(x, y);

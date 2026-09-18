@@ -274,6 +274,7 @@ export class TerrainNode extends Object3DNodeBase {
       s.viewWorld.value.copy(camera.matrixWorld);
       s.viewProjectionInverse.value.copy(camera.projectionMatrixInverse);
       s.viewOrigin.value.setFromMatrixPosition(camera.matrixWorld);
+      s.maskCenter.value.set(s.viewOrigin.value.x, s.viewOrigin.value.z + s.maskShift.value);
     }
     const b = this._bounds;
     s.heightScale.value = this.heightScale;

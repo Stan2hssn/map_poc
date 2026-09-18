@@ -127,3 +127,26 @@ D'après `refs/` (plume, trame, encre qui bave) et la direction artistique du RE
 - **Lumière douce** : ciel (`ambiance`) et rebond du sol (`rebond`), pour que les faces à l'ombre restent hachurées plutôt que noires.
 - **Papier** : le sol s'efface vers le blanc au lieu du noir ; étiquettes et coordonnées passent à l'encre (`data-map-theme="paper"`). Réglage `dessin` : 0 pour revenir à la carte de nuit.
 - **Coût** : ~2 ms GPU en 2800 × 1720, un dessin plein écran.
+
+## Parallaxe en une passe, papier et masque sous la caméra (2026-09-18)
+
+- **Masque** : un disque centré sous la caméra (son pied au sol), comme dans Chartogne-Taillet : tout le premier plan est dessiné, la carte s'efface vers le lointain au lieu de cadrer la vue. Réglages `masque largeur / profondeur / recul / fondu / bord`.
+- **Parallaxe dessinée dans la passe du sol** : quand la technique est la parallaxe, l'encre (`InkStyle`) est appliquée dans le shader du sol lui-même. Contours par dérivées (`fwidth` de l'impact, de la hauteur touchée et de la normale), sans tampons de normales ni de profondeur ; l'effet plein écran est coupé et la scène rend directement à l'écran (une passe, plus la carte d'ombres). Les volumes extrudés gardent l'effet plein écran.
+- **Tramages** : hachures croisées ou trame de points sur le sol et les toits, traits verticaux accrochés aux murs, pointillé sur la végétation, traits ondulés sur l'eau ; au loin, traits plus fins et plus clairs (réglage `profondeur`).
+- **Papier** : fibres et taches dessinées une fois, et une page de journal vue par transparence là où la carte s'efface (réglages `fibres du papier`, `journal`). Fond de scène couleur papier.
+- **Réglages de parallaxe** (dossier « Parallaxe ») : pas par cellule, pas par texel, pas vers le soleil (0 : sans ombres), pénombre, mip, creux au pied. Et `resolution` (pixels rendus par pixel CSS).
+- **Mesures** (Paris à 5 km, 1400 × 860 CSS, temps GPU médian) :
+
+| Parallaxe dessinée | Densité 2 | 1,5 | 1 |
+|---|---|---|---|
+| réglages par défaut | 13,4 ms | 8,7 ms | 5,0 ms |
+
+  En densité 2 : sans ombres du bâti 9,6 ms, réglage léger (12 / 24 / 6 pas, mip 0,5) 11,5 ms, minimal 8,9 ms. L'encre dans le shader ne coûte presque rien (13 ms en carte de nuit) : c'est la marche du rayon, par pixel, qui domine.
+
+## Chargement et mémoire (2026-09-18)
+
+- Tuiles vectorielles : 16 requêtes simultanées (HTTP/2), niveau fin plafonné au z15, dessin incrémental dans le worker, couches et attributs utiles seulement, coordonnées en `Int16Array` par couche (3,5 → 1,45 Mo par tuile décodée).
+- Vols : données demandées pour l'arrivée seulement.
+- Communes : par département, là où regarde la vue (au lieu de 3,9 Mo pour la France entière).
+- Cache d'altitude : 320 tuiles.
+- Mesure à froid (ville à 3 km) : données complètes 1,3 à 1,8 s après l'arrivée, contre ~5 s.

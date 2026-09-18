@@ -34,6 +34,14 @@ export const DEBUG_CONFIG: DebugConfig = {
       order: 3,
     },
     {
+      id: FOLDER_ID.PARALLAX,
+      tabId: TAB_ID.UNIVERSE,
+      label: "Parallaxe",
+      visible: true,
+      expanded: false,
+      order: 4,
+    },
+    {
       id: FOLDER_ID.STATS,
       tabId: TAB_ID.RENDER,
       label: "Stats",

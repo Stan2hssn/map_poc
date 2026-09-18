@@ -13,7 +13,7 @@ import { LabelsNode } from "@graphics/nodes/labels/Labels.node.ts";
 import { SurveyNode } from "@graphics/nodes/survey/Survey.node.ts";
 import { LightsNode } from "@graphics/nodes/lights/Lights.node.ts";
 import { TerrainNode } from "@graphics/nodes/terrain/Terrain.node.ts";
-import { EffectComposer, EffectPass, InkEffect, RenderPass } from "@graphics/postprocessing/index.ts";
+import { EffectComposer, EffectPass, InkEffect, inkSettings, RenderPass } from "@graphics/postprocessing/index.ts";
 import { IgnElevationProvider } from "@graphics/terrain/IgnElevationProvider.ts";
 import type IMapNavigator from "@graphics/universes/MapNavigator.interface.ts";
 import type { MapView } from "@graphics/universes/MapNavigator.interface.ts";
@@ -33,6 +33,8 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   private readonly _buildings: BuildingsNode;
   private readonly _renderStats: RenderStatsHelper;
   private readonly _ink: InkEffect;
+  private readonly _inkPass: EffectPass;
+  private readonly _renderer: WebGPURenderer;
   private _nodesRegistered = false;
 
   constructor(device: IThreeDeviceSlice) {
@@ -53,17 +55,20 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     );
 
     const ink = new InkEffect();
+    const inkPass = new EffectPass([ink]);
     super(
       UNIVERSE_ID.MAIN,
       scene,
       cameraNode.camera,
       new NodeGraph(scene),
-      new EffectComposer([new RenderPass(), new EffectPass([ink])], { normalDepth: true }),
+      new EffectComposer([new RenderPass(), inkPass], { normalDepth: true }),
       device.assets.preloadGroup.bind(device.assets),
       device.debug
     );
 
     this._ink = ink;
+    this._inkPass = inkPass;
+    this._renderer = device.renderer as WebGPURenderer;
     this._cameraNode = cameraNode;
     this._terrain = terrain;
     terrain.projectFrom = () => cameraNode.camera;
@@ -101,6 +106,12 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
 
   override update(time: number, dt: number): void {
     super.update(time, dt);
+    // A l'encre, la parallaxe se dessine dans le shader du sol : une passe de scene, rien d'autre.
+    // Les volumes extrudes passent par l'effet plein ecran ; la carte de nuit, par rien.
+    const paper = inkSettings.amount.value > 0.5;
+    const direct = paper && this._buildings.settings.technique === "parallax";
+    terrainSettings.inkDirect.value = direct ? 1 : 0;
+    this._inkPass.enabled = paper && !direct;
     this._renderStats.update(dt);
   }
 
@@ -178,11 +189,15 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     this.debugSubscribe({ tabId: TAB_ID.UNIVERSE, folderId: FOLDER_ID.UNIVERSE_MAIN, mount: declare });
 
     const buildings = this._buildings;
+    const renderer = this._renderer;
+    // Pixels rendus par pixel CSS : la parallaxe coute par pixel, la trame masque une resolution plus basse.
+    const quality = { pixelRatio: renderer.getPixelRatio() };
+    const applyQuality = () => renderer.setPixelRatio(quality.pixelRatio);
     const asRecord = (value: object) => value as unknown as Record<string, unknown>;
     const maskControls = [
-      [asRecord(terrainSettings.maskRadius.value), "x", { label: "masque largeur", min: 10, max: 200, step: 1 }, "mask.radiusX"],
-      [asRecord(terrainSettings.maskRadius.value), "y", { label: "masque profondeur", min: 10, max: 200, step: 1 }, "mask.radiusY"],
-      [asRecord(terrainSettings.maskCenter.value), "y", { label: "masque centre", min: -80, max: 40, step: 1 }, "mask.centerY"],
+      [asRecord(terrainSettings.maskRadius.value), "x", { label: "masque largeur", min: 20, max: 400, step: 1 }, "mask.radiusX"],
+      [asRecord(terrainSettings.maskRadius.value), "y", { label: "masque profondeur", min: 20, max: 400, step: 1 }, "mask.radiusY"],
+      [asRecord(terrainSettings.maskShift), "value", { label: "masque recul", min: -150, max: 50, step: 1 }, "mask.shift"],
       [asRecord(terrainSettings.maskSoftness), "value", { label: "masque fondu", min: 0.02, max: 1, step: 0.01 }, "mask.softness"],
       [asRecord(terrainSettings.maskJitter), "value", { label: "masque bord", min: 0, max: 0.6, step: 0.01 }, "mask.jitter"],
     ] as const;
@@ -196,9 +211,13 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
           "buildings.technique"
         ),
         debug.bind(target, buildings.settings, "height", { label: "hauteur", min: 0.5, max: 4, step: 0.1 }, "buildings.height"),
+        debug
+          .bind(target, quality, "pixelRatio", { label: "resolution", min: 0.5, max: 3, step: 0.25 }, "render.pixelRatio")
+          .on("change", applyQuality),
         ...maskControls.map(([object, key, options, path]) => debug.bind(target, object, key, options, path)),
         ...(target ? this._monitors(target) : []),
       ];
+      applyQuality();
       return () => {
         for (const binding of bindings) binding.dispose();
       };
@@ -207,31 +226,41 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     this.debugSubscribe({ tabId: TAB_ID.UNIVERSE, folderId: FOLDER_ID.BUILDINGS, mount: declareBuildings });
 
     const ink = this._ink;
+    const scene = this.scene as Scene;
     const inkControls = [
       ["amount", { label: "dessin", min: 0, max: 1, step: 1 }],
       ["light", { label: "ton papier", min: 0.1, max: 2, step: 0.01 }],
       ["dark", { label: "ton encre", min: 0, max: 0.5, step: 0.005 }],
       ["screen", { label: "trame (px)", min: 2, max: 16, step: 0.5 }],
       ["hatching", { label: "points / plume", min: 0, max: 1, step: 0.01 }],
+      ["cross", { label: "hachures croisees", min: 0.2, max: 1, step: 0.01 }],
+      ["depth", { label: "profondeur", min: 0, max: 1, step: 0.01 }],
+      ["stipple", { label: "pointille vegetation", min: 0, max: 1, step: 0.01 }],
+      ["waves", { label: "traits eau", min: 0, max: 1, step: 0.01 }],
       ["line", { label: "trait (px)", min: 0.5, max: 4, step: 0.1 }],
       ["depthEdge", { label: "contour profondeur", min: 0.001, max: 0.1, step: 0.001 }],
       ["normalEdge", { label: "contour arete", min: 0.02, max: 1, step: 0.01 }],
       ["wobble", { label: "tremble (px)", min: 0, max: 6, step: 0.1 }],
       ["grain", { label: "grain", min: 0, max: 1, step: 0.01 }],
       ["bleed", { label: "bavure", min: 0, max: 1, step: 0.01 }],
+      ["fibers", { label: "fibres du papier", min: 0, max: 2, step: 0.01 }],
+      ["newsprint", { label: "journal", min: 0, max: 1, step: 0.01 }],
     ] as const;
     const applyInk = () => {
-      const paper = ink.amount.value > 0.5;
+      const paper = inkSettings.amount.value > 0.5;
       terrainSettings.pen.value = paper ? 1 : 0;
+      scene.background = paper ? inkSettings.paper.value : new Color(BACKGROUND);
       document.documentElement.dataset.mapTheme = paper ? "paper" : "night";
     };
     const declareInk = (target: DebugTarget | null) => {
       const bindings = [
         ...inkControls.map(([key, options]) =>
-          debug.bind(target, asRecord(ink[key]), "value", options, `ink.${key}`).on("change", applyInk)
+          debug.bind(target, asRecord(inkSettings[key]), "value", options, `ink.${key}`).on("change", applyInk)
         ),
-        debug.bind(target, asRecord(ink.paper), "value", { label: "papier", color: { type: "float" } }, "ink.paper"),
-        debug.bind(target, asRecord(ink.ink), "value", { label: "encre", color: { type: "float" } }, "ink.ink"),
+        debug.bind(target, asRecord(ink.near), "value", { label: "trait fin des", min: 0, max: 300, step: 1 }, "ink.near"),
+        debug.bind(target, asRecord(ink.far), "value", { label: "trait fin a", min: 10, max: 600, step: 1 }, "ink.far"),
+        debug.bind(target, asRecord(inkSettings.paper), "value", { label: "papier", color: { type: "float" } }, "ink.paper").on("change", applyInk),
+        debug.bind(target, asRecord(inkSettings.ink), "value", { label: "encre", color: { type: "float" } }, "ink.ink"),
       ];
       applyInk();
       return () => {
@@ -240,6 +269,25 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     };
     declareInk(null);
     this.debugSubscribe({ tabId: TAB_ID.UNIVERSE, folderId: FOLDER_ID.INK, mount: declareInk });
+
+    const parallaxControls = [
+      ["coarseSteps", { label: "pas par cellule", min: 1, max: 48, step: 1 }],
+      ["fineSteps", { label: "pas par texel", min: 1, max: 96, step: 1 }],
+      ["shadowSteps", { label: "pas vers le soleil", min: 0, max: 24, step: 1 }],
+      ["shadowSoftness", { label: "penombre", min: 0, max: 0.5, step: 0.01 }],
+      ["lodBias", { label: "mip (flou)", min: 0, max: 4, step: 0.1 }],
+      ["contact", { label: "creux au pied", min: 0, max: 1, step: 0.01 }],
+    ] as const;
+    const declareParallax = (target: DebugTarget | null) => {
+      const bindings = parallaxControls.map(([key, options]) =>
+        debug.bind(target, asRecord(terrainSettings[key]), "value", options, `parallax.${key}`)
+      );
+      return () => {
+        for (const binding of bindings) binding.dispose();
+      };
+    };
+    declareParallax(null);
+    this.debugSubscribe({ tabId: TAB_ID.UNIVERSE, folderId: FOLDER_ID.PARALLAX, mount: declareParallax });
   }
 
   /** Mesures en lecture seule : cadence, GPU, dessin, et ce que coute le bati. */

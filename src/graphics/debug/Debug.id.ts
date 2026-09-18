@@ -9,6 +9,7 @@ export const FOLDER_ID = {
   UNIVERSE_MAIN: "UNIVERSE_MAIN",
   BUILDINGS: "BUILDINGS",
   INK: "INK",
+  PARALLAX: "PARALLAX",
   STATS: "STATS",
 } as const;
 

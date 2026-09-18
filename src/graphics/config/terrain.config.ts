@@ -25,9 +25,9 @@ export const TERRAIN_CONFIG = {
   margin: 0.25,
   coarse: { levels: 3, margin: 1 },
   /**
-   * Zone dessinee, a la Chartogne-Taillet : ellipse autour de la vue (unites de scene), bord fondu
-   * sur `softness` de son rayon et rendu irregulier par un bruit d'amplitude `jitter`.
-   * Au-dela, le relief reste nu : ni encre, ni bati.
+   * Zone dessinee, a la Chartogne-Taillet : disque centre sous la camera (unites de scene), decale de
+   * `shift` vers la vue ; tout le premier plan est dessine et la carte s'efface vers le lointain.
+   * Bord fondu sur `softness` du rayon, rendu irregulier par un bruit d'amplitude `jitter`.
    */
-  mask: { center: [0, -12], radius: [60, 48], softness: 0.35, jitter: 0.15 },
+  mask: { radius: [190, 190], shift: 0, softness: 0.45, jitter: 0.12 },
 } as const;
