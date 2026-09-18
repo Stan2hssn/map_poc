@@ -1,4 +1,4 @@
-import { DataTexture, HalfFloatType, LinearFilter, RedFormat, RepeatWrapping, UnsignedByteType, Vector2 } from "three";
+import { DataTexture, HalfFloatType, LinearFilter, Matrix4, RedFormat, RepeatWrapping, UnsignedByteType, Vector2, Vector3 } from "three";
 import {
   cameraViewMatrix,
   color,
@@ -103,6 +103,12 @@ export const terrainSettings = {
   mistDrift: uniform(new Vector2()),
   mistScales: uniform(new Vector2(1, 0.5)),
   mistBlend: uniform(0),
+  /** Camera principale : la grille de l'ecran est projetee depuis elle, y compris dans la passe d'ombre. */
+  viewOrigin: uniform(new Vector3()),
+  viewWorld: uniform(new Matrix4()),
+  viewProjectionInverse: uniform(new Matrix4()),
+  /** Au-dela, un rayon qui rase l'horizon s'arrete. */
+  groundReach: uniform(320),
 };
 
 const s = terrainSettings;
@@ -155,20 +161,31 @@ export function terrainHeight(blockUv: Node, detailed = true): Node {
   return terrainMeters(blockUv, detailed).sub(s.floor).mul(s.heightScale);
 }
 
+/** Point du sol (y = 0) vu au point `screen` de l'ecran (0 a 1) depuis la camera principale. */
+function groundFromScreen(screen: Node): Node {
+  const clip = s.viewProjectionInverse.mul(vec4(screen.mul(2).sub(1), 1, 1));
+  const far = s.viewWorld.mul(vec4(clip.xyz.div(clip.w), 1)).xyz;
+  const ray = normalize(far.sub(s.viewOrigin));
+  const distance = s.viewOrigin.y.div(ray.y.negate().max(1e-4)).min(s.groundReach);
+  return s.viewOrigin.add(ray.mul(distance));
+}
+
 export function createTerrainMaterial(): MeshStandardNodeMaterial {
-  const uv = positionGeometry.xz;
+  const ground = groundFromScreen(positionGeometry.xz);
+  const blockUv = ground.xz.div(s.blockSize).add(0.5);
+  const uv = vertexStage(blockUv);
   const material = new MeshStandardNodeMaterial({ roughness: 0.85, metalness: 0 });
-  const meters = terrainMeters(uv);
+  const meters = terrainMeters(blockUv);
   const height = meters.sub(s.floor).mul(s.heightScale);
   const sea = float(1).sub(smoothstep(0, 1, meters));
-  material.positionNode = vec3(uv.x, height.sub(sea.mul(SEA_DROP)), uv.y);
+  material.positionNode = vec3(ground.x, height.sub(sea.mul(SEA_DROP)), ground.z);
 
   // Pente et creux par sommet : moins nombreux que les pixels, et absents de la passe d'ombre.
   const spread = s.texel.mul(NORMAL_SPREAD);
   const du = vec2(spread.x, 0);
   const dv = vec2(0, spread.y);
-  const dx = terrainHeight(uv.add(du)).sub(terrainHeight(uv.sub(du))).div(spread.x.mul(s.blockSize.x).mul(2));
-  const dz = terrainHeight(uv.add(dv)).sub(terrainHeight(uv.sub(dv))).div(spread.y.mul(s.blockSize.y).mul(2));
+  const dx = terrainHeight(blockUv.add(du)).sub(terrainHeight(blockUv.sub(du))).div(spread.x.mul(s.blockSize.x).mul(2));
+  const dz = terrainHeight(blockUv.add(dv)).sub(terrainHeight(blockUv.sub(dv))).div(spread.y.mul(s.blockSize.y).mul(2));
   const normal = vertexStage(vec3(dx.negate(), 1, dz.negate()));
   material.normalNode = normalize(cameraViewMatrix.mul(vec4(normal, 0)).xyz);
 
@@ -177,7 +194,7 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
   for (const { radius, samples } of [NEAR_RING, FAR_RING]) {
     const offset = s.texel.mul(radius);
     let sum: Node = float(0);
-    for (const [cx, cy] of ring(samples)) sum = sum.add(terrainHeight(uv.add(vec2(cx, cy).mul(offset)), radius === NEAR_RING.radius));
+    for (const [cx, cy] of ring(samples)) sum = sum.add(terrainHeight(blockUv.add(vec2(cx, cy).mul(offset)), radius === NEAR_RING.radius));
     concavity = concavity.add(sum.div(samples).sub(height).div(offset.x.mul(s.blockSize.x)));
   }
   const occlusion = vertexStage(float(1).sub(concavity.mul(s.occlusion).clamp(0, 0.85)));
@@ -191,8 +208,8 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
   const seaTint = vertexStage(sea);
   const mist = smoothstep(0.45, 0.8, clouds).mul(smoothstep(0, 0.55, low).oneMinus()).mul(seaTint.mul(-0.7).add(1)).mul(s.mist);
 
-  const ground = mix(color(0xe4e4e4).mul(occlusion), color(SEA_COLOR), seaTint);
-  material.colorNode = mix(ground, color(0xf4f4f4), mist);
+  const land = mix(color(0xe4e4e4).mul(occlusion), color(SEA_COLOR), seaTint);
+  material.colorNode = mix(land, color(0xf4f4f4), mist);
   // La brume eclaire aussi les versants a l'ombre.
   material.emissiveNode = vec3(mist.mul(0.25));
 

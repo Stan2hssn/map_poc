@@ -14,7 +14,7 @@ import {
 } from "@graphics/terrain/GeoProjection.ts";
 import { levelFor } from "@graphics/terrain/HeightMosaic.ts";
 import type { MapView } from "@graphics/universes/MapNavigator.interface.ts";
-import { MathUtils, Mesh, type Object3D } from "three";
+import { Group, MathUtils, Mesh, type Camera, type Object3D } from "three";
 import { TerrainHeightsHelper, type HeightsView } from "./TerrainHeights.helper.ts";
 
 const C = TERRAIN_CONFIG;
@@ -40,7 +40,10 @@ export class TerrainNode extends Object3DNodeBase {
   extentKm: number = C.extentKm;
   /** Incremente a chaque changement de vue. */
   viewVersion = 0;
+  /** Camera depuis laquelle la grille de l'ecran est projetee sur le sol. */
+  projectFrom: (() => Camera) | null = null;
   private readonly _mesh: Mesh;
+  private readonly _blockSpace = new Group();
   private readonly _heights: TerrainHeightsHelper;
   private _projection = new GeoProjection(this.center.lon, this.center.lat);
   private _bounds: GeoBounds = this._projection.bounds(this.extentKm);
@@ -70,8 +73,10 @@ export class TerrainNode extends Object3DNodeBase {
     this.rect = { minX: -half, maxX: half, minZ: -half, maxZ: half };
     this._mesh = mesh;
     this._heights = new TerrainHeightsHelper(provider);
-    mesh.position.set(-half, 0, -half);
-    mesh.scale.set(C.blockSize, 1, C.blockSize);
+    // La grille est placee dans la scene par le shader : pas de transformation, pas de culling.
+    mesh.frustumCulled = false;
+    this._blockSpace.position.set(-half, 0, -half);
+    this._blockSpace.scale.set(C.blockSize, 1, C.blockSize);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     this._setView();
@@ -116,9 +121,9 @@ export class TerrainNode extends Object3DNodeBase {
     return { x: this._projection.x(lon) / k, z: this._projection.z(lat) / k };
   }
 
-  /** Le sol : sa transformation place les uv de la zone de detail (0..1) dans la scene. */
+  /** Place les uv de la zone de detail (0..1) dans la scene. */
   get block(): Object3D {
-    return this._mesh;
+    return this._blockSpace;
   }
 
   /** Deplace le centre de (dx, dz) unites de scene. */
@@ -165,7 +170,7 @@ export class TerrainNode extends Object3DNodeBase {
     if (this.settings.segments === this._segments) return;
     this._segments = this.settings.segments;
     this._mesh.geometry.dispose();
-    this._mesh.geometry = createGroundGeometry(this._segments, C.groundSpan);
+    this._mesh.geometry = createGroundGeometry(this._segments);
     this._setView();
   }
 
@@ -248,14 +253,21 @@ export class TerrainNode extends Object3DNodeBase {
     this._bounds = view.bounds;
     this._level = view.level;
     this._depth = Math.min(this.extentKm, WORLD_HEIGHT_KM) / this.extentKm;
-    this._mesh.scale.z = C.blockSize * this._depth;
-    this._mesh.position.z = (-C.blockSize * this._depth) / 2;
+    this._blockSpace.scale.z = C.blockSize * this._depth;
+    this._blockSpace.position.z = (-C.blockSize * this._depth) / 2;
     this._range = null;
     this.viewVersion++;
   }
 
   private _syncUniforms(): void {
     const s = terrainSettings;
+    const camera = this.projectFrom?.();
+    if (camera) {
+      camera.updateMatrixWorld();
+      s.viewWorld.value.copy(camera.matrixWorld);
+      s.viewProjectionInverse.value.copy(camera.projectionMatrixInverse);
+      s.viewOrigin.value.setFromMatrixPosition(camera.matrixWorld);
+    }
     const b = this._bounds;
     s.heightScale.value = this.heightScale;
     s.floor.value = this._floor;

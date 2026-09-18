@@ -58,6 +58,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
 
     this._cameraNode = cameraNode;
     this._terrain = terrain;
+    terrain.projectFrom = () => cameraNode.camera;
     // Un nom de ville clique : vol vers elle, en rapprochant la vue (sans descendre sous 8 km).
     this._labels = new LabelsNode(device.renderer.domElement, terrain, () => this.camera as Camera, ({ lon, lat }) =>
       terrain.flyTo({ lon, lat, extentKm: Math.min(terrain.extentKm, Math.max(8, terrain.extentKm / 4)) })

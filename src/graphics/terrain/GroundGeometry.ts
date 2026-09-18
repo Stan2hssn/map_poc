@@ -1,37 +1,35 @@
-import { Box3, BufferAttribute, BufferGeometry, Sphere, Vector3 } from "three";
+import { BufferAttribute, BufferGeometry } from "three";
 
-/** Pente de la grille au centre, relative a une grille reguliere de meme etendue. */
-const CENTER_DENSITY = 1 / 3;
-
-/** Resserre la grille au centre : t dans [-1, 1], pente `CENTER_DENSITY` en 0, bords inchanges. */
-export function warp(t: number): number {
-  return t * (CENTER_DENSITY + (1 - CENTER_DENSITY) * t * t);
-}
+/** Marges de la grille au-dela de l'ecran : le relief souleve le bas, la parallaxe decale les cotes. */
+export const SCREEN_MARGIN = { side: 0.04, bottom: 0.3, top: 0.02 };
 
 /**
- * Sol plein ecran : grille (y = 0) en uv du bloc, de `0.5 - span / 2` a `0.5 + span / 2`.
- * Resserree au centre ou la vue s'attarde, relachee vers les bords que le brouillard efface.
+ * Grille de l'ecran : x, z sont des coordonnees d'ecran (0 a 1, bas-gauche a haut-droite), marges comprises.
+ * Le shader projette chaque sommet sur le sol depuis la camera : toutes les subdivisions servent l'image,
+ * et c'est le terrain qui defile et zoome dessous.
  */
-export function createGroundGeometry(segments: number, span: number): BufferGeometry {
+export function createGroundGeometry(segments: number): BufferGeometry {
   const n = segments + 1;
   const position = new Float32Array(n * n * 3);
   const normal = new Float32Array(n * n * 3);
   const index = new Uint32Array(6 * segments * segments);
-  const coord = Float32Array.from({ length: n }, (_, k) => 0.5 + (warp((2 * k) / segments - 1) * span) / 2);
+  const { side, bottom, top } = SCREEN_MARGIN;
 
   for (let row = 0; row < n; row++) {
+    const t = -bottom + (row / segments) * (1 + bottom + top);
     for (let col = 0; col < n; col++) {
       const o = (row * n + col) * 3;
-      position[o] = coord[col]!;
-      position[o + 2] = coord[row]!;
+      position[o] = -side + (col / segments) * (1 + 2 * side);
+      position[o + 2] = t;
       normal[o + 1] = 1;
     }
   }
+  // Sens direct a l'ecran, donc face a la camera une fois projete.
   let i = 0;
   for (let row = 0; row < segments; row++) {
     for (let col = 0; col < segments; col++) {
       const a = row * n + col;
-      index.set([a, a + n, a + 1, a + 1, a + n, a + n + 1], i);
+      index.set([a, a + 1, a + n, a + 1, a + n + 1, a + n], i);
       i += 6;
     }
   }
@@ -40,9 +38,5 @@ export function createGroundGeometry(segments: number, span: number): BufferGeom
   geometry.setAttribute("position", new BufferAttribute(position, 3));
   geometry.setAttribute("normal", new BufferAttribute(normal, 3));
   geometry.setIndex(new BufferAttribute(index, 1));
-  // Altitudes posees par le shader : bornes elargies pour le culling.
-  const half = span / 2;
-  geometry.boundingBox = new Box3(new Vector3(0.5 - half, -1, 0.5 - half), new Vector3(0.5 + half, 1, 0.5 + half));
-  geometry.boundingSphere = geometry.boundingBox.getBoundingSphere(new Sphere());
   return geometry;
 }
