@@ -1,4 +1,4 @@
-import { DataTexture, HalfFloatType, LinearFilter, Matrix4, RedFormat, RepeatWrapping, RGBAFormat, UnsignedByteType, Vector2, Vector3 } from "three";
+import { DataTexture, HalfFloatType, LinearFilter, Matrix4, RedFormat, RepeatWrapping, RGBAFormat, UnsignedByteType, Vector2, Vector3, Vector4 } from "three";
 import {
   Break,
   cameraPosition,
@@ -20,7 +20,6 @@ import {
   output,
   positionGeometry,
   positionWorld,
-  screenCoordinate,
   smoothstep,
   step,
   texture,
@@ -60,8 +59,10 @@ export const CLAY = 0xece8e1;
 const MAX_COARSE_STEPS = 48;
 const MAX_FINE_STEPS = 96;
 const MAX_SHADOW_STEPS = 24;
-/** Bruit du bord du masque : une repetition de la texture de bruit sur ce nombre d'unites, et sa derive par rapport a la brume. */
-const MASK_NOISE_UNITS = 60;
+/** Dichotomies apres l'impact : la position du mur a 1/8 de pas pres. */
+const REFINE_STEPS = 3;
+/** Bruit du bord du masque : cellules de bruit par cellule de brume (accroche a la carte), et sa derive par rapport a la brume. */
+const MASK_FREQUENCY = 2;
 const MASK_DRIFT = 4;
 const M = TERRAIN_CONFIG.mask;
 /** Creux au pied du bati : hauteurs moyennes sur un anneau (rayon en texels, lu a 2^lod texels), ecart (m) ou il sature, force. */
@@ -157,6 +158,8 @@ export const terrainSettings = {
   buildingMax: uniform(0),
   /** Sommets par cellule de `PEAK_CELL` texels, etendus aux voisines : la ou la parallaxe peut s'arreter. */
   buildingPeaks: texture(new DataTexture(new Uint8Array(1), 1, 1, RedFormat, UnsignedByteType)),
+  /** Sommets des environs (cellules de `SUMMIT_CELL` texels) : la parallaxe part de la, pas du plus haut batiment de la zone. */
+  buildingSummits: texture(new DataTexture(new Uint8Array(1), 1, 1, RedFormat, UnsignedByteType)),
   /** Unites de scene par metre de bati (0 : pas de bati), apparition de 0 a 1, parallaxe (1) ou volumes a part (0). */
   buildingUnits: uniform(0),
   buildingGrow: uniform(0),
@@ -174,12 +177,20 @@ export const terrainSettings = {
   /** Encre dessinee ici meme (parallaxe, une seule passe) plutot que par l'effet plein ecran. */
   inkDirect: uniform(0),
   /**
-   * Parallaxe, de quoi arbitrer qualite et cout : pas par cellule de sommets et par texel (au plus),
+   * Motifs d'encre accroches a la carte, a deux echelles (celles de la brume) : pseudo-pixels par unite
+   * de `geo`, et ecart (en `geo`) entre le coin de la vue et une origine recalee d'une periode entiere
+   * (`INK_PERIOD`), calcule en double precision cote CPU.
+   */
+  inkScale: uniform(new Vector2(1, 1)),
+  inkOrigin: uniform(new Vector4()),
+  /**
+   * Parallaxe, de quoi arbitrer qualite et cout : pas par cellule de sommets et fins (au plus), texels par pas fin,
    * pas vers le soleil (0 : sans ombres du bati) et penombre par metre, decalage du niveau de mip
    * (plus haut : moins de lectures fines, bords plus doux), force du creux au pied du bati.
    */
   coarseSteps: uniform(24),
-  fineSteps: uniform(48),
+  fineSteps: uniform(24),
+  stepTexels: uniform(2),
   shadowSteps: uniform(10),
   shadowSoftness: uniform(0.12),
   lodBias: uniform(0),
@@ -197,7 +208,10 @@ const inside = (uv: Node) => step(0, uv.x).mul(step(uv.x, 1)).mul(step(0, uv.y))
  */
 export function drawnMask(xz: Node): Node {
   const distance = length(xz.sub(s.maskCenter).div(s.maskRadius));
-  const noise = read(s.mistNoise, xz.div(MASK_NOISE_UNITS).add(s.mistDrift.mul(MASK_DRIFT)));
+  // Bord accroche a la carte : il glisse avec elle au lieu de rester colle a l'ecran.
+  const geo = s.geoOrigin.add(xz.div(s.blockSize).add(0.5).mul(s.geoSize)).mul(vec2(s.geoCos, 1));
+  const at = (scale: Node) => read(s.mistNoise, geo.mul(scale).mul(MASK_FREQUENCY / NOISE_CELLS).add(s.mistDrift.mul(MASK_DRIFT)));
+  const noise = mix(at(s.mistScales.x), at(s.mistScales.y), s.mistBlend);
   const edge = distance.add(noise.sub(0.5).mul(s.maskJitter));
   return smoothstep(s.maskSoftness.oneMinus(), 1, edge).oneMinus();
 }
@@ -264,9 +278,8 @@ function hatch(coord: Node, width: Node | number = 0.12): Node {
   return smoothstep(w, aa.add(w), distance).oneMinus();
 }
 
-/** Encre directe : distance (unites de scene) ou le trait s'affine ; hachures des murs, plus serrees que celles du sol. */
+/** Encre directe : distance (unites de scene) ou le trait s'eclaircit. */
 const INK_DISTANCE = { near: 60, far: 220 };
-const WALL_HATCHES = 5;
 
 /** Traits a la plume accroches au sol, le long de `along` (degres, longitude x cosinus) ; deux echelles fondues pendant le zoom. */
 export function penLines(along: Node, width: Node | number = 0.12): Node {
@@ -311,6 +324,7 @@ function drawLandcover(relief: Node, { fill, outline }: { fill: Node; outline: N
 /** Hauteur du bati (m) au point `at` de sa texture, et sommet de sa cellule. */
 const buildingMeters = (at: Node, lod: Node) => (s.buildingHeights.sample(at) as TextureNode).level(lod).r.mul(255);
 const peakMeters = (at: Node) => (s.buildingPeaks.sample(at) as TextureNode).level(float(0)).r.mul(255);
+const summitMeters = (at: Node) => (s.buildingSummits.sample(at) as TextureNode).level(float(0)).r.mul(255);
 const buildingsOn = (at: Node, units: Node) => s.parallax.mul(units).mul(s.buildingMax).mul(inside(at)).greaterThan(0);
 
 /**
@@ -329,7 +343,8 @@ const parallaxHit = Fn(([at, normal, lod, units]: [Node, Node, Node, Node]) => {
     const texelsPerUnit = length(perUnit.mul(s.buildingSize)).max(1e-6);
     // Hauteur du rayon (m) par unite parcourue vers la camera.
     const climb = dir.dot(normal).negate().div(normal.y).max(0.05).div(units);
-    const top = s.buildingMax.div(climb);
+    // Depart a hauteur du plus haut sommet des environs : dans une ville de 20 m, pas de marche depuis 255 m.
+    const top = summitMeters(at).div(climb);
     const cell = float(PEAK_CELL).div(texelsPerUnit).max(top.div(s.coarseSteps));
     const entry = float(0).toVar();
     Loop(MAX_COARSE_STEPS, ({ i }) => {
@@ -345,9 +360,9 @@ const parallaxHit = Fn(([at, normal, lod, units]: [Node, Node, Node, Node]) => {
     });
 
     If(entry.greaterThan(0), () => {
-      const steps = entry.mul(texelsPerUnit).ceil().clamp(1, s.fineSteps);
+      // `stepTexels` texels du niveau de mip lu par pas (la dichotomie rattrape la precision) : loin, moins de pas.
+      const steps = entry.mul(texelsPerUnit).div(lod.exp2().mul(s.stepTexels)).ceil().clamp(1, s.fineSteps);
       const spacing = entry.div(steps);
-      const lastGap = float(0).toVar();
       const lastHeight = float(0).toVar();
       Loop({ start: int(0), end: int(MAX_FINE_STEPS), condition: "<=" }, ({ i }) => {
         const index = float(i);
@@ -360,14 +375,24 @@ const parallaxHit = Fn(([at, normal, lod, units]: [Node, Node, Node, Node]) => {
         const gap = climb.mul(distance).sub(height);
         // Nettement sous un toit : le sol lui-meme n'est pas un batiment.
         If(gap.lessThan(-0.05), () => {
-          const t = lastGap.div(lastGap.sub(gap).max(1e-4));
-          const back = distance.add(spacing.mul(t.oneMinus())).min(entry);
+          // Dichotomie entre le dernier point au-dessus et le premier dessous : des pas plus grands suffisent.
+          const above = distance.add(spacing).min(entry).toVar();
+          const below = distance.toVar();
+          for (let r = 0; r < REFINE_STEPS; r++) {
+            const middle = above.add(below).mul(0.5);
+            const under = climb.mul(middle).sub(buildingMeters(at.sub(perUnit.mul(middle)), lod)).lessThan(-0.05);
+            If(under, () => {
+              below.assign(middle);
+            }).Else(() => {
+              above.assign(middle);
+            });
+          }
+          const back = above.add(below).mul(0.5);
           // Mur : la hauteur a monte plus vite que le rayon n'est descendu.
           const wall = smoothstep(0.5, 1.5, height.sub(lastHeight).div(climb.mul(spacing)));
           hit.assign(vec4(at.sub(perUnit.mul(back)), climb.mul(back), wall.add(1)));
           Break();
         });
-        lastGap.assign(gap);
         lastHeight.assign(height);
       });
     });
@@ -496,22 +521,32 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
   const lit = mix(vec3(s.pen), output.rgb, shown);
 
   // Encre directe (parallaxe) : tout le dessin dans cette passe, sans normales ni profondeur a relire.
-  const pixel = screenCoordinate.xy;
+  // Motifs et papier accroches a la carte : ecart au coin de la vue, petit, donc precis en flottants.
+  const toGeo = vec2(s.geoCos, 1);
+  const fromCorner = uv.mul(s.geoSize).mul(toGeo);
+  const anchor = {
+    at: fromCorner.add(s.inkOrigin.xy).mul(s.inkScale.x),
+    next: fromCorner.add(s.inkOrigin.zw).mul(s.inkScale.y),
+    blend: s.mistBlend,
+  };
   const tone = luminance(output.rgb).max(0).pow(1 / 2.2);
   const far = smoothstep(INK_DISTANCE.near, INK_DISTANCE.far, length(positionWorld.sub(cameraPosition)));
   const wall = hit.w.sub(1).max(0).mul(onBuilding);
-  // Murs : traits accroches au mur, le long de sa base (degres, longitude x cosinus).
-  const hitBlock = hit.xy.sub(s.buildingOffset).div(s.buildingScale);
-  const hitGeo = s.geoOrigin.add(hitBlock.mul(s.geoSize)).mul(vec2(s.geoCos, 1));
-  const along = hitGeo.dot(vec2(worldNormal.z.negate(), worldNormal.x.negate())).mul(s.mistScales.x).mul(HATCHES_PER_CELL * WALL_HATCHES);
+  // Murs : traits accroches au mur, le long de sa base.
+  const hitCorner = hit.xy.sub(s.buildingOffset).div(s.buildingScale).mul(s.geoSize).mul(toGeo);
+  const tangent = vec2(worldNormal.z.negate(), worldNormal.x.negate());
+  const along: [Node, Node] = [
+    hitCorner.add(s.inkOrigin.xy).dot(tangent).mul(s.inkScale.x),
+    hitCorner.add(s.inkOrigin.zw).dot(tangent).mul(s.inkScale.y),
+  ];
   const open = onBuilding.oneMinus().mul(drawn);
-  const coverage = inkCoverage(tone, pixel, { far, wall, along, vegetation: cover.fill.g.mul(open), water: cover.fill.b.mul(open) });
+  const coverage = inkCoverage(tone, anchor, { far, wall, along, vegetation: cover.fill.g.mul(open), water: cover.fill.b.mul(open) });
   // Contours par derivees : silhouettes, sauts de hauteur et aretes, sans relire de voisins.
   const silhouette = fwidth(onBuilding).min(1);
   const jump = smoothstep(0.35, 0.7, fwidth(hitMeters).div(hitMeters.max(4)).mul(3));
   const crease = smoothstep(0.35, 0.7, length(fwidth(worldNormal)).mul(1.5));
   const edges = max(silhouette, max(jump, crease)).mul(drawn);
-  const inked = inkOnPaper(max(coverage, edges).mul(shown), pixel, paperAt(pixel, shown.oneMinus()));
+  const inked = inkOnPaper(max(coverage, edges).mul(shown), anchor, paperAt(anchor, shown.oneMinus()));
   material.outputNode = vec4(mix(lit, inked, s.inkDirect), output.a);
 
   return material;

@@ -9,8 +9,9 @@ import { GEOMETRY, partsOf, type VectorFeature, type VectorLayer } from "./Vecto
 export const DEFAULT_HEIGHT_M = 9;
 /** Plage des hauteurs codees sur 16 bits dans la geometrie. */
 export const HEIGHT_RANGE_M = 512;
-/** Cote (texels) des cellules de la carte des sommets. */
+/** Cote (texels) des cellules de la carte des sommets, et de celle des sommets des environs (d'ou partir). */
 export const PEAK_CELL = 16;
+export const SUMMIT_CELL = 64;
 
 export interface BuildingMesh {
   /** Toits : (u, v) de chaque sommet dans la tuile ; unorm16. */
@@ -191,18 +192,18 @@ export function drawBuildingHeights(pen: Pen, layers: Map<string, VectorLayer>, 
 }
 
 /**
- * Sommets : plus grande hauteur par cellule de `PEAK_CELL` texels, etendue aux cellules voisines.
+ * Sommets : plus grande hauteur par cellule de `cell` texels, etendue a `reach` cellules alentour.
  * Un rayon qui avance d'une cellule a la fois n'en saute ainsi aucune ; la parallaxe ne descend
  * finement que la ou un batiment peut l'arreter.
  */
-export function peakMap(heights: Uint8Array, width: number, height: number): Uint8Array {
-  const w = Math.ceil(width / PEAK_CELL);
-  const h = Math.ceil(height / PEAK_CELL);
+export function peakMap(heights: Uint8Array, width: number, height: number, cell = PEAK_CELL, reach = 1): Uint8Array {
+  const w = Math.ceil(width / cell);
+  const h = Math.ceil(height / cell);
   const cells = new Uint8Array(w * h);
   for (let y = 0; y < height; y++) {
-    const row = Math.floor(y / PEAK_CELL) * w;
+    const row = Math.floor(y / cell) * w;
     for (let x = 0; x < width; x++) {
-      const i = row + Math.floor(x / PEAK_CELL);
+      const i = row + Math.floor(x / cell);
       cells[i] = Math.max(cells[i]!, heights[y * width + x]!);
     }
   }
@@ -210,8 +211,8 @@ export function peakMap(heights: Uint8Array, width: number, height: number): Uin
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       let peak = 0;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -reach; dy <= reach; dy++) {
+        for (let dx = -reach; dx <= reach; dx++) {
           const cx = x + dx;
           const cy = y + dy;
           if (cx >= 0 && cy >= 0 && cx < w && cy < h) peak = Math.max(peak, cells[cy * w + cx]!);

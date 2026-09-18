@@ -5,6 +5,7 @@ import { UniverseBase } from "@_core/universes/Universe.base.ts";
 import { TERRAIN_CONFIG } from "@graphics/config/terrain.config.ts";
 import { FOLDER_ID, TAB_ID } from "@graphics/debug/Debug.id.ts";
 import { RenderStatsHelper } from "@graphics/debug/RenderStats.helper.ts";
+import { DynamicQualityHelper } from "@graphics/device/DynamicQuality.helper.ts";
 import { terrainSettings } from "@graphics/materials/Terrain.material.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import { BuildingsNode } from "@graphics/nodes/buildings/Buildings.node.ts";
@@ -35,6 +36,9 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   private readonly _ink: InkEffect;
   private readonly _inkPass: EffectPass;
   private readonly _renderer: WebGPURenderer;
+  private readonly _quality: DynamicQualityHelper;
+  /** Pixels rendus par pixel CSS, pour le panneau. */
+  private readonly _resolution = { pixelRatio: 1, auto: true };
   private _nodesRegistered = false;
 
   constructor(device: IThreeDeviceSlice) {
@@ -66,9 +70,13 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       device.debug
     );
 
+    // Sonde de developpement, comme `__stage` : reglages des shaders depuis la console.
+    if (import.meta.env?.DEV) Object.assign(globalThis, { __map: { terrain: terrainSettings, ink: inkSettings } });
     this._ink = ink;
     this._inkPass = inkPass;
     this._renderer = device.renderer as WebGPURenderer;
+    this._quality = new DynamicQualityHelper(this._renderer, (ratio) => (this._resolution.pixelRatio = ratio));
+    this._resolution.pixelRatio = this._renderer.getPixelRatio();
     this._cameraNode = cameraNode;
     this._terrain = terrain;
     terrain.projectFrom = () => cameraNode.camera;
@@ -113,6 +121,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     terrainSettings.inkDirect.value = direct ? 1 : 0;
     this._inkPass.enabled = paper && !direct;
     this._renderStats.update(dt);
+    this._quality.update(dt);
   }
 
   override onMounted(): void {
@@ -189,10 +198,9 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     this.debugSubscribe({ tabId: TAB_ID.UNIVERSE, folderId: FOLDER_ID.UNIVERSE_MAIN, mount: declare });
 
     const buildings = this._buildings;
-    const renderer = this._renderer;
     // Pixels rendus par pixel CSS : la parallaxe coute par pixel, la trame masque une resolution plus basse.
-    const quality = { pixelRatio: renderer.getPixelRatio() };
-    const applyQuality = () => renderer.setPixelRatio(quality.pixelRatio);
+    const resolution = this._resolution;
+    const quality = this._quality;
     const asRecord = (value: object) => value as unknown as Record<string, unknown>;
     const maskControls = [
       [asRecord(terrainSettings.maskRadius.value), "x", { label: "masque largeur", min: 20, max: 400, step: 1 }, "mask.radiusX"],
@@ -212,12 +220,15 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
         ),
         debug.bind(target, buildings.settings, "height", { label: "hauteur", min: 0.5, max: 4, step: 0.1 }, "buildings.height"),
         debug
-          .bind(target, quality, "pixelRatio", { label: "resolution", min: 0.5, max: 3, step: 0.25 }, "render.pixelRatio")
-          .on("change", applyQuality),
+          .bind(target, resolution, "pixelRatio", { label: "resolution", min: 0.5, max: 3, step: 0.25 })
+          .on("change", () => quality.choose(resolution.pixelRatio)),
+        debug.bind(target, resolution, "auto", { label: "qualite auto" }, "render.auto").on("change", () => {
+          quality.enabled = resolution.auto;
+        }),
         ...maskControls.map(([object, key, options, path]) => debug.bind(target, object, key, options, path)),
         ...(target ? this._monitors(target) : []),
       ];
-      applyQuality();
+      quality.enabled = resolution.auto;
       return () => {
         for (const binding of bindings) binding.dispose();
       };
@@ -272,7 +283,8 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
 
     const parallaxControls = [
       ["coarseSteps", { label: "pas par cellule", min: 1, max: 48, step: 1 }],
-      ["fineSteps", { label: "pas par texel", min: 1, max: 96, step: 1 }],
+      ["fineSteps", { label: "pas fins", min: 1, max: 96, step: 1 }],
+      ["stepTexels", { label: "texels par pas", min: 0.5, max: 8, step: 0.25 }],
       ["shadowSteps", { label: "pas vers le soleil", min: 0, max: 24, step: 1 }],
       ["shadowSoftness", { label: "penombre", min: 0, max: 0.5, step: 0.01 }],
       ["lodBias", { label: "mip (flou)", min: 0, max: 4, step: 0.1 }],

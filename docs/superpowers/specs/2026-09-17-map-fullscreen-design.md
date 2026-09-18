@@ -150,3 +150,13 @@ D'après `refs/` (plume, trame, encre qui bave) et la direction artistique du RE
 - Communes : par département, là où regarde la vue (au lieu de 3,9 Mo pour la France entière).
 - Cache d'altitude : 320 tuiles.
 - Mesure à froid (ville à 3 km) : données complètes 1,3 à 1,8 s après l'arrivée, contre ~5 s.
+
+## Motifs accrochés à la carte, parallaxe plus légère (2026-09-18)
+
+- **Sans couture** : hachures, trame, pointillé, papier, journal et bord du masque sont posés en coordonnées géographiques, pas à l'écran : ils glissent avec la carte. Deux échelles (celles de la brume) se fondent pendant le zoom. Pour la précision des flottants, le shader ne voit que l'écart à une origine recalée d'une période entière (`INK_PERIOD`, 16 384 pseudo-pixels), calculée en double précision côté CPU ; tous les motifs ont une période qui la divise, le recalage est invisible.
+- **Masque** centré là où regarde la caméra (au sol), rayon 130.
+- **Parallaxe** :
+  - départ à hauteur du plus haut sommet des environs (carte de sommets par cellules de 64 texels, étendue de 2 cellules) au lieu du plus haut bâtiment de la zone ;
+  - pas fins de 2 texels du niveau de mip lu (réglage `texels par pas`), position de l'impact affinée par 3 dichotomies ;
+  - grille du sol à 256 subdivisions par défaut : au-delà, les triangles tombent sous quelques pixels et le shader du sol tourne 2 à 4 fois par pixel (blocs de 2 × 2). À 2,5 km, densité 2 : 1024 → 75 ms, 512 → 54 ms, 256 → 38 ms ; puis 30 ms avec les sommets des environs et le pas de 2 texels.
+- **Qualité dynamique** (comme Chartogne-Taillet) : sous 45 images/s pendant deux fenêtres de 1,5 s, la densité de pixels baisse de 0,25 (jusqu'à 1) ; le niveau est retenu (`localStorage`). Réglage `qualite auto`.

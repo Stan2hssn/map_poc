@@ -14,7 +14,8 @@ import {
 } from "@graphics/terrain/GeoProjection.ts";
 import { levelFor } from "@graphics/terrain/HeightMosaic.ts";
 import type { MapView } from "@graphics/universes/MapNavigator.interface.ts";
-import { Group, MathUtils, Mesh, type Camera, type Object3D } from "three";
+import { INK_PERIOD } from "@graphics/postprocessing/effects/InkStyle.ts";
+import { Group, MathUtils, Mesh, Vector3, type Camera, type Object3D } from "three";
 import { LandcoverHelper } from "./Landcover.helper.ts";
 import { TerrainHeightsHelper, type HeightsView } from "./TerrainHeights.helper.ts";
 
@@ -27,6 +28,9 @@ const GLIDE_STOP = 1e-4;
 // Cellules de bruit de la brume sur la largeur du bloc (entre 1 et 2 fois ce nombre), et leur derive par seconde.
 const MIST_CELLS = 3;
 const MIST_DRIFT = { x: 0.004, y: 0.0025 };
+// Pseudo-pixels d'encre par cellule de brume : 3 a 6 cellules sur la largeur de la vue.
+const INK_CELL_PX = 600;
+const LOOK = new Vector3();
 
 /**
  * Sol plein ecran, fixe dans la scene, fenetre sur le terrain : glisser deplace le centre (avec
@@ -274,7 +278,10 @@ export class TerrainNode extends Object3DNodeBase {
       s.viewWorld.value.copy(camera.matrixWorld);
       s.viewProjectionInverse.value.copy(camera.projectionMatrixInverse);
       s.viewOrigin.value.setFromMatrixPosition(camera.matrixWorld);
-      s.maskCenter.value.set(s.viewOrigin.value.x, s.viewOrigin.value.z + s.maskShift.value);
+      // Centre du dessin : la ou regarde la camera, au sol.
+      const look = LOOK.set(0, 0, -1).transformDirection(camera.matrixWorld);
+      const reach = s.viewOrigin.value.y / Math.max(-look.y, 1e-3);
+      s.maskCenter.value.set(s.viewOrigin.value.x + look.x * reach, s.viewOrigin.value.z + look.z * reach + s.maskShift.value);
     }
     const b = this._bounds;
     s.heightScale.value = this.heightScale;
@@ -289,6 +296,13 @@ export class TerrainNode extends Object3DNodeBase {
     const scale = MIST_CELLS * 2 ** -Math.floor(octave);
     s.mistScales.value.set(scale, scale / 2);
     s.mistBlend.value = octave - Math.floor(octave);
+    // Encre accrochee a la carte, aux echelles de la brume : origine recalee d'une periode entiere,
+    // en double precision ici, pour que le shader ne manipule que de petits ecarts.
+    const [near, next] = [scale * INK_CELL_PX, (scale / 2) * INK_CELL_PX];
+    const origin = (f: number, g: number) => g - Math.floor((g * f) / INK_PERIOD) * (INK_PERIOD / f);
+    const [x, y] = [b.west * cos, b.north];
+    s.inkScale.value.set(near, next);
+    s.inkOrigin.value.set(origin(near, x), origin(near, y), origin(next, x), origin(next, y));
   }
 
   private _easeRange(dt: number): void {

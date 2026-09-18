@@ -17,7 +17,11 @@ export const TERRAIN_CONFIG = {
   groundSpan: 3,
   /** Plafond du relief affiche : les massifs ne deviennent pas des aiguilles. */
   maxRelief: 25,
-  segments: 1024,
+  /**
+   * Subdivisions de la grille de l'ecran. Au-dela de ~256, les triangles tombent sous quelques pixels :
+   * le GPU ombre par blocs de 2 x 2, et le shader du sol (parallaxe) tourne 2 a 4 fois par pixel.
+   */
+  segments: 256,
   segmentOptions: [256, 512, 1024, 1536],
   /** Tuiles d'altitude gardees (256 Ko chacune) : de quoi revenir en arriere sans tout recharger. */
   cacheTiles: 320,
@@ -25,9 +29,9 @@ export const TERRAIN_CONFIG = {
   margin: 0.25,
   coarse: { levels: 3, margin: 1 },
   /**
-   * Zone dessinee, a la Chartogne-Taillet : disque centre sous la camera (unites de scene), decale de
-   * `shift` vers la vue ; tout le premier plan est dessine et la carte s'efface vers le lointain.
-   * Bord fondu sur `softness` du rayon, rendu irregulier par un bruit d'amplitude `jitter`.
+   * Zone dessinee, a la Chartogne-Taillet : disque centre la ou regarde la camera (unites de scene),
+   * decale de `shift` ; la carte s'efface vers les bords de la vue et le lointain. Bord fondu sur
+   * `softness` du rayon, rendu irregulier par un bruit accroche a la carte, d'amplitude `jitter`.
    */
-  mask: { radius: [190, 190], shift: 0, softness: 0.45, jitter: 0.12 },
+  mask: { radius: [130, 130], shift: 0, softness: 0.45, jitter: 0.12 },
 } as const;

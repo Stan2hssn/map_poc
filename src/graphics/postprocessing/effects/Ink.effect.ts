@@ -45,9 +45,11 @@ export class InkEffect implements IEffect {
     const distance = smoothstep(this.near, this.far, z.negate()).mul(scene).add(scene.oneMinus());
     // Ton percu : en lineaire, les ombres tomberaient toutes en aplat.
     const tone = luminance(inputBuffer.sample(at).rgb).max(0).pow(1 / 2.2);
-    const coverage = max(inkCoverage(tone, pixel, { far: distance }).mul(scene), edge.mul(scene));
+    // Volumes extrudes : pas de surface connue par pixel, motifs poses a l'ecran.
+    const anchor = { at: pixel };
+    const coverage = max(inkCoverage(tone, anchor, { far: distance }).mul(scene), edge.mul(scene));
     const beyond = smoothstep(this.far.mul(0.7), this.far.mul(1.2), z.negate()).mul(scene).add(scene.oneMinus());
-    const drawn = inkOnPaper(coverage, pixel, paperAt(pixel, beyond));
+    const drawn = inkOnPaper(coverage, anchor, paperAt(anchor, beyond));
     return vec4(mix(input.rgb, drawn, k.amount), input.a);
   }
 }

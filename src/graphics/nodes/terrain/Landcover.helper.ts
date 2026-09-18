@@ -1,7 +1,7 @@
 import { terrainSettings } from "@graphics/materials/Terrain.material.ts";
 import { containsBounds, expandBounds, type GeoBounds } from "@graphics/terrain/GeoProjection.ts";
 import { mosaicUvTransform } from "@graphics/terrain/HeightMosaic.ts";
-import { PEAK_CELL } from "@graphics/terrain/Buildings.ts";
+import { PEAK_CELL, SUMMIT_CELL } from "@graphics/terrain/Buildings.ts";
 import { fineZoom, landcoverZoom } from "@graphics/terrain/Landcover.ts";
 import type { BuildingsRequest, BuildingsTile, LandcoverImage, LandcoverRequest, TileRef } from "@graphics/terrain/Landcover.worker.ts";
 import { DataTexture, LinearFilter, LinearMipmapLinearFilter, NearestFilter, RedFormat, RGBAFormat, UnsignedByteType, type PixelFormat } from "three";
@@ -84,6 +84,7 @@ export class LandcoverHelper {
     terrainSettings.landcover.value.dispose();
     terrainSettings.buildingHeights.value.dispose();
     terrainSettings.buildingPeaks.value.dispose();
+    terrainSettings.buildingSummits.value.dispose();
   }
 
   private _receive(message: LandcoverImage | BuildingsTile): void {
@@ -99,12 +100,10 @@ export class LandcoverHelper {
     const s = terrainSettings;
     swap(s.landcover, mipmapped(message.data, message.width, message.height, RGBAFormat));
     this._image = message.bounds;
-    if (!message.buildingHeights || !message.buildingPeaks) return;
+    if (!message.buildingHeights || !message.buildingPeaks || !message.buildingSummits) return;
     swap(s.buildingHeights, mipmapped(message.buildingHeights, message.width, message.height, RedFormat));
-    const peaks = new DataTexture(message.buildingPeaks, Math.ceil(message.width / PEAK_CELL), Math.ceil(message.height / PEAK_CELL), RedFormat);
-    peaks.minFilter = peaks.magFilter = NearestFilter;
-    peaks.needsUpdate = true;
-    swap(s.buildingPeaks, peaks);
+    swap(s.buildingPeaks, cells(message.buildingPeaks, message.width, message.height, PEAK_CELL));
+    swap(s.buildingSummits, cells(message.buildingSummits, message.width, message.height, SUMMIT_CELL));
     s.buildingSize.value.set(message.width, message.height);
     s.buildingMax.value = message.buildingMax;
     this._heights = message.focus;
@@ -116,6 +115,14 @@ function mipmapped(data: Uint8Array, width: number, height: number, format: Pixe
   texture.magFilter = LinearFilter;
   texture.minFilter = LinearMipmapLinearFilter;
   texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/** Carte par cellules (sommets) : lue telle quelle, sans filtrage. */
+function cells(data: Uint8Array, width: number, height: number, cell: number): DataTexture {
+  const texture = new DataTexture(data, Math.ceil(width / cell), Math.ceil(height / cell), RedFormat);
+  texture.minFilter = texture.magFilter = NearestFilter;
   texture.needsUpdate = true;
   return texture;
 }

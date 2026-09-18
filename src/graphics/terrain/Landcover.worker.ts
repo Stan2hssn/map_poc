@@ -1,4 +1,4 @@
-import { buildTileMesh, drawBuildingHeights, peakMap, type BuildingMesh } from "./Buildings.ts";
+import { buildTileMesh, drawBuildingHeights, peakMap, SUMMIT_CELL, type BuildingMesh } from "./Buildings.ts";
 import type { GeoBounds } from "./GeoProjection.ts";
 import {
   drawLandcoverTile,
@@ -30,6 +30,8 @@ export interface LandcoverImage extends LandcoverRequest {
   /** Hauteurs du bati (m) sur `focus` et leurs sommets par cellule (`peakMap`), ou null si non demandees. */
   buildingHeights: Uint8Array | null;
   buildingPeaks: Uint8Array | null;
+  /** Sommets des environs (`SUMMIT_CELL`, deux cellules alentour) : hauteur d'ou partir en parallaxe. */
+  buildingSummits: Uint8Array | null;
   buildingMax: number;
   complete: boolean;
   /** Temps de dessin cumule de cette image dans le worker (ms). */
@@ -210,15 +212,20 @@ function post(c: Composition, complete: boolean): void {
 
   let buildingHeights: Uint8Array | null = null;
   let buildingPeaks: Uint8Array | null = null;
+  let buildingSummits: Uint8Array | null = null;
   if (c.heights) {
     const rgba = c.heights.getImageData(0, 0, width, height).data;
     buildingHeights = new Uint8Array(width * height);
     for (let i = 0; i < buildingHeights.length; i++) buildingHeights[i] = rgba[i * 4]!;
     buildingPeaks = peakMap(buildingHeights, width, height);
-    transfer.push(buildingHeights.buffer, buildingPeaks.buffer);
+    buildingSummits = peakMap(buildingHeights, width, height, SUMMIT_CELL, 2);
+    transfer.push(buildingHeights.buffer, buildingPeaks.buffer, buildingSummits.buffer);
   }
   const renderMs = c.drawMs + performance.now() - started;
-  scope.postMessage({ ...c.request, data, buildingHeights, buildingPeaks, buildingMax: c.buildingMax, complete, renderMs }, transfer);
+  scope.postMessage(
+    { ...c.request, data, buildingHeights, buildingPeaks, buildingSummits, buildingMax: c.buildingMax, complete, renderMs },
+    transfer
+  );
 }
 
 async function sendBuildings(tile: TileRef): Promise<void> {
