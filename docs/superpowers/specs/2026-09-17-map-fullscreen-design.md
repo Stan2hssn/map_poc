@@ -83,3 +83,28 @@ Comme Chartogne-Taillet (routes, champs et ombres rangés dans les canaux de tex
   - une lisière reste visible au loin, entre le niveau fin et le niveau d'ensemble ;
   - pas d'attribution IGN à l'écran (Licence Ouverte Etalab 2.0 : à ajouter) ;
   - une tuile en erreur n'est pas retentée.
+
+## Élévations : bâti en relief (2026-09-18)
+
+Le bâti du PLAN IGN (`bati_surf`, hauteur renseignée pour 92 % des bâtiments à Paris, médiane 18 m) se lève sous 8 km de largeur de vue, entier sous 5 km. Rendu en argile (`CLAY`), creux au pied des murs, ombres douces. Deux techniques, au choix dans le panneau (`?debug`, dossier « Elevations »), mesurées au même endroit.
+
+- **Parallaxe** (par défaut) : dans le shader du sol, sans un sommet de plus.
+  - Le worker dessine les hauteurs (m, R8, 2048², sur la zone fine) et une carte des sommets par cellule de 16 texels, étendue aux cellules voisines (`peakMap`).
+  - Le rayon qui touche le sol est remonté à la hauteur du plus haut bâtiment, puis redescendu : d'abord une cellule par pas jusqu'à la première qui peut l'arrêter, puis un texel par pas (48 au plus).
+  - Mur ou toit selon que la hauteur a monté plus vite que le rayon n'est descendu ; normale des murs par la pente des hauteurs.
+  - Ombres marchées vers le soleil, jusqu'au sommet des cellules voisines (celles des tours isolées s'arrêtent là).
+- **Extrusion** : volumes par tuile z15-16, construits une fois dans le worker (`buildTileMesh`).
+  - Toits triangulés (Earcut de three, cours comprises), murs en quadrilatères instanciés, un par arête, orientés vers l'extérieur ; les arêtes de coupure de tuile n'ont pas de mur.
+  - Attributs en entiers 16 bits normalisés : 8 Mo pour 21 000 bâtiments, 50 Mo pour 110 000.
+  - Placés par un uniform par tuile, assis sur le relief affiché (lu dans le shader), jamais reconstruits au mouvement. Ombres par la carte d'ombres.
+- **Panneau** : technique, hauteur, fps, temps GPU (timestamps, activés par `?debug` ou `?stats`), appels de dessin, triangles, sommets du sol et du bâti, bâtiments, tuiles, mémoire.
+- **Mesures** (Paris, image 2800 × 1720, temps GPU médian par image) :
+
+| Vue | Aucune | Parallaxe | Extrusion |
+|---|---|---|---|
+| 2 km | 8,0 ms | 24,5 ms | 6,7 ms (1,0 M sommets, 291 dessins) |
+| 5 km | 8,3 ms | 22 ms | 12,3 ms (5,1 M sommets, 447 dessins) |
+
+  Avant le saut par cellules, la parallaxe coûtait 46 ms : 255 m à descendre partout pour quelques tours.
+  L'extrusion coûte moins que rien à 2 km : les toits cachent le shader du sol, plus lourd qu'eux.
+- **Limites de la parallaxe** : coût proportionnel aux pixels (écrans denses), arêtes en escalier au texel, ombres courtes, pas d'objet par bâtiment. Repli WebGL2 identique pour les deux techniques.

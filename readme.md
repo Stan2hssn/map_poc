@@ -133,7 +133,8 @@ Le socle technique existe ; le contenu éditorial est encore à construire.
 - **Villes** : Natural Earth pour le monde, `geo.api.gouv.fr` pour les communes. Étiquettes cliquables.
 - **Branches** :
   - `feat/terrain-gard` : bloc de relief, brume, relevés flottants ;
-  - `feat/map-fullscreen` : carte plein écran, caméra à parallaxe, navigation inspirée de Chartogne-Taillet.
+  - `feat/map-fullscreen` : carte plein écran, caméra à parallaxe, navigation inspirée de Chartogne-Taillet ;
+  - `feat/map-elevations` : bâti en relief (argile), parallaxe ou volumes extrudés, à comparer dans le panneau de debug.
 - **Pas encore là** :
   - les archives médiatiques et les données électorales ;
   - les régions, départements et contours ;
