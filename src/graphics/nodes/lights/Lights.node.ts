@@ -5,9 +5,12 @@ import { DirectionalLight, Group, HemisphereLight, MathUtils, type Vector3 } fro
 const SUN_DISTANCE = 400;
 const SHADOW_EXTENT = 150;
 
-/** Soleil rasant avec ombres portees sur le bloc, et une ambiance tres faible. */
+/**
+ * Soleil rasant avec ombres portees sur le bloc, ciel, et rebond du sol : lumiere douce qui laisse
+ * les faces a l'ombre lisibles (hachurees plutot que noires a l'encre).
+ */
 export class LightsNode extends Object3DNodeBase {
-  readonly settings = { azimuth: 240, elevation: 35, intensity: 3.5 };
+  readonly settings = { azimuth: 240, elevation: 35, intensity: 3.5, ambient: 0.9, bounce: 0.35 };
   private readonly _sun = new DirectionalLight(0xffffff);
   private readonly _sky = new HemisphereLight(0xffffff, 0x000000, 0.6);
 
@@ -38,6 +41,8 @@ export class LightsNode extends Object3DNodeBase {
     const el = MathUtils.degToRad(this.settings.elevation);
     this._sun.position.set(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el)).multiplyScalar(SUN_DISTANCE);
     this._sun.intensity = this.settings.intensity;
+    this._sky.intensity = this.settings.ambient;
+    this._sky.groundColor.setScalar(this.settings.bounce);
   }
 
   override dispose(): void {

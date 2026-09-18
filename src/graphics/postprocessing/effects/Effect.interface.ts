@@ -9,6 +9,12 @@ export interface EffectContext {
   inputBuffer: TextureNode;
   /** Taille du buffer, en pixels. */
   resolution: UniformNode<Vector2>;
+  /** Normales (vue, codees 0..1) et profondeur de la scene : `EffectComposer` avec `normalDepth`, sinon vides. */
+  normalBuffer: TextureNode;
+  depthBuffer: TextureNode;
+  /** Plans proche et lointain de la camera, pour lineariser la profondeur. */
+  cameraNear: UniformNode<number>;
+  cameraFar: UniformNode<number>;
 }
 
 /**

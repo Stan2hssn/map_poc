@@ -8,6 +8,7 @@ export type TabId = (typeof TAB_ID)[keyof typeof TAB_ID];
 export const FOLDER_ID = {
   UNIVERSE_MAIN: "UNIVERSE_MAIN",
   BUILDINGS: "BUILDINGS",
+  INK: "INK",
   STATS: "STATS",
 } as const;
 

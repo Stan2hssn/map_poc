@@ -1,14 +1,33 @@
 import { HEIGHT_RANGE_M } from "@graphics/terrain/Buildings.ts";
 import { Vector4 } from "three";
-import { attribute, cameraViewMatrix, color, float, mix, normalize, positionGeometry, smoothstep, uniform, vec3, vec4, vertexStage } from "three/tsl";
+import {
+  attribute,
+  cameraViewMatrix,
+  color,
+  float,
+  luminance,
+  mix,
+  normalize,
+  output,
+  positionGeometry,
+  smoothstep,
+  uniform,
+  vec2,
+  vec3,
+  vec4,
+  vertexStage,
+} from "three/tsl";
 import { MeshStandardNodeMaterial, type Node } from "three/webgpu";
-import { CLAY, drawnMask, terrainHeight, terrainSettings } from "./Terrain.material.ts";
+import { CLAY, drawnMask, penLines, terrainHeight, terrainSettings } from "./Terrain.material.ts";
 
 const s = terrainSettings;
 /** Murs prolonges sous leur pied (fraction de leur hauteur) : sur une pente, pas de jour sous le batiment. */
 const FOOTING = 0.5;
 /** Pied des murs assombri jusqu'a cette hauteur (m). */
 const SHADE_M = 10;
+/** Hachures des murs a l'ombre : tons (luminance) ou elles apparaissent et ou elles sont les plus epaisses ; plus serrees que celles du sol. */
+const HATCH_TONE = { start: 1.2, full: 0.2 };
+const HATCH_DENSITY = 5;
 
 /** Place de la tuile dessinee dans le bloc : origine et taille en uv du bloc. */
 const tileUv = uniform(new Vector4()).onObjectUpdate(({ object }) => object?.userData.tileUv as Vector4);
@@ -47,8 +66,15 @@ export function createWallMaterial(): MeshStandardNodeMaterial {
   const above = mix(meters.mul(-FOOTING), meters, corner.y);
   const base = terrainHeight(inBlock(building.xy));
   material.positionNode = toScene(inBlock(mix(edge.xy, edge.zw, corner.x)), base.add(above.mul(s.buildingUnits)));
-  const along = edge.zw.sub(edge.xy).mul(tileUv.zw).mul(s.blockSize);
-  material.normalNode = viewNormal(vertexStage(normalize(vec3(along.y.negate(), 0, along.x))));
+  const direction = edge.zw.sub(edge.xy).mul(tileUv.zw).mul(s.blockSize);
+  material.normalNode = viewNormal(vertexStage(normalize(vec3(direction.y.negate(), 0, direction.x))));
   material.colorNode = color(CLAY).mul(mix(0.55, 1, smoothstep(0, SHADE_M, vertexStage(above))));
+
+  // A l'encre : hachures verticales accrochees au mur, d'autant plus epaisses qu'il est a l'ombre.
+  const run = edge.zw.sub(edge.xy).mul(tileUv.zw).mul(s.geoSize).mul(vec2(s.geoCos, 1)).length();
+  const along = vertexStage(corner.x.mul(run).mul(HATCH_DENSITY));
+  const shade = smoothstep(HATCH_TONE.full, HATCH_TONE.start, luminance(output.rgb)).oneMinus();
+  const ink = penLines(along, shade.mul(0.45)).mul(smoothstep(0.05, 0.2, shade)).mul(s.pen);
+  material.outputNode = vec4(mix(output.rgb, vec3(0), ink), output.a);
   return material;
 }

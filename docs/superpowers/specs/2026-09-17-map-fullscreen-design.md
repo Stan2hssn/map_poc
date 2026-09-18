@@ -108,3 +108,22 @@ Le bâti du PLAN IGN (`bati_surf`, hauteur renseignée pour 92 % des bâtiments 
   Avant le saut par cellules, la parallaxe coûtait 46 ms : 255 m à descendre partout pour quelques tours.
   L'extrusion coûte moins que rien à 2 km : les toits cachent le shader du sol, plus lourd qu'eux.
 - **Limites de la parallaxe** : coût proportionnel aux pixels (écrans denses), arêtes en escalier au texel, ombres courtes, pas d'objet par bâtiment. Repli WebGL2 identique pour les deux techniques.
+
+## Masque de dessin (2026-09-18)
+
+Comme Chartogne-Taillet, la carte n'est dessinée qu'autour de la vue : une ellipse en unités de scène (`TERRAIN_CONFIG.mask`), au bord fondu, irrégulier (bruit) et qui respire lentement (`drawnMask`). Dedans, l'encre du PLAN IGN et le bâti ; dehors, le relief nu. Les bâtiments se lèvent en y entrant (hauteur × masque, parallaxe comprise).
+
+Il sert aussi la performance : tuiles de volumes hors masque non dessinées, parallaxe sautée. À Paris à 5 km (2800 × 1720) : extrusion 110 → 57 tuiles, 5,1 → 3,1 M sommets, surcoût 4 → 1,2 ms ; parallaxe, surcoût 14 → 5,3 ms. Réglages `masque *` dans le panneau.
+
+## Dessin à l'encre (2026-09-18)
+
+D'après `refs/` (plume, trame, encre qui bave) et la direction artistique du README (papier, bleu d'encre, trames, photocopie). Une passe plein écran, pas un dessin par bâtiment : `InkEffect` (`postprocessing/effects/Ink.effect.ts`).
+
+- **Entrées** : l'image argile, et normales et profondeur de la scène (`EffectComposer` avec `normalDepth`, normales écrites par `mrt` dans la même passe).
+- **Contours** : sauts de profondeur (silhouettes) et d'orientation (arêtes), sans doubler les hachures du sol.
+- **Tons** (luminance perçue) : papier dans les clairs, hachures à 45° croisées dans les noirs (ou trame de points, réglage `points / plume`), encre pleine sous `ton encre`.
+- **Main et impression** : trait qui tremble, encre qui bave par taches, grain du papier, encre jamais tout à fait pleine.
+- **Hachures des murs** : verticales, accrochées aux murs (`penLines`, deux échelles fondues au zoom), d'autant plus épaisses que le mur est à l'ombre.
+- **Lumière douce** : ciel (`ambiance`) et rebond du sol (`rebond`), pour que les faces à l'ombre restent hachurées plutôt que noires.
+- **Papier** : le sol s'efface vers le blanc au lieu du noir ; étiquettes et coordonnées passent à l'encre (`data-map-theme="paper"`). Réglage `dessin` : 0 pour revenir à la carte de nuit.
+- **Coût** : ~2 ms GPU en 2800 × 1720, un dessin plein écran.

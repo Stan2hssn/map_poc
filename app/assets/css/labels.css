@@ -1,4 +1,15 @@
 /* Etiquettes de villes (`LabelsNode`) et coordonnees des releves (`SurveyNode`), au-dessus du canvas. */
+:root {
+  /* Blanc sur la carte de nuit, encre sur le papier (`data-map-theme`, pose par l'univers). */
+  --map-ink: 255 255 255;
+  --map-halo: rgb(0 0 0 / 0.55);
+}
+
+:root[data-map-theme="paper"] {
+  --map-ink: 29 42 77;
+  --map-halo: rgb(241 236 224 / 0.9);
+}
+
 .map-labels {
   position: absolute;
   inset: 0;
@@ -29,7 +40,7 @@
   top: 0;
   left: 0;
   width: 1px;
-  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.75) 0 1px, transparent 1px 4px);
+  background: repeating-linear-gradient(to bottom, rgb(var(--map-ink) / 0.75) 0 1px, transparent 1px 4px);
 }
 
 .map-label__dot {
@@ -39,18 +50,18 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.55);
+  background: rgb(var(--map-ink));
+  box-shadow: 0 0 10px rgb(var(--map-ink) / 0.55);
   transition: scale 220ms ease, box-shadow 220ms ease;
 }
 
 .map-label:has(.map-label__text:hover) .map-label__dot {
   scale: 1.8;
-  box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.18), 0 0 14px rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 0 5px rgb(var(--map-ink) / 0.18), 0 0 14px rgb(var(--map-ink) / 0.7);
 }
 
 .map-label:has(.map-label__text:hover) .map-label__line {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgb(var(--map-ink) / 0.9);
 }
 
 .map-label__text {
@@ -61,10 +72,10 @@
   margin: -0.25em -0.4em;
   pointer-events: auto;
   cursor: pointer;
-  color: #fff;
+  color: rgb(var(--map-ink));
   font-family: var(--font-map);
   white-space: nowrap;
-  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 1px 10px var(--map-halo);
 }
 
 .map-label__index {
@@ -100,7 +111,7 @@
   position: absolute;
   top: 0;
   left: 0;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgb(var(--map-ink) / 0.55);
   font: 500 0.625rem/1 var(--font-map);
   letter-spacing: 0.35em;
   text-transform: uppercase;

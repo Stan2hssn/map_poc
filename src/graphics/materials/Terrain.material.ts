@@ -166,6 +166,8 @@ export const terrainSettings = {
   maskRadius: uniform(new Vector2(...M.radius)),
   maskSoftness: uniform(M.softness as number),
   maskJitter: uniform(M.jitter as number),
+  /** Dessin a l'encre (0 ou 1) : hachures a la plume du bati, sol qui s'efface vers le papier (blanc) plutot que vers le noir. */
+  pen: uniform(0),
 };
 
 const s = terrainSettings;
@@ -239,10 +241,17 @@ function groundFromScreen(screen: Node): Node {
 }
 
 /** Hachures : 1 sur les traits, epais de `width` (fraction de l'ecart), lisses a l'ecran. */
-function hatch(coord: Node, width = 0.12): Node {
+function hatch(coord: Node, width: Node | number = 0.12): Node {
   const distance = abs(coord.add(0.5).fract().sub(0.5));
   const aa = fwidth(coord);
-  return smoothstep(float(width), aa.add(width), distance).oneMinus();
+  const w = typeof width === "number" ? float(width) : width;
+  return smoothstep(w, aa.add(w), distance).oneMinus();
+}
+
+/** Traits a la plume accroches au sol, le long de `along` (degres, longitude x cosinus) ; deux echelles fondues pendant le zoom. */
+export function penLines(along: Node, width: Node | number = 0.12): Node {
+  const at = (scale: Node) => hatch(along.mul(scale).mul(HATCHES_PER_CELL), width);
+  return mix(at(s.mistScales.x), at(s.mistScales.y), s.mistBlend);
 }
 
 /**
@@ -256,12 +265,8 @@ function drawLandcover(relief: Node, blockUv: Node, geo: Node, drawn: Node): Nod
   const edge = fwidth(data).max(1e-3);
   const fill = smoothstep(edge.negate().add(0.5), edge.add(0.5), data);
   const outline = smoothstep(vec4(0), edge.mul(1.5), abs(data.sub(0.5))).oneMinus();
-  const lines = (along: (g: Node) => Node) => {
-    const at = (scale: Node) => hatch(along(geo.mul(scale).mul(HATCHES_PER_CELL)));
-    return mix(at(s.mistScales.x), at(s.mistScales.y), s.mistBlend);
-  };
-  const diagonal = lines((g) => g.x.add(g.y));
-  const horizontal = lines((g) => g.y);
+  const diagonal = penLines(geo.x.add(geo.y));
+  const horizontal = penLines(geo.y);
 
   let paper: Node = mix(relief, color(0xcfd5e2), fill.g.mul(0.35));
   paper = mix(paper, color(INK), fill.g.mul(diagonal).mul(0.45));
@@ -450,11 +455,11 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
   // La brume eclaire aussi les versants a l'ombre.
   material.emissiveNode = vec3(mist.mul(0.25));
 
-  // Le sol s'eteint vers les bords et au-dela du monde (vue mondiale), apres l'eclairage ;
-  // au carre, pour un fondu regulier a l'oeil malgre le passage en sRGB.
+  // Le sol s'efface vers les bords et au-dela du monde (vue mondiale), apres l'eclairage : vers le noir,
+  // ou vers le papier a l'encre ; au carre, pour un fondu regulier a l'oeil malgre le passage en sRGB.
   const inWorld = step(-180, lonLat.x).mul(step(lonLat.x, 180)).mul(step(-90, lonLat.y)).mul(step(lonLat.y, 90));
   const fade = groundFade(uv).mul(inWorld);
-  material.outputNode = vec4(output.rgb.mul(fade.mul(fade)), output.a);
+  material.outputNode = vec4(mix(vec3(s.pen), output.rgb, fade.mul(fade)), output.a);
 
   return material;
 }

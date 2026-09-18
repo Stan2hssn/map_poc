@@ -11,11 +11,12 @@ const pipeline = new EffectComposer([
 
 | Fichier | Rôle |
 |---|---|
-| `EffectComposer.ts` | Pipeline de l'univers. Buffers d'entrée et de sortie à la taille du canvas ; `render`, puis `postRender` avec échange des buffers ; dernière passe à l'écran. |
+| `EffectComposer.ts` | Pipeline de l'univers. Buffers d'entrée et de sortie à la taille du canvas ; `render`, puis `postRender` avec échange des buffers ; dernière passe à l'écran. `normalDepth` : la scène écrit aussi normales et profondeur (`ctx.sceneBuffer`). |
 | `passes/Pass.base.ts` | `PassBase` : triangle plein écran (`QuadMesh`), `renderToScreen`, `needsSwap`, `setSize`. |
-| `passes/RenderPass.ts` | Scène → `inputBuffer`. |
+| `passes/RenderPass.ts` | Scène → `inputBuffer` ; normales en seconde sortie (`mrt`) si le buffer en a deux. |
 | `passes/EffectPass.ts` | Effets enchaînés dans un seul matériau. Sans effet : copie. |
-| `effects/Effect.interface.ts` | `IEffect`, `EffectContext`. |
+| `effects/Effect.interface.ts` | `IEffect`, `EffectContext` (image d'entrée, résolution, normales, profondeur, plans de la caméra). |
+| `effects/Ink.effect.ts` | Encre sur papier : contours (profondeur, arêtes), hachures ou trame, trait qui tremble, bavure, grain. |
 
 ## Écrire un effet
 

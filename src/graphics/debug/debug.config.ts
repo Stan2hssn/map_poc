@@ -26,6 +26,14 @@ export const DEBUG_CONFIG: DebugConfig = {
       order: 2,
     },
     {
+      id: FOLDER_ID.INK,
+      tabId: TAB_ID.UNIVERSE,
+      label: "Encre",
+      visible: true,
+      expanded: true,
+      order: 3,
+    },
+    {
       id: FOLDER_ID.STATS,
       tabId: TAB_ID.RENDER,
       label: "Stats",

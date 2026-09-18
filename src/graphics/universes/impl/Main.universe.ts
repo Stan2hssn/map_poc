@@ -13,7 +13,7 @@ import { LabelsNode } from "@graphics/nodes/labels/Labels.node.ts";
 import { SurveyNode } from "@graphics/nodes/survey/Survey.node.ts";
 import { LightsNode } from "@graphics/nodes/lights/Lights.node.ts";
 import { TerrainNode } from "@graphics/nodes/terrain/Terrain.node.ts";
-import { EffectComposer, EffectPass, RenderPass } from "@graphics/postprocessing/index.ts";
+import { EffectComposer, EffectPass, InkEffect, RenderPass } from "@graphics/postprocessing/index.ts";
 import { IgnElevationProvider } from "@graphics/terrain/IgnElevationProvider.ts";
 import type IMapNavigator from "@graphics/universes/MapNavigator.interface.ts";
 import type { MapView } from "@graphics/universes/MapNavigator.interface.ts";
@@ -32,6 +32,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   private readonly _survey: SurveyNode;
   private readonly _buildings: BuildingsNode;
   private readonly _renderStats: RenderStatsHelper;
+  private readonly _ink: InkEffect;
   private _nodesRegistered = false;
 
   constructor(device: IThreeDeviceSlice) {
@@ -51,16 +52,18 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       }
     );
 
+    const ink = new InkEffect();
     super(
       UNIVERSE_ID.MAIN,
       scene,
       cameraNode.camera,
       new NodeGraph(scene),
-      new EffectComposer([new RenderPass(), new EffectPass()]),
+      new EffectComposer([new RenderPass(), new EffectPass([ink])], { normalDepth: true }),
       device.assets.preloadGroup.bind(device.assets),
       device.debug
     );
 
+    this._ink = ink;
     this._cameraNode = cameraNode;
     this._terrain = terrain;
     terrain.projectFrom = () => cameraNode.camera;
@@ -116,6 +119,8 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       ["azimuth", { label: "soleil azimut", min: 0, max: 360, step: 1 }],
       ["elevation", { label: "soleil elevation", min: 5, max: 90, step: 1 }],
       ["intensity", { label: "soleil intensite", min: 0, max: 10, step: 0.1 }],
+      ["ambient", { label: "ambiance", min: 0, max: 3, step: 0.05 }],
+      ["bounce", { label: "rebond", min: 0, max: 1, step: 0.01 }],
     ] as const;
 
     const terrain = this._terrain;
@@ -200,6 +205,41 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     };
     declareBuildings(null);
     this.debugSubscribe({ tabId: TAB_ID.UNIVERSE, folderId: FOLDER_ID.BUILDINGS, mount: declareBuildings });
+
+    const ink = this._ink;
+    const inkControls = [
+      ["amount", { label: "dessin", min: 0, max: 1, step: 1 }],
+      ["light", { label: "ton papier", min: 0.1, max: 2, step: 0.01 }],
+      ["dark", { label: "ton encre", min: 0, max: 0.5, step: 0.005 }],
+      ["screen", { label: "trame (px)", min: 2, max: 16, step: 0.5 }],
+      ["hatching", { label: "points / plume", min: 0, max: 1, step: 0.01 }],
+      ["line", { label: "trait (px)", min: 0.5, max: 4, step: 0.1 }],
+      ["depthEdge", { label: "contour profondeur", min: 0.001, max: 0.1, step: 0.001 }],
+      ["normalEdge", { label: "contour arete", min: 0.02, max: 1, step: 0.01 }],
+      ["wobble", { label: "tremble (px)", min: 0, max: 6, step: 0.1 }],
+      ["grain", { label: "grain", min: 0, max: 1, step: 0.01 }],
+      ["bleed", { label: "bavure", min: 0, max: 1, step: 0.01 }],
+    ] as const;
+    const applyInk = () => {
+      const paper = ink.amount.value > 0.5;
+      terrainSettings.pen.value = paper ? 1 : 0;
+      document.documentElement.dataset.mapTheme = paper ? "paper" : "night";
+    };
+    const declareInk = (target: DebugTarget | null) => {
+      const bindings = [
+        ...inkControls.map(([key, options]) =>
+          debug.bind(target, asRecord(ink[key]), "value", options, `ink.${key}`).on("change", applyInk)
+        ),
+        debug.bind(target, asRecord(ink.paper), "value", { label: "papier", color: { type: "float" } }, "ink.paper"),
+        debug.bind(target, asRecord(ink.ink), "value", { label: "encre", color: { type: "float" } }, "ink.ink"),
+      ];
+      applyInk();
+      return () => {
+        for (const binding of bindings) binding.dispose();
+      };
+    };
+    declareInk(null);
+    this.debugSubscribe({ tabId: TAB_ID.UNIVERSE, folderId: FOLDER_ID.INK, mount: declareInk });
   }
 
   /** Mesures en lecture seule : cadence, GPU, dessin, et ce que coute le bati. */
