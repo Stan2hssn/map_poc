@@ -1,6 +1,6 @@
 import { Earcut } from "three/src/extras/Earcut.js";
 import { tileTracer, type Canvas, type Pen, type TileXY } from "./Landcover.ts";
-import { GEOMETRY, type VectorFeature, type VectorLayer } from "./VectorTile.ts";
+import { GEOMETRY, partsOf, type VectorFeature, type VectorLayer } from "./VectorTile.ts";
 
 /**
  * Bati du PLAN IGN (couche `bati_surf`) : hauteurs pour la parallaxe, volumes pour l'extrusion.
@@ -72,10 +72,10 @@ const onBorder = (ax: number, ay: number, bx: number, by: number, size: number) 
   (ax === bx && (ax <= 0 || ax >= size)) || (ay === by && (ay <= 0 || ay >= size));
 
 /** Polygones d'une entite : un anneau exterieur (signe du premier anneau) suivi de ses cours. */
-function polygons(feature: VectorFeature): number[][][] {
+function polygons(rings: number[][]): number[][][] {
   const out: number[][][] = [];
-  const outer = Math.sign(ringArea(feature.geometry[0] ?? []));
-  for (const ring of feature.geometry) {
+  const outer = Math.sign(ringArea(rings[0] ?? []));
+  for (const ring of rings) {
     if (Math.sign(ringArea(ring)) === outer || !out.length) out.push([ring]);
     else out.at(-1)!.push(ring);
   }
@@ -106,7 +106,7 @@ export function buildTileMesh(layer: VectorLayer, z: number, tile: TileXY): Buil
   for (const feature of layer.features) {
     if (feature.type !== GEOMETRY.polygon) continue;
     const h = unorm(buildingHeight(feature) / HEIGHT_RANGE_M);
-    for (const rings of polygons(feature)) {
+    for (const rings of polygons(partsOf(layer, feature))) {
       const clipped = rings.map((ring) => clipRing(ring, size));
       const outer = clipped[0];
       if (!outer || outer.length < 6) continue;
@@ -184,7 +184,7 @@ export function drawBuildingHeights(pen: Pen, layers: Map<string, VectorLayer>, 
     const h = Math.min(255, Math.max(1, Math.round(buildingHeight(feature))));
     max = Math.max(max, h);
     pen.fillStyle = `rgb(${h},0,0)`;
-    trace(pen, feature, layer.extent);
+    trace(pen, layer, feature);
     pen.fill("nonzero");
   }
   return max;

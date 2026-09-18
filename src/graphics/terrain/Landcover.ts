@@ -10,8 +10,19 @@ export const landcoverUrl = (z: number, x: number, y: number) => `https://data.g
 
 /** Zoom maximal du PLAN IGN, et taille a laquelle une tuile est dessinee. */
 const MAX_ZOOM = 16;
-/** Au centre, deux niveaux plus fins : le PLAN IGN ne garde tout le bati qu'a partir du 14-15. */
+/** Au centre, deux niveaux plus fins : le PLAN IGN ne garde tout le bati qu'a partir du 14-15 ; au-dela de 15, rien de plus. */
 const FOCUS_LEVELS = 2;
+const MAX_FINE_ZOOM = 15;
+/** Couches dessinees, et leurs attributs utiles : le worker ne decode rien d'autre. */
+export const LANDCOVER_LAYERS = {
+  bati_surf: ["hauteur"],
+  ocs_vegetation_surf: [],
+  hydro_surf: [],
+  hydro_reseau: [],
+  routier_route: ["symbo"],
+  routier_chemin: [],
+  routier_surf: [],
+} as const;
 const TILE_PX = 512;
 const EARTH_CIRCUMFERENCE_M = 40_075_016.7;
 
@@ -43,7 +54,7 @@ export function landcoverZoom(bounds: GeoBounds, widthPx: number): number {
 }
 
 /** Niveau fin, dessine sur la zone centrale par-dessus le niveau `z` d'ensemble. */
-export const fineZoom = (z: number): number => Math.min(MAX_ZOOM, z + FOCUS_LEVELS);
+export const fineZoom = (z: number): number => Math.max(z, Math.min(MAX_FINE_ZOOM, z + FOCUS_LEVELS));
 
 const tileX = (lon: number, n: number) => ((lon + 180) / 360) * n;
 const tileY = (lat: number, n: number) => ((1 - Math.log(Math.tan(lat * RAD) + 1 / Math.cos(lat * RAD)) / Math.PI) / 2) * n;
@@ -94,20 +105,22 @@ export interface Canvas {
 }
 
 /** Trace le contour d'une entite de la tuile dans l'image `canvas`. */
-export function tileTracer(z: number, tile: TileXY, canvas: Canvas): (pen: Pen, feature: VectorFeature, extent: number) => void {
+export function tileTracer(z: number, tile: TileXY, canvas: Canvas): (pen: Pen, layer: VectorLayer, feature: VectorFeature) => void {
   const { bounds, width, height } = canvas;
   const sx = width / (bounds.east - bounds.west);
   const sy = height / (bounds.north - bounds.south);
-  return (pen, feature, extent) => {
+  return (pen, { coords, extent }, feature) => {
     pen.beginPath();
-    for (const part of feature.geometry) {
-      for (let i = 0; i < part.length; i += 2) {
-        const [lon, lat] = tilePointToLonLat(z, tile, part[i]!, part[i + 1]!, extent);
+    let start = feature.start;
+    for (const end of feature.ends) {
+      for (let i = start; i < end; i += 2) {
+        const [lon, lat] = tilePointToLonLat(z, tile, coords[i]!, coords[i + 1]!, extent);
         const x = (lon - bounds.west) * sx;
         const y = (bounds.north - lat) * sy;
-        if (i === 0) pen.moveTo(x, y);
+        if (i === start) pen.moveTo(x, y);
         else pen.lineTo(x, y);
       }
+      start = end;
     }
   };
 }
@@ -131,7 +144,7 @@ export function drawLandcoverTile(areas: Pen, roads: Pen, layers: Map<string, Ve
     areas.fillStyle = color;
     for (const feature of layer.features) {
       if (feature.type !== GEOMETRY.polygon) continue;
-      trace(areas, feature, layer.extent);
+      trace(areas, layer, feature);
       areas.fill("nonzero");
     }
   };
@@ -142,7 +155,7 @@ export function drawLandcoverTile(areas: Pen, roads: Pen, layers: Map<string, Ve
     for (const feature of layer.features) {
       if (feature.type !== GEOMETRY.line) continue;
       pen.lineWidth = Math.max(0.5, widthM(feature) / metersPerPixel);
-      trace(pen, feature, layer.extent);
+      trace(pen, layer, feature);
       pen.stroke();
     }
   };
@@ -160,7 +173,7 @@ export function drawLandcoverTile(areas: Pen, roads: Pen, layers: Map<string, Ve
   const surfaces = layers.get("routier_surf");
   for (const feature of surfaces?.features ?? []) {
     if (feature.type !== GEOMETRY.polygon) continue;
-    trace(roads, feature, surfaces!.extent);
+    trace(roads, surfaces!, feature);
     roads.fill("nonzero");
   }
   strokeLayer(roads, "routier_route", "#ffffff", (f) => roadWidth(f, 6));

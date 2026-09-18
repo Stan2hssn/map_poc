@@ -8,13 +8,42 @@ export const GEOMETRY = { point: 1, line: 2, polygon: 3 } as const;
 export interface VectorFeature {
   type: number;
   properties: Record<string, string | number | boolean>;
-  /** Parties (anneaux ou lignes), chacune une suite x0, y0, x1, y1... */
-  geometry: number[][];
+  /** Parties (anneaux ou lignes) dans `VectorLayer.coords` : la premiere commence a `start`, chacune finit a `ends[i]` (exclu). */
+  start: number;
+  ends: number[];
 }
 
 export interface VectorLayer {
   extent: number;
   features: VectorFeature[];
+  /** Coordonnees de toutes les entites, x0, y0, x1, y1... en entiers de tuile : un tableau par couche plutot qu'un par anneau. */
+  coords: Int16Array;
+}
+
+const NO_PROPERTIES: VectorFeature["properties"] = Object.freeze({});
+
+/** Parties d'une entite, en tableaux ordinaires (decoupe, triangulation, tests). */
+export function partsOf(layer: VectorLayer, feature: VectorFeature): number[][] {
+  let start = feature.start;
+  return feature.ends.map((end) => {
+    const part = Array.from(layer.coords.subarray(start, end));
+    start = end;
+    return part;
+  });
+}
+
+/** Couche construite a partir d'entites ecrites a la main (tests). */
+export function vectorLayer(
+  extent: number,
+  features: { type: number; properties?: VectorFeature["properties"]; geometry: number[][] }[]
+): VectorLayer {
+  const coords: number[] = [];
+  const out = features.map(({ type, properties = NO_PROPERTIES, geometry }) => {
+    const start = coords.length;
+    const ends = geometry.map((part) => (coords.push(...part), coords.length));
+    return { type, properties, start, ends };
+  });
+  return { extent, features: out, coords: Int16Array.from(coords) };
 }
 
 class Reader {
@@ -91,34 +120,62 @@ function value(bytes: Uint8Array): string | number | boolean {
   return result;
 }
 
-/** Commandes MoveTo / LineTo / ClosePath vers des parties en coordonnees absolues. */
-function geometry(commands: number[]): number[][] {
-  const parts: number[][] = [];
-  let part: number[] = [];
+/** Coordonnees d'une couche, accumulees sans un tableau par anneau. */
+class Coords {
+  data = new Int16Array(4096);
+  length = 0;
+
+  push(x: number, y: number): void {
+    if (this.length + 2 > this.data.length) {
+      const grown = new Int16Array(this.data.length * 2);
+      grown.set(this.data);
+      this.data = grown;
+    }
+    this.data[this.length++] = x;
+    this.data[this.length++] = y;
+  }
+}
+
+/** Commandes MoveTo / LineTo / ClosePath vers des parties en coordonnees absolues ; rend la fin de chaque partie. */
+function geometry(commands: number[], coords: Coords): number[] {
+  const ends: number[] = [];
+  let first = coords.length;
   let x = 0;
   let y = 0;
   for (let i = 0; i < commands.length; ) {
     const command = commands[i]! & 7;
     const count = commands[i++]! >> 3;
     if (command === 7) {
-      if (part.length) part.push(part[0]!, part[1]!);
+      if (coords.length > first) coords.push(coords.data[first]!, coords.data[first + 1]!);
       continue;
     }
     for (let k = 0; k < count; k++) {
       x += zigzag(commands[i++]!);
       y += zigzag(commands[i++]!);
       if (command === 1) {
-        if (part.length) parts.push(part);
-        part = [];
+        if (coords.length > first) ends.push(coords.length);
+        first = coords.length;
       }
-      part.push(x, y);
+      coords.push(x, y);
     }
   }
-  if (part.length) parts.push(part);
-  return parts;
+  if (coords.length > first) ends.push(coords.length);
+  return ends;
 }
 
-function layer(bytes: Uint8Array): [string, VectorLayer] {
+/** Nom d'une couche, lu sans decoder le reste. */
+function layerName(bytes: Uint8Array): string {
+  const r = new Reader(bytes);
+  let name = "";
+  r.fields((field, wire) => {
+    if (field !== 1 || wire !== 2 || name) return false;
+    name = utf8.decode(r.bytes());
+    return true;
+  });
+  return name;
+}
+
+function layer(bytes: Uint8Array, kept?: readonly string[]): [string, VectorLayer] {
   const r = new Reader(bytes);
   let name = "";
   let extent = 4096;
@@ -145,20 +202,34 @@ function layer(bytes: Uint8Array): [string, VectorLayer] {
     } else return false;
     return true;
   });
+  const coords = new Coords();
   const features = raw.map(({ type, tags, commands }) => {
-    const properties: VectorFeature["properties"] = {};
-    for (let i = 0; i < tags.length; i += 2) properties[keys[tags[i]!]!] = values[tags[i + 1]!]!;
-    return { type, properties, geometry: geometry(commands) };
+    let properties = NO_PROPERTIES;
+    for (let i = 0; i < tags.length; i += 2) {
+      const key = keys[tags[i]!]!;
+      if (kept && !kept.includes(key)) continue;
+      if (properties === NO_PROPERTIES) properties = {};
+      properties[key] = values[tags[i + 1]!]!;
+    }
+    const start = coords.length;
+    return { type, properties, start, ends: geometry(commands, coords) };
   });
-  return [name, { extent, features }];
+  return [name, { extent, features, coords: coords.data.slice(0, coords.length) }];
 }
 
-export function decodeVectorTile(buffer: ArrayBuffer): Map<string, VectorLayer> {
+/**
+ * `wanted` : couches a garder et, pour chacune, les attributs utiles. Le reste n'est pas decode :
+ * une tuile decodee pese sinon une quinzaine de fois son fichier.
+ */
+export function decodeVectorTile(buffer: ArrayBuffer, wanted?: Readonly<Record<string, readonly string[]>>): Map<string, VectorLayer> {
   const r = new Reader(new Uint8Array(buffer));
   const layers = new Map<string, VectorLayer>();
   r.fields((field, wire) => {
     if (field !== 3 || wire !== 2) return false;
-    const [name, data] = layer(r.bytes());
+    const bytes = r.bytes();
+    const kept = wanted?.[layerName(bytes)];
+    if (wanted && !kept) return true;
+    const [name, data] = layer(bytes, kept);
     layers.set(name, data);
     return true;
   });

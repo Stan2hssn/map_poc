@@ -196,7 +196,7 @@ export class TerrainNode extends Object3DNodeBase {
     this._fly(dt);
     this._glideStep(dt);
     this._heights.update(this._view(), this._flight?.destination);
-    this.landcover.update(this._bounds, this.withBuildingHeights);
+    this.landcover.update(this._bounds, this.withBuildingHeights, this._flight?.destination.bounds);
     this._easeRange(dt);
     terrainSettings.mistDrift.value.x += (MIST_DRIFT.x * dt) / 1000;
     terrainSettings.mistDrift.value.y += (MIST_DRIFT.y * dt) / 1000;

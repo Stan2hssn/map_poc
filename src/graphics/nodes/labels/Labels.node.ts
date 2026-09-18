@@ -5,7 +5,8 @@ import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import type { TerrainNode } from "@graphics/nodes/terrain/Terrain.node.ts";
 import { expandBounds } from "@graphics/terrain/GeoProjection.ts";
 import { PlaceIndex, type Place } from "@graphics/places/PlaceIndex.ts";
-import { fetchFrenchCommunes, fetchWorldCities } from "@graphics/places/PlaceSources.ts";
+import { FrenchCommunesHelper } from "./FrenchCommunes.helper.ts";
+import { fetchWorldCities } from "@graphics/places/PlaceSources.ts";
 import { Vector3, type Camera } from "three";
 
 const MAX_LABELS = 7;
@@ -44,6 +45,7 @@ export class LabelsNode extends NodeBase {
   private readonly _camera: () => Camera;
   private readonly _onSelect: (place: Place) => void;
   private readonly _places = new PlaceIndex();
+  private _communes: FrenchCommunesHelper | null = null;
   private readonly _labels = new Map<Place, Label>();
   private readonly _point = new Vector3();
   private _layer: HTMLElement | null = null;
@@ -74,6 +76,8 @@ export class LabelsNode extends NodeBase {
 
   override update(): void {
     if (!this._layer) return;
+    // Pas pendant un vol : il traverserait des departements pour rien.
+    if (!this._terrain.flying) this._communes?.update(this._terrain.bounds, this._terrain.extentKm);
     const selection = `${this._terrain.viewVersion}:${this._places.version}`;
     const now = performance.now();
     if (selection !== this._selection && now - this._selectedAt > RESELECT_MS) {
@@ -89,24 +93,23 @@ export class LabelsNode extends NodeBase {
     super.dispose();
   }
 
-  // Villes du monde (agglomerations) et communes francaises : une ville presente des deux cotes garde sa plus grande population.
+  // Villes du monde (agglomerations), puis communes francaises la ou regarde la vue : une ville presente
+  // des deux cotes garde sa plus grande population.
   private _load(): void {
     const abort = new AbortController();
     this._abort = abort;
-    const warn = (error: unknown) => {
-      if (!abort.signal.aborted) console.warn("[Labels] lieux indisponibles", error);
-    };
     fetchWorldCities(abort.signal)
       .then((places) => this._places.add(places))
-      .catch(warn);
-    fetchFrenchCommunes(abort.signal)
-      .then((places) => this._places.add(places))
-      .catch(warn);
+      .catch((error: unknown) => {
+        if (!abort.signal.aborted) console.warn("[Labels] lieux indisponibles", error);
+      });
+    this._communes = new FrenchCommunesHelper(abort.signal, (places) => this._places.add(places));
   }
 
   private _release(): void {
     this._abort?.abort();
     this._abort = null;
+    this._communes = null;
     this._layer?.remove();
     this._layer = null;
     this._labels.clear();

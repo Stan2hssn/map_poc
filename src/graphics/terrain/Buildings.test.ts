@@ -1,17 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { buildTileMesh, clipRing, DEFAULT_HEIGHT_M, HEIGHT_RANGE_M, PEAK_CELL, peakMap } from "./Buildings.ts";
-import { GEOMETRY, type VectorFeature, type VectorLayer } from "./VectorTile.ts";
+import { GEOMETRY, vectorLayer, type VectorLayer } from "./VectorTile.ts";
 
 const E = 4096;
 const TILE = { x: 16597, y: 11274 };
 const square = (x0: number, y0: number, x1: number, y1: number) => [x0, y0, x1, y0, x1, y1, x0, y1, x0, y0];
 // Anneau inverse : une cour.
 const hole = (x0: number, y0: number, x1: number, y1: number) => [x0, y0, x0, y1, x1, y1, x1, y0, x0, y0];
-const layer = (...features: Partial<VectorFeature>[]): VectorLayer => ({
-  extent: E,
-  features: features.map((f) => ({ type: GEOMETRY.polygon, properties: {}, geometry: [], ...f })),
-});
+const layer = (...features: { geometry: number[][]; properties?: Record<string, number> }[]): VectorLayer =>
+  vectorLayer(E, features.map((f) => ({ type: GEOMETRY.polygon, ...f })));
 const at = (a: Uint16Array, i: number, n: number) => Array.from(a.subarray(i * n, i * n + n), (v) => v / 65535);
 
 /** Normale sortante de chaque mur, (-dv, du) dans (u, v), et milieu de l'arete. */

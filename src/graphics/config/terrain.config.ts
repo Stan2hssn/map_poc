@@ -19,7 +19,8 @@ export const TERRAIN_CONFIG = {
   maxRelief: 25,
   segments: 1024,
   segmentOptions: [256, 512, 1024, 1536],
-  cacheTiles: 768,
+  /** Tuiles d'altitude gardees (256 Ko chacune) : de quoi revenir en arriere sans tout recharger. */
+  cacheTiles: 320,
   /** Prechargement autour du bloc (fraction de sa largeur, de chaque cote) : niveau affiche, puis apercu plus large. */
   margin: 0.25,
   coarse: { levels: 3, margin: 1 },

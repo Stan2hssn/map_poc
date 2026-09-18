@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { drawLandcoverTile, landcoverZoom, mercatorTiles, packLandcover, tilePointToLonLat, type Pen } from "./Landcover.ts";
-import { GEOMETRY, type VectorLayer } from "./VectorTile.ts";
+import { GEOMETRY, vectorLayer } from "./VectorTile.ts";
 
 const close = (a: number, b: number, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);
 
@@ -47,8 +47,8 @@ test("dessin : couleurs par couche, polygones remplis, routes a leur largeur", (
       lineJoin: "round",
       globalCompositeOperation: "source-over",
     }) as unknown as Pen;
-  const square: VectorLayer = { extent: 4096, features: [{ type: GEOMETRY.polygon, properties: {}, geometry: [[0, 0, 4096, 0, 4096, 4096, 0, 4096, 0, 0]] }] };
-  const road: VectorLayer = { extent: 4096, features: [{ type: GEOMETRY.line, properties: { symbo: "LOCALE_1" }, geometry: [[0, 2048, 4096, 2048]] }] };
+  const square = vectorLayer(4096, [{ type: GEOMETRY.polygon, geometry: [[0, 0, 4096, 0, 4096, 4096, 0, 4096, 0, 0]] }]);
+  const road = vectorLayer(4096, [{ type: GEOMETRY.line, properties: { symbo: "LOCALE_1" }, geometry: [[0, 2048, 4096, 2048]] }]);
   // La tuile 0/0/0 couvre la carte entiere ; la toile, une bande autour de l'equateur.
   const canvas = { bounds: { west: -180, east: 180, south: -10, north: 10 }, width: 360, height: 20 };
   drawLandcoverTile(pen(), pen(), new Map([["bati_surf", square], ["routier_route", road]]), 0, { x: 0, y: 0 }, canvas);

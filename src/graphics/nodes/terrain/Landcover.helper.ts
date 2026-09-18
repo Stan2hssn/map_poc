@@ -22,6 +22,8 @@ const REQUEST_MS = 200;
 export class LandcoverHelper {
   /** Volumes d'une tuile demandee par `requestBuildings`. */
   onBuildings: ((tile: BuildingsTile) => void) | null = null;
+  /** Derniere image : temps de dessin dans le worker (ms), et delai depuis sa demande jusqu'a l'image complete (ms). */
+  readonly stats = { renderMs: 0, loadMs: 0 };
   private readonly _worker = new Worker(new URL("../../terrain/Landcover.worker.ts", import.meta.url), { type: "module" });
   private _requested: { focus: GeoBounds; zoom: number; heights: boolean } | null = null;
   private _requestedAt = -Infinity;
@@ -40,16 +42,19 @@ export class LandcoverHelper {
     return fineZoom(this._zoom);
   }
 
-  /** `heights` : dessiner aussi les hauteurs du bati. */
-  update(bounds: GeoBounds, heights: boolean): void {
-    const area = worldClamp(expandBounds(bounds, AREA));
+  /**
+   * `bounds` : la vue affichee ; `target` : celle a charger (l'arrivee d'un vol, sans les vues traversees).
+   * `heights` : dessiner aussi les hauteurs du bati.
+   */
+  update(bounds: GeoBounds, heights: boolean, target: GeoBounds = bounds): void {
+    const area = worldClamp(expandBounds(target, AREA));
     const zoom = landcoverZoom(area, SIZE);
     this._zoom = zoom;
     const r = this._requested;
-    const done = r && r.zoom === zoom && r.heights === heights && containsBounds(r.focus, bounds);
+    const done = r && r.zoom === zoom && r.heights === heights && containsBounds(r.focus, target);
     const now = performance.now();
     if (!done && now - this._requestedAt > REQUEST_MS) {
-      const focus = expandBounds(bounds, FOCUS);
+      const focus = expandBounds(target, FOCUS);
       this._requested = { focus, zoom, heights };
       this._requestedAt = now;
       const request: LandcoverRequest = { kind: "landcover", id: ++this._id, bounds: area, focus, width: SIZE, height: SIZE, heights };
@@ -89,6 +94,8 @@ export class LandcoverHelper {
     // Une image partielle d'une demande plus ancienne vaut mieux que rien, jamais l'inverse.
     if (message.id < this._shown) return;
     this._shown = message.id;
+    this.stats.renderMs = message.renderMs;
+    if (message.complete && message.id === this._id) this.stats.loadMs = performance.now() - this._requestedAt;
     const s = terrainSettings;
     swap(s.landcover, mipmapped(message.data, message.width, message.height, RGBAFormat));
     this._image = message.bounds;

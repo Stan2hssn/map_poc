@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { decodeVectorTile, GEOMETRY } from "./VectorTile.ts";
+import { decodeVectorTile, GEOMETRY, partsOf } from "./VectorTile.ts";
 
 // Encodeur protobuf minimal, juste pour fabriquer des tuiles de test.
 const varint = (n: number): number[] => {
@@ -33,11 +33,18 @@ test("couches, attributs et geometries en coordonnees absolues", () => {
   const [square, line] = bati.features;
   assert.equal(square!.type, GEOMETRY.polygon);
   assert.deepEqual(square!.properties, { hauteur: 12.5 });
-  assert.deepEqual(square!.geometry, [[10, 20, 15, 20, 15, 25, 10, 20]]);
+  assert.deepEqual(partsOf(bati, square!), [[10, 20, 15, 20, 15, 25, 10, 20]]);
   assert.equal(line!.type, GEOMETRY.line);
-  assert.deepEqual(line!.geometry, [[0, 0, 3, 4]]);
+  assert.deepEqual(partsOf(bati, line!), [[0, 0, 3, 4]]);
 });
 
 test("tuile vide : aucune couche", () => {
   assert.equal(decodeVectorTile(new ArrayBuffer(0)).size, 0);
+});
+
+test("couches et attributs choisis : le reste n'est pas decode", () => {
+  const layers = decodeVectorTile(tile(), { bati: [] });
+  assert.deepEqual(layers.get("bati")!.features[0]!.properties, {});
+  assert.equal(decodeVectorTile(tile(), { route: ["symbo"] }).size, 0);
+  assert.deepEqual(decodeVectorTile(tile(), { bati: ["hauteur"] }).get("bati")!.features[0]!.properties, { hauteur: 12.5 });
 });
