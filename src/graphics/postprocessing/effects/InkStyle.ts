@@ -108,11 +108,18 @@ function createPaper(): DataTexture {
       pen.fillRect(x - radius, y - radius, radius * 2, radius * 2);
     }
   });
-  const newsprint = layer((pen) => {
-    // Vue par transparence : la page est a l'envers, et un peu floue.
+  // Cliche trame : un motif de points, pose d'un seul `fillRect` (un point a la fois couterait des secondes).
+  const dot = new OffscreenCanvas(5, 5).getContext("2d")!;
+  dot.fillStyle = "#fff";
+  dot.beginPath();
+  dot.arc(2.5, 2.5, 1.6, 0, Math.PI * 2);
+  dot.fill();
+  const page = new OffscreenCanvas(PAPER_SIZE, PAPER_SIZE).getContext("2d")!;
+  {
+    const pen = page;
+    // Vue par transparence : la page est a l'envers.
     pen.translate(PAPER_SIZE, 0);
     pen.scale(-1, 1);
-    pen.filter = "blur(0.7px)";
     pen.fillStyle = "#fff";
     const columns = 5;
     const gutter = 18;
@@ -124,16 +131,10 @@ function createPaper(): DataTexture {
       let y = 100;
       while (y < PAPER_SIZE - 20) {
         if (random() < 0.07) {
-          // Cliche trame.
           const h = 80 + random() * 140;
-          for (let dy = 0; dy < h; dy += 5) {
-            for (let dx = 0; dx < width; dx += 5) {
-              const r = random() * 2.2;
-              pen.beginPath();
-              pen.arc(x + dx + 2.5, y + dy + 2.5, r, 0, Math.PI * 2);
-              pen.fill();
-            }
-          }
+          pen.fillStyle = pen.createPattern(dot.canvas, "repeat")!;
+          pen.fillRect(x, y, width, h);
+          pen.fillStyle = "#fff";
           y += h + 14;
           continue;
         }
@@ -147,6 +148,12 @@ function createPaper(): DataTexture {
         y += pen.font.startsWith("bold") ? 26 : 15;
       }
     }
+  }
+  // Un peu floue, comme vue a travers la feuille : un seul flou sur toute la page. Pose trait par trait,
+  // le filtre de flou refait son calcul a chaque dessin (~30 s au demarrage).
+  const newsprint = layer((pen) => {
+    pen.filter = "blur(0.7px)";
+    pen.drawImage(page.canvas, 0, 0);
   });
   const data = new Uint8Array(PAPER_SIZE * PAPER_SIZE * 4);
   for (let i = 0; i < data.length; i += 4) {
@@ -165,7 +172,14 @@ function createPaper(): DataTexture {
 }
 
 const noiseMap = texture(createNoise());
-const paperMap = texture(createPaper());
+// Papier neutre au demarrage ; le vrai est dessine quand le navigateur a du temps libre, apres les premieres images.
+const paperMap = texture(new DataTexture(new Uint8Array([128, 0, 128, 255]), 1, 1, RGBAFormat, UnsignedByteType));
+paperMap.value.needsUpdate = true;
+const draftPaper = () => {
+  paperMap.value = createPaper();
+};
+if (typeof requestIdleCallback === "function") requestIdleCallback(draftPaper, { timeout: 3000 });
+else setTimeout(draftPaper, 1000);
 
 /** Bruit au pixel `pixel`, en cellules de `cellPx` pixels. */
 export const inkNoise = (pixel: Node, cellPx: number): Node => noiseMap.sample(pixel.div(cellPx * NOISE_SIZE));
