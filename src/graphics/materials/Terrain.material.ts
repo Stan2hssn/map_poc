@@ -4,6 +4,9 @@ import {
   cameraPosition,
   cameraViewMatrix,
   abs,
+  directionToColor,
+  mrt,
+  normalView,
   color,
   float,
   Fn,
@@ -31,7 +34,7 @@ import {
 } from "three/tsl";
 import { MeshStandardNodeMaterial, type Node, type TextureNode } from "three/webgpu";
 import { TERRAIN_CONFIG } from "@graphics/config/terrain.config.ts";
-import { inkCoverage, inkOnPaper, inkSettings, paperAt } from "@graphics/postprocessing/effects/InkStyle.ts";
+import { inkCoverage, inkOnPaper, inkSettings, paperAt, type InkAnchor } from "@graphics/postprocessing/effects/InkStyle.ts";
 import { PEAK_CELL } from "@graphics/terrain/Buildings.ts";
 
 /** Ecart des echantillons de pente, en texels : au-dela de 1, le modele est adouci. */
@@ -321,6 +324,22 @@ function drawLandcover(relief: Node, { fill, outline }: { fill: Node; outline: N
   return mix(relief, paper, s.landcoverStrength.mul(drawn));
 }
 
+/**
+ * Motifs d'encre accroches a la carte au point `blockUv` du bloc : ecart au coin de la vue (petit, donc
+ * precis) recale sur l'origine calculee cote CPU, aux deux echelles de la brume.
+ */
+function inkAnchorOf(blockUv: Node): InkAnchor {
+  const fromCorner = blockUv.mul(s.geoSize).mul(vec2(s.geoCos, 1));
+  return {
+    at: fromCorner.add(s.inkOrigin.xy).mul(s.inkScale.x),
+    next: fromCorner.add(s.inkOrigin.zw).mul(s.inkScale.y),
+    blend: s.mistBlend,
+  };
+}
+
+/** Meme ancre, depuis un point `xz` de la scene : pour l'effet plein ecran. */
+export const inkAnchorAt = (xz: Node): InkAnchor => inkAnchorOf(xz.div(s.blockSize).add(0.5));
+
 /** Hauteur du bati (m) au point `at` de sa texture, et sommet de sa cellule. */
 const buildingMeters = (at: Node, lod: Node) => (s.buildingHeights.sample(at) as TextureNode).level(lod).r.mul(255);
 const peakMeters = (at: Node) => (s.buildingPeaks.sample(at) as TextureNode).level(float(0)).r.mul(255);
@@ -523,12 +542,7 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
   // Encre directe (parallaxe) : tout le dessin dans cette passe, sans normales ni profondeur a relire.
   // Motifs et papier accroches a la carte : ecart au coin de la vue, petit, donc precis en flottants.
   const toGeo = vec2(s.geoCos, 1);
-  const fromCorner = uv.mul(s.geoSize).mul(toGeo);
-  const anchor = {
-    at: fromCorner.add(s.inkOrigin.xy).mul(s.inkScale.x),
-    next: fromCorner.add(s.inkOrigin.zw).mul(s.inkScale.y),
-    blend: s.mistBlend,
-  };
+  const anchor = inkAnchorOf(uv);
   const tone = luminance(output.rgb).max(0).pow(1 / 2.2);
   const far = smoothstep(INK_DISTANCE.near, INK_DISTANCE.far, length(positionWorld.sub(cameraPosition)));
   const wall = hit.w.sub(1).max(0).mul(onBuilding);
@@ -548,6 +562,8 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
   const edges = max(silhouette, max(jump, crease)).mul(drawn);
   const inked = inkOnPaper(max(coverage, edges).mul(shown), anchor, paperAt(anchor, shown.oneMinus()));
   material.outputNode = vec4(mix(lit, inked, s.inkDirect), output.a);
+  // Pour l'effet plein ecran : part dessinee du pixel (le reste s'efface dans le papier et le journal).
+  material.mrtNode = mrt({ normal: vec4(directionToColor(normalView), shown) });
 
   return material;
 }

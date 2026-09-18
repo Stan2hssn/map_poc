@@ -6,7 +6,7 @@ import { TERRAIN_CONFIG } from "@graphics/config/terrain.config.ts";
 import { FOLDER_ID, TAB_ID } from "@graphics/debug/Debug.id.ts";
 import { RenderStatsHelper } from "@graphics/debug/RenderStats.helper.ts";
 import { DynamicQualityHelper } from "@graphics/device/DynamicQuality.helper.ts";
-import { terrainSettings } from "@graphics/materials/Terrain.material.ts";
+import { inkAnchorAt, terrainSettings } from "@graphics/materials/Terrain.material.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import { BuildingsNode } from "@graphics/nodes/buildings/Buildings.node.ts";
 import { MapCameraNode } from "@graphics/nodes/cameras/MapCamera.node.ts";
@@ -58,7 +58,8 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       }
     );
 
-    const ink = new InkEffect();
+    // Papier et journal accroches a la carte, comme dans le shader du sol.
+    const ink = new InkEffect(inkAnchorAt);
     const inkPass = new EffectPass([ink]);
     super(
       UNIVERSE_ID.MAIN,

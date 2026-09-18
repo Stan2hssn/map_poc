@@ -1,8 +1,23 @@
-import { abs, colorToDirection, dot, float, luminance, max, mix, perspectiveDepthToViewZ, smoothstep, step, uniform, vec2, vec4 } from "three/tsl";
+import {
+  abs,
+  colorToDirection,
+  dot,
+  float,
+  getViewPosition,
+  luminance,
+  max,
+  mix,
+  perspectiveDepthToViewZ,
+  smoothstep,
+  step,
+  uniform,
+  vec2,
+  vec4,
+} from "three/tsl";
 import type { Node } from "three/webgpu";
 import type IEffect from "./Effect.interface.ts";
 import type { EffectContext } from "./Effect.interface.ts";
-import { inkCoverage, inkNoise, inkOnPaper, inkSettings as k, paperAt, WOBBLE_PX } from "./InkStyle.ts";
+import { inkCoverage, inkNoise, inkOnPaper, inkSettings as k, paperAt, WOBBLE_PX, type InkAnchor } from "./InkStyle.ts";
 
 const NEIGHBORS = [
   [1, 0],
@@ -16,13 +31,21 @@ const NEIGHBORS = [
  * tons en hachures ou en trame, plus fins au loin. Pour les images sans surface connue (volumes extrudes) ;
  * la parallaxe se dessine dans le shader du sol, sans cette passe.
  * Lit normales et profondeur de la scene : `EffectComposer` avec `normalDepth`, en tete de sa passe.
+ * L'alpha des normales dit ce qui est dessine (1) ou efface dans le papier (0) : le journal apparait la.
+ * `anchorAt` accroche papier et journal a la scene (position `xz` d'un pixel) ; sans lui, a l'ecran.
  */
 export class InkEffect implements IEffect {
-  /** Distance a la camera (unites de scene) ou le trait s'affine ; le journal apparait au-dela, jusqu'a 1,2 fois `far`. */
+  /** Distance a la camera (unites de scene) ou le trait s'eclaircit. */
   readonly near = uniform(60);
   readonly far = uniform(220);
+  private readonly _anchorAt: ((xz: Node) => InkAnchor) | null;
 
-  color(input: Node, { uv, inputBuffer, resolution, normalBuffer, depthBuffer, cameraNear, cameraFar }: EffectContext): Node {
+  constructor(anchorAt: ((xz: Node) => InkAnchor) | null = null) {
+    this._anchorAt = anchorAt;
+  }
+
+  color(input: Node, ctx: EffectContext): Node {
+    const { uv, inputBuffer, resolution, normalBuffer, depthBuffer, cameraNear, cameraFar } = ctx;
     const pixel = uv.mul(resolution);
     const shake = inkNoise(pixel, WOBBLE_PX).xy.sub(0.5).mul(k.wobble.mul(2));
     const at = uv.add(shake.div(resolution));
@@ -45,11 +68,20 @@ export class InkEffect implements IEffect {
     const distance = smoothstep(this.near, this.far, z.negate()).mul(scene).add(scene.oneMinus());
     // Ton percu : en lineaire, les ombres tomberaient toutes en aplat.
     const tone = luminance(inputBuffer.sample(at).rgb).max(0).pow(1 / 2.2);
-    // Volumes extrudes : pas de surface connue par pixel, motifs poses a l'ecran.
-    const anchor = { at: pixel };
-    const coverage = max(inkCoverage(tone, anchor, { far: distance }).mul(scene), edge.mul(scene));
-    const beyond = smoothstep(this.far.mul(0.7), this.far.mul(1.2), z.negate()).mul(scene).add(scene.oneMinus());
-    const drawn = inkOnPaper(coverage, anchor, paperAt(anchor, beyond));
+    // Hachures posees a l'ecran ; papier et journal accroches a la scene si possible.
+    const screen = { at: pixel };
+    const sheet = this._anchorAt ? this._anchorAt(this._worldAt(at, ctx).xz) : screen;
+    const shown = normalBuffer.sample(at).a.mul(scene);
+    // Hors de la zone dessinee, les contours s'effacent avec le reste.
+    const coverage = max(inkCoverage(tone, screen, { far: distance }).mul(scene), edge.mul(shown));
+    const erased = shown.oneMinus();
+    const drawn = inkOnPaper(coverage, sheet, paperAt(sheet, erased));
     return vec4(mix(input.rgb, drawn, k.amount), input.a);
+  }
+
+  /** Position dans la scene du pixel `at`, depuis la profondeur. */
+  private _worldAt(at: Node, { depthBuffer, cameraProjectionInverse, cameraWorld }: EffectContext): Node {
+    const view = getViewPosition(at, depthBuffer.sample(at).r, cameraProjectionInverse);
+    return cameraWorld.mul(vec4(view, 1)).xyz;
   }
 }

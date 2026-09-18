@@ -1,6 +1,6 @@
 import type { PassContext } from "@_core/pipeline/Pass.interface.ts";
 import type { FrameTiming } from "@_core/types/Frame.type.ts";
-import { DepthTexture, NoToneMapping, SRGBColorSpace, Texture, Vector2, type PerspectiveCamera, type RenderTarget } from "three";
+import { DepthTexture, Matrix4, NoToneMapping, SRGBColorSpace, Texture, Vector2, type PerspectiveCamera, type RenderTarget } from "three";
 import { renderOutput, texture, uniform, uv } from "three/tsl";
 import { NodeMaterial, type Node } from "three/webgpu";
 import type IEffect from "../effects/Effect.interface.ts";
@@ -17,6 +17,8 @@ export class EffectPass extends PassBase {
   private readonly _depth = texture(new DepthTexture(1, 1));
   private readonly _near = uniform(0.1);
   private readonly _far = uniform(1000);
+  private readonly _projectionInverse = uniform(new Matrix4());
+  private readonly _world = uniform(new Matrix4());
   private _toScreen: boolean | null = null;
 
   constructor(effects: IEffect[] = []) {
@@ -37,6 +39,8 @@ export class EffectPass extends PassBase {
     const camera = ctx.camera as PerspectiveCamera;
     this._near.value = camera.near;
     this._far.value = camera.far;
+    this._projectionInverse.value.copy(camera.projectionMatrixInverse);
+    this._world.value.copy(camera.matrixWorld);
     if (this._toScreen !== this.renderToScreen) this._build();
     for (const effect of this._effects) effect.update?.(frame);
     this.renderFullscreen(ctx);
@@ -62,6 +66,8 @@ export class EffectPass extends PassBase {
       depthBuffer: this._depth,
       cameraNear: this._near,
       cameraFar: this._far,
+      cameraProjectionInverse: this._projectionInverse,
+      cameraWorld: this._world,
     };
     const color = this._effects.reduce<Node>((current, effect) => effect.color(current, ctx), this._input);
 

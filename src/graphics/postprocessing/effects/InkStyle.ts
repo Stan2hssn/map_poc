@@ -220,8 +220,11 @@ export function paperAt(anchor: InkAnchor, fade: Node): Node {
     const fibers = paperMap.sample(at.div(PAPER_SIZE));
     // Le journal a une autre echelle que les fibres : leurs repetitions ne coincident pas.
     const print = paperMap.sample(at.div(PAPER_SIZE * 2).add(0.37)).g;
-    const pulp = float(1).add(fibers.r.sub(0.5).mul(0.25).add(fibers.b.sub(0.5).mul(0.35)).mul(k.fibers));
-    return mix(k.paper.mul(pulp), k.ink, print.mul(k.newsprint).mul(fade).mul(0.3));
+    // Pate : fibres, nuages de la feuille, et grain fin de la photocopie.
+    const pulp = float(1)
+      .add(fibers.r.sub(0.5).mul(0.4).add(fibers.b.sub(0.5).mul(0.5)).mul(k.fibers))
+      .sub(inkNoise(at, 1).r.mul(k.grain).mul(0.08));
+    return mix(k.paper.mul(pulp), k.ink, print.mul(k.newsprint).mul(fade).mul(0.35));
   });
 }
 

@@ -1,5 +1,5 @@
 import type { FrameTiming } from "@_core/types/Frame.type.ts";
-import type { Vector2 } from "three";
+import type { Matrix4, Vector2 } from "three";
 import type { Node, TextureNode, UniformNode } from "three/webgpu";
 
 export interface EffectContext {
@@ -15,6 +15,9 @@ export interface EffectContext {
   /** Plans proche et lointain de la camera, pour lineariser la profondeur. */
   cameraNear: UniformNode<number>;
   cameraFar: UniformNode<number>;
+  /** Projection inverse et matrice monde de la camera : position d'un pixel dans la scene. */
+  cameraProjectionInverse: UniformNode<Matrix4>;
+  cameraWorld: UniformNode<Matrix4>;
 }
 
 /**

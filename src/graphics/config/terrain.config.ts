@@ -33,5 +33,5 @@ export const TERRAIN_CONFIG = {
    * decale de `shift` ; la carte s'efface vers les bords de la vue et le lointain. Bord fondu sur
    * `softness` du rayon, rendu irregulier par un bruit accroche a la carte, d'amplitude `jitter`.
    */
-  mask: { radius: [130, 130], shift: 0, softness: 0.45, jitter: 0.12 },
+  mask: { radius: [95, 95], shift: 0, softness: 0.6, jitter: 0.12 },
 } as const;

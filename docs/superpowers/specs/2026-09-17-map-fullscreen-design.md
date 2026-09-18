@@ -160,3 +160,9 @@ D'après `refs/` (plume, trame, encre qui bave) et la direction artistique du RE
   - pas fins de 2 texels du niveau de mip lu (réglage `texels par pas`), position de l'impact affinée par 3 dichotomies ;
   - grille du sol à 256 subdivisions par défaut : au-delà, les triangles tombent sous quelques pixels et le shader du sol tourne 2 à 4 fois par pixel (blocs de 2 × 2). À 2,5 km, densité 2 : 1024 → 75 ms, 512 → 54 ms, 256 → 38 ms ; puis 30 ms avec les sommets des environs et le pas de 2 texels.
 - **Qualité dynamique** (comme Chartogne-Taillet) : sous 45 images/s pendant deux fenêtres de 1,5 s, la densité de pixels baisse de 0,25 (jusqu'à 1) ; le niveau est retenu (`localStorage`). Réglage `qualite auto`.
+
+## Retour au rendu de référence (2026-09-18)
+
+- **Effet plein écran par défaut**, y compris pour la parallaxe : c'était le rendu de la capture de référence (contours lus dans les normales et la profondeur, tons en hachures fines). La passe unique reste une option (`une passe (parallaxe)`).
+- **Masque, papier et journal dans l'effet plein écran** : le sol écrit dans l'alpha des normales sa part dessinée (`mrtNode`) ; l'effet y efface contours et hachures, et y fait apparaître le journal. Papier et journal sont accrochés à la carte : la position de chaque pixel est retrouvée depuis la profondeur, puis passée à la même ancre que le shader du sol (`inkAnchorAt`).
+- **Lumière de la capture de référence** par défaut : soleil à 117° et 22° de haut, intensité 4, ambiance 0,2 ; exagération 1. Masque : rayon 95, fondu 0,6, bord 0,12.

@@ -10,7 +10,7 @@ const SHADOW_EXTENT = 150;
  * les faces a l'ombre lisibles (hachurees plutot que noires a l'encre).
  */
 export class LightsNode extends Object3DNodeBase {
-  readonly settings = { azimuth: 240, elevation: 35, intensity: 3.5, ambient: 0.9, bounce: 0.35 };
+  readonly settings = { azimuth: 117, elevation: 22, intensity: 4, ambient: 0.2, bounce: 0.35 };
   private readonly _sun = new DirectionalLight(0xffffff);
   private readonly _sky = new HemisphereLight(0xffffff, 0x000000, 0.6);
 
