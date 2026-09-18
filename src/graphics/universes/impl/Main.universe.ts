@@ -114,10 +114,10 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
 
   override update(time: number, dt: number): void {
     super.update(time, dt);
-    // A l'encre, la parallaxe se dessine dans le shader du sol : une passe de scene, rien d'autre.
-    // Les volumes extrudes passent par l'effet plein ecran ; la carte de nuit, par rien.
+    // A l'encre, l'effet plein ecran dessine l'image ; en option, la parallaxe se dessine dans le shader
+    // du sol (une passe de scene, rien d'autre). La carte de nuit ne passe par rien.
     const paper = inkSettings.amount.value > 0.5;
-    const direct = paper && this._buildings.settings.technique === "parallax";
+    const direct = paper && inkSettings.onePass.value > 0.5 && this._buildings.settings.technique === "parallax";
     terrainSettings.inkDirect.value = direct ? 1 : 0;
     this._inkPass.enabled = paper && !direct;
     this._renderStats.update(dt);
@@ -240,6 +240,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     const scene = this.scene as Scene;
     const inkControls = [
       ["amount", { label: "dessin", min: 0, max: 1, step: 1 }],
+      ["onePass", { label: "une passe (parallaxe)", min: 0, max: 1, step: 1 }],
       ["light", { label: "ton papier", min: 0.1, max: 2, step: 0.01 }],
       ["dark", { label: "ton encre", min: 0, max: 0.5, step: 0.005 }],
       ["screen", { label: "trame (px)", min: 2, max: 16, step: 0.5 }],

@@ -9,6 +9,11 @@ import type { Node } from "three/webgpu";
 export const inkSettings = {
   /** 0 : image telle quelle (carte de nuit), 1 : dessin. */
   amount: uniform(1),
+  /**
+   * Parallaxe dessinee dans la passe du sol (1) plutot que par l'effet plein ecran (0). Une passe de
+   * moins, mais contours et tons plus pauvres : l'effet plein ecran reste le rendu de reference.
+   */
+  onePass: uniform(0),
   paper: uniform(new Color(0xf1ece0)),
   ink: uniform(new Color(0x1d2a4d)),
   /** Tons (luminance percue) : papier au-dessus de `light`, encre pleine sous `dark`. */
