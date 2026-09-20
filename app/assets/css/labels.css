@@ -1,4 +1,4 @@
-/* Etiquettes de villes (`LabelsNode`) et coordonnees des releves (`SurveyNode`), au-dessus du canvas. */
+/* Coordonnees des releves (`SurveyNode`), au-dessus du canvas. Les etiquettes de villes sont dans le rendu. */
 :root {
   /* Blanc sur la carte de nuit, encre sur le papier (`data-map-theme`, pose par l'univers). */
   --map-ink: 255 255 255;
@@ -8,95 +8,6 @@
 :root[data-map-theme="paper"] {
   --map-ink: 29 42 77;
   --map-halo: rgb(241 236 224 / 0.9);
-}
-
-.map-labels {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.map-label {
-  position: absolute;
-  top: 0;
-  left: 0;
-  opacity: 0;
-  transition: opacity 400ms ease;
-  will-change: transform;
-}
-
-.map-label[hidden] {
-  display: none;
-}
-
-.map-label.is-visible {
-  opacity: 1;
-}
-
-.map-label__line {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 1px;
-  background: repeating-linear-gradient(to bottom, rgb(var(--map-ink) / 0.75) 0 1px, transparent 1px 4px);
-}
-
-.map-label__dot {
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: rgb(var(--map-ink));
-  box-shadow: 0 0 10px rgb(var(--map-ink) / 0.55);
-  transition: scale 220ms ease, box-shadow 220ms ease;
-}
-
-.map-label:has(.map-label__text:hover) .map-label__dot {
-  scale: 1.8;
-  box-shadow: 0 0 0 5px rgb(var(--map-ink) / 0.18), 0 0 14px rgb(var(--map-ink) / 0.7);
-}
-
-.map-label:has(.map-label__text:hover) .map-label__line {
-  background: rgb(var(--map-ink) / 0.9);
-}
-
-.map-label__text {
-  position: absolute;
-  top: 1.1em;
-  left: 1.25rem;
-  padding: 0.25em 0.4em 0.3em;
-  margin: -0.25em -0.4em;
-  pointer-events: auto;
-  cursor: pointer;
-  color: rgb(var(--map-ink));
-  font-family: var(--font-map);
-  white-space: nowrap;
-  text-shadow: 0 1px 10px var(--map-halo);
-}
-
-.map-label__index {
-  display: block;
-  font-size: clamp(1.25rem, 2.4vw, 2.1rem);
-  font-weight: 700;
-  line-height: 1;
-}
-
-.map-label__name {
-  display: block;
-  margin-top: 0.3em;
-  font-size: clamp(0.8rem, 1.35vw, 1.2rem);
-  font-weight: 500;
-  line-height: 1.1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .map-label {
-    transition: none;
-  }
 }
 
 .map-survey {
@@ -128,12 +39,10 @@
 }
 
 /* Intro : tant que la carte n'est pas dessinee, son interface ne l'est pas non plus ; elle arrive ensuite. */
-.map-labels,
 .map-survey {
   transition: opacity 900ms ease 500ms;
 }
 
-:root[data-map-intro="hold"] .map-labels,
 :root[data-map-intro="hold"] .map-survey {
   opacity: 0;
   transition: none;
