@@ -12,6 +12,8 @@ export const NODE_ID = {
   LABELS: "labels",
   SURVEY: "survey",
   BUILDINGS: "buildings",
+  PLANES: "planes",
+  CLOUDS: "clouds",
 
   CONTRACT_BASE: "contract:base",
 } as const;

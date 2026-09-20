@@ -95,17 +95,18 @@ export class TerrainHeightsHelper {
     this._syncUniforms(bounds);
   }
 
-  /** Altitude (m), du detail vers l'apercu selon la part de donnees, comme le shader. */
+  /** Altitude (m), du detail vers l'apercu selon la part de donnees, comme le shader (mer a 0). */
   heightAt(lon: number, lat: number): number {
     if (!this._detail || !this._coarse) return 0;
     const detail = mosaicSample(this._detail.mosaic, lon, lat);
     const coarse = mosaicSample(this._coarse.mosaic, lon, lat);
-    return MathUtils.lerp(coarse.height, detail.height, detail.weight);
+    return Math.max(0, MathUtils.lerp(coarse.height, detail.height, detail.weight));
   }
 
   range(bounds: GeoBounds): { min: number; max: number } | null {
     if (!this._detail || !this._coarse) return null;
-    return mosaicRange(this._detail.mosaic, bounds) ?? mosaicRange(this._coarse.mosaic, bounds);
+    const range = mosaicRange(this._detail.mosaic, bounds) ?? mosaicRange(this._coarse.mosaic, bounds);
+    return range && { min: Math.max(0, range.min), max: Math.max(0, range.max) };
   }
 
   dispose(): void {

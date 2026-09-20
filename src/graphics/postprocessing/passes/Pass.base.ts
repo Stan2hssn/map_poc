@@ -11,6 +11,8 @@ export abstract class PassBase implements IPass {
   renderToScreen = false;
   /** Echanger entree et sortie apres `postRender`. */
   needsSwap = true;
+  /** Passe posee sur l'image deja a l'ecran : elle ne prend pas le `renderToScreen` de la chaine. */
+  readonly overlay: boolean = false;
   /** Triangle plein ecran (pas de quad : sa diagonale ferait traiter des pixels deux fois). */
   protected readonly fullscreen = new QuadMesh();
 

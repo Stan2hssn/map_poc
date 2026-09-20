@@ -112,17 +112,12 @@ export function applyValue(target: Record<string, unknown>, key: string, raw: un
 /**
  * Arbre de valeurs adressees par chemin pointe (`fuzz.lengthMul`).
  *
- * L'ecriture est GROUPEE : un curseur tire produit des dizaines d'evenements
- * `change`, et chacun declencherait sinon une reecriture du fichier. On attend
- * que la main s'arrete.
+ * Un changement vaut pour la session ; il n'est ecrit que sur demande (`flush`,
+ * bouton "Save Settings") : essayer un reglage n'efface pas celui qu'on a garde.
  */
 export class DebugValueStore {
   private _values: DebugValues = {};
   private _persist: ((values: DebugValues) => void) | null = null;
-  private _pending: ReturnType<typeof setTimeout> | null = null;
-
-  /** Delai de regroupement des ecritures, en millisecondes. */
-  private static readonly DELAY_MS = 400;
 
   configure(persistence: DebugPersistence): void {
     this._values = structuredClone(persistence.values);
@@ -153,28 +148,14 @@ export class DebugValueStore {
       current = current[segment] as DebugValues;
     }
     current[last] = serialize(value);
-    this._schedule();
   }
 
-  /** Ecriture immediate, sans attendre le regroupement. */
+  /** Enregistre les valeurs de la session. */
   flush(): void {
-    if (this._pending) {
-      clearTimeout(this._pending);
-      this._pending = null;
-    }
     this._persist?.(this._values);
   }
 
   snapshot(): DebugValues {
     return structuredClone(this._values);
-  }
-
-  private _schedule(): void {
-    if (!this._persist) return;
-    if (this._pending) clearTimeout(this._pending);
-    this._pending = setTimeout(() => {
-      this._pending = null;
-      this._persist?.(this._values);
-    }, DebugValueStore.DELAY_MS);
   }
 }

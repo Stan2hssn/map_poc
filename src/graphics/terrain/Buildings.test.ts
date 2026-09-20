@@ -1,6 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildTileMesh, clipRing, DEFAULT_HEIGHT_M, HEIGHT_RANGE_M, PEAK_CELL, peakMap } from "./Buildings.ts";
+import {
+  buildTileMesh,
+  cellMaxima,
+  clipRing,
+  DEFAULT_HEIGHT_M,
+  HEIGHT_RANGE_M,
+  PEAK_CELL,
+  peakMap,
+  spreadPeaks,
+  SUMMIT_CELL,
+  sunShadow,
+} from "./Buildings.ts";
 import { GEOMETRY, vectorLayer, type VectorLayer } from "./VectorTile.ts";
 
 const E = 4096;
@@ -75,4 +86,34 @@ test("sommets : maximum par cellule, etendu aux voisines", () => {
   assert.equal(at(2, 2), 40);
   assert.equal(at(3, 3), 0);
   assert.equal(at(3, 1), 0);
+});
+
+test("sommets des environs : depuis les maximums par cellule, comme depuis les texels", () => {
+  const size = SUMMIT_CELL * 3 + 7;
+  const heights = Uint8Array.from({ length: size * size }, (_, i) => (i * 7919) % 251);
+  const fine = cellMaxima(heights, size, size, PEAK_CELL);
+  const w = Math.ceil(size / PEAK_CELL);
+  const coarse = cellMaxima(fine, w, w, SUMMIT_CELL / PEAK_CELL);
+  const summits = Math.ceil(size / SUMMIT_CELL);
+  assert.deepEqual(spreadPeaks(coarse, summits, summits, 2), peakMap(heights, size, size, SUMMIT_CELL, 2));
+});
+
+test("ombre du bati : portee a l'oppose du soleil, qui baisse avec la distance", () => {
+  const [w, h] = [8, 3];
+  const heights = new Uint8Array(w * h);
+  heights[1 * w + 6] = 30;
+  // Soleil a l'est, 45 degres, texels de 5 m.
+  const shade = sunShadow(heights, w, h, [1, 0], 1, [5, 5]);
+  const at = (x: number) => shade[1 * w + x];
+  assert.equal(at(7), 0);
+  assert.equal(at(5), 25);
+  assert.equal(at(4), 20);
+  assert.equal(at(1), 5);
+  assert.equal(at(0), 0);
+  // Soleil oppose : l'ombre part de l'autre cote.
+  assert.equal(sunShadow(heights, w, h, [-1, 0], 1, [5, 5])[1 * w + 7], 25);
+  // Portee de 3 texels : l'ombre s'arrete au-dela.
+  const short = sunShadow(heights, w, h, [1, 0], 1, [5, 5], 3);
+  assert.equal(short[1 * w + 3], 15);
+  assert.equal(short[1 * w + 2], 0);
 });

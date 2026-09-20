@@ -7,6 +7,10 @@ export interface Place {
   population: number;
   /** Code ISO 3 lettres. */
   country: string;
+  /** Contour du lieu, pour le colorier au survol. Charge d'avance (departement, region) ou au survol (commune). */
+  rings?: [number, number][][];
+  /** Code INSEE d'une commune : de quoi aller chercher son contour au survol. */
+  code?: string;
 }
 
 /** Deux sources nomment le meme lieu s'il porte le meme nom a moins de ce nombre de degres. */
@@ -27,6 +31,12 @@ export class PlaceIndex {
   version = 0;
   private _places: Place[] = [];
 
+  /** Oublie tout : on change de niveau de focus, les lieux precedents n'ont plus cours. */
+  clear(): void {
+    this._places = [];
+    this.version++;
+  }
+
   /** Ajoute des lieux ; un lieu deja connu (meme nom, tout pres) garde la plus grande population. */
   add(places: Place[]): void {
     const byName = new Map<string, Place[]>();
@@ -35,8 +45,16 @@ export class PlaceIndex {
     const added: Place[] = [];
     for (const p of places) {
       const twin = byName.get(keyOf(p.name))?.find((q) => Math.abs(q.lon - p.lon) < SAME_PLACE_DEG && Math.abs(q.lat - p.lat) < SAME_PLACE_DEG);
-      if (twin && twin.population >= p.population) continue;
-      if (twin) dropped.add(twin);
+      if (twin) {
+        // Les deux sources ne savent pas la meme chose : celle qui perd laisse son code et son contour.
+        // Sans cela, une ville comptee par son agglomeration (Natural Earth) perd le code INSEE de sa commune.
+        const winner = twin.population >= p.population ? twin : p;
+        const loser = winner === twin ? p : twin;
+        winner.code ??= loser.code;
+        winner.rings ??= loser.rings;
+        if (winner === twin) continue;
+        dropped.add(twin);
+      }
       added.push(p);
     }
     this._places = [...this._places.filter((p) => !dropped.has(p)), ...added].sort((a, b) => b.population - a.population);

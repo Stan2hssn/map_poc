@@ -166,3 +166,154 @@ D'après `refs/` (plume, trame, encre qui bave) et la direction artistique du RE
 - **Effet plein écran par défaut**, y compris pour la parallaxe : c'était le rendu de la capture de référence (contours lus dans les normales et la profondeur, tons en hachures fines). La passe unique reste une option (`une passe (parallaxe)`).
 - **Masque, papier et journal dans l'effet plein écran** : le sol écrit dans l'alpha des normales sa part dessinée (`mrtNode`) ; l'effet y efface contours et hachures, et y fait apparaître le journal. Papier et journal sont accrochés à la carte : la position de chaque pixel est retrouvée depuis la profondeur, puis passée à la même ancre que le shader du sol (`inkAnchorAt`).
 - **Lumière de la capture de référence** par défaut : soleil à 117° et 22° de haut, intensité 4, ambiance 0,2 ; exagération 1. Masque : rayon 95, fondu 0,6, bord 0,12.
+
+## Volumes au rendu de la parallaxe (2026-09-19)
+
+- **Même dessin, par construction** : les volumes extrudés ne servent qu'à couvrir les pixels. Impact, normale, soleil et creux sont ceux de la parallaxe, lus dans la même texture de hauteurs (`buildingSurface`) : même marche grossière (`marchEntry`), même marche fine (`fineMarch`), reprise un pas au-dessus du volume pour 4 pas au lieu de descendre depuis le sommet. Les contours rugueux viennent des pentes de cette texture (vérifié : sans contours d'arête, ils disparaissent), ils sont donc les mêmes.
+- **Pas de saut de profondeur sur les volumes** : ils écrivent leur part dessinée en négatif dans l'alpha des normales, l'encre n'y cherche que les arêtes (la parallaxe garde la profondeur du sol).
+- **Ombres du bâti lues dans la texture** pour les deux techniques : les volumes ne passent plus dans la carte d'ombres.
+- **Coût** (2048 × 1536, Paris à 2 km) : sans bâti 4,8 ms, parallaxe 14,8 ms, volumes 8,3 ms. À 5 km : parallaxe 14,9 ms, volumes 13,2 ms (sommets plus nombreux).
+- **Écart restant** : de très près, le grain des murs diffère (points de la parallaxe, légères traînées verticales des volumes).
+
+## Chargement : ce qui a changé et ce qui reste (2026-09-19)
+
+- **Images du worker sans relecture** : surfaces et routes partent en `ImageBitmap` (`transferToImageBitmap`), copiées sur le GPU par three (`copyExternalImageToTexture`) dans la même texture tant que la taille ne change pas. Routes dans une seconde texture (l'alpha prémultiplié d'un canvas ne peut pas les porter). Composition sans hauteurs : 430 → 255 ms.
+- **Hauteurs du bâti** relues au plus toutes les 600 ms pendant le chargement, et à la fin ; sommets des environs tirés des sommets par cellule (une passe pleine résolution de moins). Une toile `willReadFrequently` les dessine 10 fois plus lentement (rastérisation logicielle) : écartée.
+- **Tuiles du centre vers les bords**, dans chaque niveau.
+- **Cache des tuiles décodées plafonné en octets** (~96 Mo), au lieu de 300 tuiles (jusqu'à ~435 Mo).
+- **Démarrage** : `preconnect` vers data.geopf.fr et geo.api.gouv.fr ; données du sol demandées dès `beforeMount`, en parallèle du relief.
+- **Écarté** : ne charger que le disque dessiné. Une demande reste valable tant que la vue ne bouge pas de plus de 35 % de sa largeur, donc le disque utile, marge comprise, couvre presque toute la zone.
+- **Pistes suivantes** :
+  - proxy Nitro qui retire les couches inutiles et compresse en brotli (÷2,5 mesuré ; demande un hébergement avec fonctions serveur) ;
+  - pyramide de maximums pour la parallaxe ([Tevs et al. 2008](https://dl.acm.org/doi/10.1145/1342250.1342279)) ;
+  - emplacements fixes par tuile dans un tableau de textures (texture virtuelle, [Barrett](https://silverspaceship.com/src/svt/)), pour ne dessiner que les tuiles entrantes.
+
+## Caméra à la Chartogne-Taillet (2026-09-19)
+
+Relevé dans leur code (three r122, caméra maison, un seul RAF qui fait aussi avancer GSAP, delta plafonné à 60 ms) :
+- **Lissage** : leur pose rattrape la cible de `0,004 × delta` par image (~250 ms). Ici, les gestes déplacent une vue visée, la vue affichée la rattrape (`ease`, 250 ms par défaut, réglable).
+- **Inclinaison selon le zoom** : chez eux de −27° (près) à −90° (vue du dessus), en courbe cubique. Ici, de 52° depuis la verticale (2 km, le rendu validé) à 25° (monde), même courbe, réglable (`inclinaison de pres`, `de loin`).
+- **Parallaxe souris** : la caméra glisse dans son propre plan sans tourner, réponse de 250 ms.
+- **Rotation au glisser, de près** : chez eux, au-delà d'un zoom de 0,8, le glisser horizontal tourne la vue au lieu de la décaler (2,25 rad pour une largeur d'écran d'au moins 600 px). Ici, la part horizontale du glisser qui tourne passe de 0 à 1 entre des zooms de 0,72 et 0,86 (~20 km et ~10 km de large) ; la vue tourne autour du point visé, le reste du glisser déplace toujours le terrain sous le pointeur. Les deux points du glisser sont lus avec la caméra du moment : la rotation ne se lit pas comme un déplacement.
+- **Retour au nord de loin** : hors de cette plage, la rotation revient à 0 (au plus court), en ~500 ms divisés par la part hors rotation.
+- **Roulis**, repris de la caméra de l'arbre du projet grass (inspirée d'aten7) : la caméra penche selon la vitesse de rotation (−0,05 rad par rad/s) et le déplacement latéral du centre (−0,08 rad par largeur de vue par seconde), borné à 0,12 rad, réponse de 120 ms. Appliqué après le cadrage (`lookAt` remet la caméra d'aplomb). Réglages dans le panneau.
+- **Non repris** : visite automatique des parcelles après 6,5 s d'inactivité, arc de hauteur des vols (le zoom arrière à mi-vol en tient lieu).
+
+## Navigation, vols et apparitions (2026-09-19, suite)
+
+- **Parallaxe souris** : la caméra se déplace dans son plan, sa cible à peine (10 % du déplacement) ; la vue tourne autour du point regardé. Roulis léger selon la vitesse de la souris (`roulis / souris`).
+- **Glisser qui tourne** : le point saisi suit le pointeur en tournant autour du point regardé (angle dont il a tourné autour de lui), le reste glisse. Devant ou derrière ce point, le sens est donc toujours le bon. Sous 10 unités de lui, l'angle n'a plus de sens : le geste glisse.
+- **Masque dans les axes du regard** : largeur en travers, profondeur le long, recul vers la caméra le long du regard. Avant, ces trois réglages suivaient les axes nord/est et partaient de côté dès que la vue tournait.
+- **Vols de van Wijk et Nuij** (`FlightPath.ts`, le `flyTo` de Mapbox) : dézoom juste suffisant, ρ = 0,8 au lieu de 1,42 (Marseille → Paris culmine vers 210 km de large au lieu de la France entière), départ et arrivée au carré, 0,9 à 3,2 s. Un clic sur une ville y vole directement, à 3 km de large.
+- **Chargement pendant un vol** : maillages demandés pour l'arrivée, montrés selon la vue affichée ; sol chargé autour de l'arrivée à la largeur du moment (plus de carré isolé à la descente).
+- **Apparitions** : une nouvelle image du sol se dessine par taches sur la précédente (700 ms, deux textures qui échangent leur rôle) ; chaque tuile de bâti monte et se dessine au crayon en 1,4 s, bâtiments échelonnés par un bruit accroché à la carte (l'ombrage suit la hauteur courante).
+- **À-coups** : côté processeur, aucune image au-delà de 20 ms pendant un vol et son chargement. Restent quelques images de 40 à 60 ms, côté GPU (textures 2048² et leurs mipmaps, maillages) : textures des hauteurs réutilisées, 2 tuiles de maillages au plus par image, images partielles toutes les 300 ms.
+- **Monuments** : l'IGN décrit la tour Eiffel par trois emprises pleines emboîtées (62, 116 et 286 m) ; à Matignon, le grand vide est le parc, et le bâtiment public n'a pas de hauteur (9 m par défaut).
+
+## Cadence : 120 images/s (2026-09-19, suite)
+
+Mesures en 2984 × 1858 (la résolution de l'écran de référence), GPU d'un Mac ; l'horloge du GPU varie avec la chauffe (mesures bimodales, minimum sur plusieurs tours).
+- **Travail inutile retiré** :
+  - l'encre « une passe » de la parallaxe n'est plus calculée quand elle ne sert pas (branche uniforme) : le sol sans bâti passe de 7,7 à ~5,2 ms ;
+  - la grille du sol ne couvre plus que le rectangle de l'écran où se projette la zone dessinée (`screenRect`) : hors de lui, rien n'est calculé, et ses sommets s'y concentrent ;
+  - les tuiles de bâti sont gardées selon l'ellipse tournée du masque, plus son plus grand rayon ;
+  - le pied des bâtiments lit l'altitude sans le lissage B-spline (3 lectures par sommet au lieu de 6) ;
+  - le sol est dessiné après le bâti (le test de profondeur écarte le sol caché), le bâti du plus proche au plus loin.
+- **Ombres du bâti cuites** (`sunShadow`) : un balayage de la carte des hauteurs depuis le côté du soleil, dans le worker, donne la hauteur sous laquelle un point est à l'ombre ; une lecture au lieu de 10 pas par pixel (sol et bâti). Portée limitée comme l'ancienne marche. Complet : ~10,7 → ~8,1 ms.
+- **Dessin du worker en mémoire** : un canvas accéléré partage le GPU avec le rendu ; ses gros lots de polygones faisaient sauter des images à chaque redessin (mesuré : 25 images de plus de 10 ms en 5 s de zoom, même sans envoyer les images au rendu ; aucune sans redessin). En mémoire (`willReadFrequently`), une composition prend ~740 ms au lieu de ~400 ms, hors du thread principal, et le zoom tient 120 images/s (99e centile 10,3 ms au lieu de 42).
+- **En mouvement**, l'image du sol courante suffit tant qu'elle couvre la vue avec au plus un niveau de retard ; demandes toutes les 600 ms au plus, l'image exacte vient à l'arrêt.
+- **Au repos**, la scène ne se rend plus qu'à 15 images/s (seule la brume dérive) : l'ordinateur ne chauffe pas pour une image fixe.
+- **Qualité automatique** : elle tient la fréquence de l'écran (mesurée, alignée sur 60/90/120/144 Hz…) en rendant la scène à une échelle plus petite (jusqu'à 0,6), l'encre et le papier restant à pleine résolution ; elle remonte à l'essai quand la cadence est à l'aise. L'ancienne version baissait la densité de pixels sous 45 images/s et la retenait pour toujours : effacée.
+- **Masque** : toujours centré là où regarde la caméra (le « recul » est retiré).
+
+## Correctifs, arbres, routes et voitures (2026-09-19, suite)
+
+- **Mer** : altitudes plafonnées à 0 (shader, relief, plancher). Le fond marin fixait le plancher de la vue : la caméra « plongeait » sous la mer.
+- **Bande en haut de l'écran** : le fond (ciel, et hors du rectangle de la grille du sol) lisait le papier au plan lointain de la caméra, étiré en traits verticaux. Le papier y est pris au sol visé par le rayon (replié au-dessus de l'horizon), puis posé à l'écran là où, accroché à la carte, il s'étirerait (plus de 2,5 pseudo-pixels par pixel).
+- **Lignes blanches en grille** : jointures des tuiles de bâti. Chaque part d'un bâtiment coupé était posée à l'altitude de son propre centre, sans mur à la coupure : on voyait le sol à travers. Pied lu sous chaque sommet. Les lignes flottantes du relevé sont retirées.
+- **Masque** : le bâti hors de la zone dessinée s'efface comme le sol (il gardait ses hachures de ton).
+- **Contours dès l'apparition** : les volumes lisaient normales et ombres dans la texture de hauteurs, qui arrive ~1 s après eux ; sans elle, rien à contourer, puis tout d'un coup. Tant qu'une tuile n'est pas dans la texture, ses faces sont celles du volume ; puis l'ombrage de la texture se dessine au crayon (700 ms). Un bâtiment part de son dessin à plat (même teinte que l'empreinte au sol, qui tient lieu de bâti tant que les volumes manquent).
+- **Composition du worker** : chaque tuile dessinée est gardée (160 Mo au plus, reprise si sa taille à l'écran change de moins de 15 %, 2 px de bord qui recouvrent les voisines) ; un déplacement ou un retour ne redessine que les tuiles nouvelles. Le balayage des ombres traite une ligne contiguë à la fois : ~33 ms au lieu de plusieurs centaines pour 2048². Mesuré sur un processeur partagé, composition d'une vue déjà vue : 4,6 s → 1 s (même rapport attendu à pleine vitesse : ~740 → ~150 ms).
+- **Arbres** (`Trees.ts`) : le PLAN IGN n'a pas d'arbres un par un. Semés dans ses zones de végétation sur une grille bousculée (10 m, conifères reconnus), alignés des deux côtés des axes régionaux (boulevards, avenues) tous les 11 m ; jamais sur un bâtiment ; 3 000 + 1 500 au plus par tuile (les bois s'éclaircissent au-delà). Houppier en icosaèdre à normales de sphère : l'encre n'en trace que la silhouette et l'ombre. Ils poussent à l'apparition de la tuile.
+- **Routes** : cernées d'un trait sur le sol.
+- **Voitures** (`Traffic.ts`) : sur les routes classées (vitesse et densité par classe, sens uniques du PLAN IGN), en boucle sur leurs voies, à droite de l'axe ; grossies ×2 comme un symbole (à l'échelle : 2 à 4 px). Avancées côté processeur (~0,2 ms par image pour ~1 300 voitures), placées par le shader. Quand seules elles bougent, la scène se rend à 30 images/s.
+- **Coût** : arbres et voitures dans le bruit de mesure du GPU (~26 000 arbres au Luxembourg, ~45 000 au bois de Boulogne à 8 ms l'image).
+
+## Composition de référence : masque, papier, ciel (2026-09-19, soir)
+
+- **Masque sur la carte, centré sur le point visé** : ellipse posée au sol autour de la cible de la caméra (l'origine de la scène, autour de laquelle elle orbite), dans les axes de la rotation de la vue, sans la parallaxe de la souris ni le roulis : il suit le point visé et la rotation, pas les petits mouvements de la caméra. Le « décalage en haut » venait de son centre, pris là où le regard touche le sol : ce point bouge avec la souris et la remontée de la caméra au ras du relief. (Un masque en espace écran, comme la texture peinte de CT, a été essayé puis écarté : il suit la caméra.)
+- **Aucune géométrie ne dépend du masque** : son centre bougeait avec la souris ; les bâtiments montaient et descendaient sans cesse à son bord, les arêtes bougeaient. Le masque n'efface plus que la couleur, et son bord (bruit accroché à la carte) ne dérive plus.
+- **Tremblé du trait accroché à la carte** : un bruit fixé à l'écran faisait « bouillonner » les arêtes à chaque mouvement de caméra.
+- **Papier** posé à l'écran (fibres et taches, texture redessinée sans raccord) ; **journal** : la texture fournie (`public/assets/Images/Paper/newspaper.webp`), à plat sur le sol en perspective, échelle au panneau, effacée vers l'horizon. **Nuages** hachurés (générés) sur un cylindre autour du point visé, derrière la carte, qui tournent lentement (les bandes de CT).
+- **Bug de longue date** : les textures d'attente 1×1 étaient en bord fixe et l'échantillonneur gardait ce mode ; le papier filait en traînées au-delà de 1024 px, les nuages en traits continus.
+- **Trous** : les tuiles de bâti attendaient derrière la centaine de tuiles de l'image du sol (file dans l'ordre d'arrivée). File priorisée : bâti, puis niveau fin, puis ensemble, du centre vers les bords.
+- **Contenu** : arbres seulement dans les parcs et bois (15 m, 1 500 par tuile au plus) ; voitures divisées par 2 à 3, qui rapetissent aux bouts de leur voie au lieu de sauter, et passent les ponts (routes sur ouvrage, désormais dessinées sur l'eau) ; péniches sur les grands fleuves (lignes des noms de cours d'eau qui passent sur l'eau) ; 3 avions au plus ; poussière = 36 petites ellipses vides ; points de graticule découpés net (leurs carrés passaient dans l'encre).
+- **Transitions** : une nouvelle image du sol se fond dans la précédente (1 s) au lieu de se dessiner par taches.
+- **Panneau** : les réglages ne s'enregistrent plus seuls ; seul « Save Settings » écrit le fichier.
+
+## Ciel, vie de la carte et lisibilité (2026-09-20)
+
+- **Où passait la qualité du trait.** Deux réglages enregistrés dans le panneau expliquaient l'essentiel du rendu
+  délavé : la lumière (intensité 1, ambiance 0,7, rebond 0) aplatissait murs et ombres portées ; le papier
+  (fibres 2, bavure 1) posait de grosses taches grises sur toute la feuille. Remis aux valeurs d'origine, avec
+  l'accord de l'auteur. Le journal (0,26) ne pèse presque rien.
+- **Plan imprimé, pas éclairé.** Eau, bois, routes et empreintes du bâti sont désormais multipliés sur le relief
+  déjà éclairé (relief ramené sous le blanc), au lieu d'être une couleur qu'un soleil fort blanchit jusqu'à
+  l'effacer. Traits de l'eau et bords des routes renforcés en conséquence.
+- **Masque plus large en vue large.** L'ellipse dessinée grandit jusqu'à trois fois entre 4 km et 600 km de
+  largeur de vue (échelle logarithmique) : à l'échelle d'une région ou du pays, une petite zone ne laissait rien
+  voir. Le grand format garde les réglages de largeur, profondeur, fondu et bord de l'auteur.
+- **Nuages.** Rideau face à la vue, posé juste derrière le bord lointain de la zone dessinée (1,25 fois sa
+  profondeur), qui glisse quand la vue tourne : un cylindre vu d'en haut dessinait un anneau. Cumulus à base plate
+  faits de traits horizontaux, plus gras et continus dans l'ombre, rompus dans la lumière ; texture 4096 x 512
+  dessinée en unités de scène.
+- **Poussière.** Celle de Chartogne-Taillet : des grains fixes dans la scène, répartis dans un cube qui suit la
+  caméra, portés par un vent lent ; invisibles au repos, ils grossissent avec la vitesse de la vue et s'effacent au
+  loin et tout près. Ici en petits cercles vides.
+- **Avions.** Trois au plus, au-dessus du plus haut relief de la vue, traversant la zone dessinée en 26 s à toutes
+  les échelles ; leur ombre glisse sur le sol. Ils suivent la carte quand elle glisse ou change d'échelle.
+- **Ponts en volume.** Les routes et chemins sur ouvrage deviennent des tabliers (4,5 à 7 m) posés au-dessus du sol
+  ou de l'eau : le quatrième canal de l'attribut `building` porte le dessous du volume.
+- **Noms des voies.** Grands axes, longues rues et cours d'eau écrits le long de leur tracé dans la texture de
+  données, en capitales espacées, sur un bandeau de papier qui efface le bâti dessous. Tronçons de même nom
+  recollés avant l'écriture (le PLAN IGN les coupe à chaque carrefour).
+- **Fluidité.** Les cinq matériaux du bâti sont compilés au démarrage sur des exemplaires vides : l'arrivée sur une
+  ville ne fige plus l'image (avant : cinq compilations d'un coup, 0,2 à 1,4 s). Les ombres du relief s'effacent et
+  leur passe n'est plus rendue sous 40 à 120 m de relief (une ville est plate), et leur grille est limitée à 192
+  subdivisions. L'ancienne image du plan n'est relue que pendant son fondu.
+
+## Respirer : nuages poses, poussiere, maillage a l'echelle (2026-09-20)
+
+- **Nuages.** Plus de bande repetee sur un cylindre : chacun est un tableau dessine (une case de la texture des
+  nuages) pose devant la camera, dans la couronne autour du point vise, a quelques degres sous l'horizon — donc
+  dans la bande de ciel qu'on voit au-dessus de la carte. Ils suivent la carte, derivent au vent et repartent
+  ailleurs en sortant de la vue. Leur texture arrive apres les materiaux qui la lisent : le ciel s'abonne
+  (`onCloudsDrawn`) plutot que de lire une texture d'attente, dont l'echantillonneur ne reprenait pas la vraie.
+- **Poussiere.** Visible au repos : les grains sont fixes dans la scene, repartis dans un cube qui suit la camera,
+  donc ils defilent a l'inverse du deplacement et reparaissent de l'autre cote. Plus petits au loin, effaces tout
+  pres. Densite et taille au panneau.
+- **Simplification au loin.** Par tuile, les batiments sous une hauteur qui monte avec la distance se replient sur
+  leur centre : le dessin respire, et il y a moins a dessiner. Reglage `simplifier au loin (m)`.
+- **Maillage selon le relief.** Les subdivisions du sol descendent a la moitie du plafond sur une vue plate (une
+  ville) et y remontent en montagne (60 a 900 m de relief), seulement quand la vue est posee.
+- **Buissons.** Une touffe tous les 70 m la ou il n'y a ni bati, ni eau, ni bois, ni route : les emprises sans
+  donnees ne restent plus des pages blanches.
+- **Avions et bateaux** s'effacent avec le masque, comme le reste de la carte ; les avions sont moins nombreux.
+- **Panneau.** Trois onglets : Carte (vue, vie, camera et soleil), Dessin (encre, papier, ombrage du bati), Rendu
+  (mesures, resolution). Les reglages qui ne servaient plus (passe unique de la parallaxe, pointille de la
+  vegetation, traits d'eau, rayon des nuages) ont ete retires ; arbres, voitures, bateaux, avions, nuages et
+  poussiere ont leur densite.
+
+## Echelle, bords et mouvement (2026-09-20, suite)
+
+- **Avions a l'echelle.** Leur taille est en unites de scene : a l'echelle d'un pays, un avion couvrait une region.
+  Ils s'effacent maintenant entre 25 et 70 km de largeur de vue.
+- **On ne voit plus ou la carte s'arrete.** Trois verrous : la zone dessinee elargie est bornee au sol (95 unites,
+  le sol s'arretant a 150) ; le bord du monde se fond sur une part de la vue au lieu d'etre coupe net ; la vue la
+  plus large est ramenee a 12 000 km et son centre se resserre pour que la zone dessinee reste dans la couverture
+  du relief (SRTM, -56 a 60 degres). Le raccourci "Monde" ouvre cette vue.
+- **Buissons.** Semes tous les 38 m sur une grille d'occupation de la tuile (bati, eau, bois, abords des routes a
+  9 m) : une passe sur les donnees au lieu d'un test par graine, 20 ms par tuile de ville, 30 a 90 touffes.
+- **Mouvement.** L'eau ondule : ses traits derivent et ondulent (deux houles, reglage `vagues`). Les houppiers se
+  balancent, chacun a son rythme, d'autant plus qu'ils sont grands (reglage `vent`). Tant que l'un des deux est
+  actif, l'image est consideree vivante (30 i/s au repos plutot que 15).

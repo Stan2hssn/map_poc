@@ -16,6 +16,7 @@ interface WorldCity {
 
 interface Commune {
   nom: string;
+  code: string;
   population?: number;
   centre?: { coordinates: [number, number] };
 }
@@ -48,7 +49,32 @@ export async function fetchDepartmentAt(lon: number, lat: number, signal: AbortS
 
 export async function fetchDepartmentCommunes(code: string, signal: AbortSignal): Promise<Place[]> {
   const communes = await getJson<Commune[]>(`${GEO_API}/departements/${code}/communes?fields=nom,centre,population&format=json`, signal);
-  return communes.flatMap(({ nom, population, centre }) =>
-    centre ? [{ name: nom, lon: centre.coordinates[0], lat: centre.coordinates[1], population: population ?? 0, country: "FRA" }] : []
+  return communes.flatMap((commune) =>
+    commune.centre
+      ? [
+          {
+            name: commune.nom,
+            lon: commune.centre.coordinates[0],
+            lat: commune.centre.coordinates[1],
+            population: commune.population ?? 0,
+            country: "FRA",
+            code: commune.code,
+          },
+        ]
+      : []
   );
+}
+
+/**
+ * Contour d'une commune, demande au survol : le servir avec la liste ferait passer un departement de
+ * quelques dizaines de Ko a plusieurs Mo, pour un seul contour utilise a la fois.
+ */
+export async function fetchCommuneRings(code: string, signal: AbortSignal): Promise<[number, number][][]> {
+  const { contour } = await getJson<{ contour?: { type: string; coordinates: number[][][] | number[][][][] } }>(
+    `${GEO_API}/communes/${code}?fields=contour&format=json`,
+    signal
+  );
+  if (!contour) return [];
+  const polygons = contour.type === "Polygon" ? [contour.coordinates as number[][][]] : (contour.coordinates as number[][][][]);
+  return polygons.flatMap((polygon) => (polygon[0] ? [polygon[0] as [number, number][]] : []));
 }

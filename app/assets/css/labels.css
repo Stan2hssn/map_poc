@@ -126,3 +126,15 @@
 .map-survey__text[data-side="west"] {
   translate: -100% -50%;
 }
+
+/* Intro : tant que la carte n'est pas dessinee, son interface ne l'est pas non plus ; elle arrive ensuite. */
+.map-labels,
+.map-survey {
+  transition: opacity 900ms ease 500ms;
+}
+
+:root[data-map-intro="hold"] .map-labels,
+:root[data-map-intro="hold"] .map-survey {
+  opacity: 0;
+  transition: none;
+}

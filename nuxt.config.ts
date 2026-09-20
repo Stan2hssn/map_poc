@@ -96,6 +96,9 @@ export default defineNuxtConfig({
       ],
       link: [
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+        // Relief, PLAN IGN et communes : la connexion (TLS compris) s'ouvre pendant que le moteur demarre.
+        { rel: 'preconnect', href: 'https://data.geopf.fr', crossorigin: '' },
+        { rel: 'preconnect', href: 'https://geo.api.gouv.fr', crossorigin: '' },
         { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Manrope:wght@500;700&display=swap' },
       ],
     },

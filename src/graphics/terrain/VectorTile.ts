@@ -32,6 +32,42 @@ export function partsOf(layer: VectorLayer, feature: VectorFeature): number[][] 
   });
 }
 
+/** Surface d'une entite : ses anneaux (coordonnees de tuile) et leur boite. */
+export interface Surface {
+  rings: number[][];
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+export function surfaceOf(layer: VectorLayer, feature: VectorFeature): Surface {
+  const rings = partsOf(layer, feature);
+  let [minX, minY, maxX, maxY] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const ring of rings) {
+    for (let i = 0; i < ring.length; i += 2) {
+      minX = Math.min(minX, ring[i]!);
+      maxX = Math.max(maxX, ring[i]!);
+      minY = Math.min(minY, ring[i + 1]!);
+      maxY = Math.max(maxY, ring[i + 1]!);
+    }
+  }
+  return { rings, minX, minY, maxX, maxY };
+}
+
+/** Point dans la surface (pair-impair sur tous ses anneaux : les cours sont dehors). */
+export function surfaceContains({ rings, minX, minY, maxX, maxY }: Surface, x: number, y: number): boolean {
+  if (x < minX || x > maxX || y < minY || y > maxY) return false;
+  let inside = false;
+  for (const ring of rings) {
+    for (let i = 0, j = ring.length - 2; i < ring.length; j = i, i += 2) {
+      const [xi, yi, xj, yj] = [ring[i]!, ring[i + 1]!, ring[j]!, ring[j + 1]!];
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+  }
+  return inside;
+}
+
 /** Couche construite a partir d'entites ecrites a la main (tests). */
 export function vectorLayer(
   extent: number,

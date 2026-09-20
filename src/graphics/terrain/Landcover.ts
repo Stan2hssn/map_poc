@@ -1,5 +1,5 @@
 import type { GeoBounds } from "./GeoProjection.ts";
-import { GEOMETRY, type VectorFeature, type VectorLayer } from "./VectorTile.ts";
+import { GEOMETRY, partsOf, type VectorFeature, type VectorLayer } from "./VectorTile.ts";
 
 /**
  * Texture de donnees du sol, facon Chartogne-Taillet : les couches du PLAN IGN (tuiles vectorielles
@@ -16,10 +16,14 @@ const MAX_FINE_ZOOM = 15;
 /** Couches dessinees, et leurs attributs utiles : le worker ne decode rien d'autre. */
 export const LANDCOVER_LAYERS = {
   bati_surf: ["hauteur"],
-  ocs_vegetation_surf: [],
+  ocs_vegetation_surf: ["symbo"],
   hydro_surf: [],
   hydro_reseau: [],
-  routier_route: ["symbo"],
+  routier_route: ["symbo", "sens_circu"],
+  routier_route_sup: ["symbo", "sens_circu"],
+  routier_chemin_sup: [],
+  toponyme_hydro_lin: ["texte"],
+  toponyme_routier_odonyme_lin: ["nom_desabrege"],
   routier_chemin: [],
   routier_surf: [],
 } as const;
@@ -82,6 +86,21 @@ export function tilePointToLonLat(z: number, tile: TileXY, px: number, py: numbe
   return [lon, lat];
 }
 
+/** Largeur (m) d'une tuile, a sa latitude centrale. */
+export function tileMeters(z: number, tile: TileXY): number {
+  const [, lat] = tilePointToLonLat(z, tile, 0.5, 0.5, 1);
+  return (EARTH_CIRCUMFERENCE_M * Math.cos(lat * RAD)) / 2 ** z;
+}
+
+/** y de la tuile (0 a `extent`) vers v lineaire en latitude (0 au nord, 1 au sud) : les volumes et le sol sont en lon/lat. */
+export function latitudeV(z: number, tile: TileXY, extent: number): (y: number) => number {
+  const n = 2 ** z;
+  const latAt = (y: number) => Math.atan(Math.sinh(Math.PI * (1 - (2 * (tile.y + y / extent)) / n)));
+  const north = latAt(0);
+  const south = latAt(extent);
+  return (y) => (north - latAt(y)) / (north - south);
+}
+
 /** Ce qu'il faut d'un contexte 2D : la meme interface pour `OffscreenCanvas` et les tests. */
 export interface Pen {
   beginPath(): void;
@@ -104,19 +123,26 @@ export interface Canvas {
   height: number;
 }
 
-/** Trace le contour d'une entite de la tuile dans l'image `canvas`. */
-export function tileTracer(z: number, tile: TileXY, canvas: Canvas): (pen: Pen, layer: VectorLayer, feature: VectorFeature) => void {
+/** Point d'une tuile (coordonnees 0 a `extent`) vers les pixels de l'image `canvas`. */
+function tileToCanvas(z: number, tile: TileXY, canvas: Canvas): (px: number, py: number, extent: number) => [number, number] {
   const { bounds, width, height } = canvas;
   const sx = width / (bounds.east - bounds.west);
   const sy = height / (bounds.north - bounds.south);
+  return (px, py, extent) => {
+    const [lon, lat] = tilePointToLonLat(z, tile, px, py, extent);
+    return [(lon - bounds.west) * sx, (bounds.north - lat) * sy];
+  };
+}
+
+/** Trace le contour d'une entite de la tuile dans l'image `canvas`. */
+export function tileTracer(z: number, tile: TileXY, canvas: Canvas): (pen: Pen, layer: VectorLayer, feature: VectorFeature) => void {
+  const toCanvas = tileToCanvas(z, tile, canvas);
   return (pen, { coords, extent }, feature) => {
     pen.beginPath();
     let start = feature.start;
     for (const end of feature.ends) {
       for (let i = start; i < end; i += 2) {
-        const [lon, lat] = tilePointToLonLat(z, tile, coords[i]!, coords[i + 1]!, extent);
-        const x = (lon - bounds.west) * sx;
-        const y = (bounds.north - lat) * sy;
+        const [x, y] = toCanvas(coords[i]!, coords[i + 1]!, extent);
         if (i === start) pen.moveTo(x, y);
         else pen.lineTo(x, y);
       }
@@ -125,7 +151,8 @@ export function tileTracer(z: number, tile: TileXY, canvas: Canvas): (pen: Pen, 
   };
 }
 
-const roadWidth = (feature: VectorFeature, fallback: number) => {
+/** Largeur (m) d'une route selon sa classe (`symbo` du PLAN IGN). */
+export const roadWidth = (feature: VectorFeature, fallback: number) => {
   const symbo = String(feature.properties.symbo ?? "");
   return ROAD_WIDTH_M.find(([pattern]) => pattern.test(symbo))?.[1] ?? fallback;
 };
@@ -178,16 +205,191 @@ export function drawLandcoverTile(areas: Pen, roads: Pen, layers: Map<string, Ve
   }
   strokeLayer(roads, "routier_route", "#ffffff", (f) => roadWidth(f, 6));
   strokeLayer(roads, "routier_chemin", "#ffffff", () => PATH_WIDTH_M);
+  // Routes sur ouvrage : les ponts, dessines par-dessus l'eau.
+  strokeLayer(roads, "routier_route_sup", "#ffffff", (f) => roadWidth(f, 6));
+  strokeLayer(roads, "routier_chemin_sup", "#ffffff", () => PATH_WIDTH_M);
 }
 
-/** Deux images RGBA (surfaces, routes) vers une seule : routes dans l'alpha. */
-export function packLandcover(areas: Uint8ClampedArray, roads: Uint8ClampedArray): Uint8Array {
-  const out = new Uint8Array(areas.length);
-  for (let i = 0; i < out.length; i += 4) {
-    out[i] = areas[i]!;
-    out[i + 1] = areas[i + 1]!;
-    out[i + 2] = areas[i + 2]!;
-    out[i + 3] = roads[i]!;
-  }
+/** Ce qu'il faut de plus pour ecrire : texte, et repere qu'on tourne. */
+export interface TextPen extends Pen {
+  font: string;
+  fillText(text: string, x: number, y: number): void;
+  strokeText(text: string, x: number, y: number): void;
+  measureText(text: string): { width: number };
+  save(): void;
+  restore(): void;
+  translate(x: number, y: number): void;
+  rotate(angle: number): void;
+}
+
+/**
+ * Noms le long des voies, comme sur un plan grave : grands axes (boulevards, avenues, quais...) et longues
+ * rues, fleuves en italique ; capitales espacees. Hauteur des lettres en metres (elles grandissent avec le zoom),
+ * ecrites seulement quand elles sont lisibles, une fois par tuile (au milieu de la partie qui y tombe).
+ */
+const NAMES = {
+  major: /^(BOULEVARD|AVENUE|QUAI|COURS|PLACE|PORTE) /,
+  skipped: /^(TUNNEL|PASSAGE|IMPASSE|VILLA|SENTIER|CITE|HAMEAU|COUR|ALLEE|SQUARE|PASSERELLE|ESCALIER)\b/,
+  /** Hauteur des lettres (m) : grands axes, rues, fleuves ; rue retenue a partir de cette longueur (m). */
+  majorM: 55,
+  streetM: 38,
+  riverM: 90,
+  longStreetM: 700,
+  /** Lisibles (px de l'image) : ni plus petites, ni plus grandes. */
+  minPx: 6,
+  maxPx: 22,
+  /** Espace entre les lettres, en hauteurs. */
+  tracking: 0.28,
+} as const;
+
+export function drawNames(pen: TextPen, halos: Pen, layers: Map<string, VectorLayer>, z: number, tile: TileXY, canvas: Canvas): void {
+  const { bounds, width } = canvas;
+  const metersPerPixel = ((bounds.east - bounds.west) * RAD * 6_378_137 * Math.cos(((bounds.north + bounds.south) / 2) * RAD)) / width;
+  const toCanvas = tileToCanvas(z, tile, canvas);
+  const place = (line: number[], text: string, meters: number, italic: boolean, minLengthM = 0) => {
+    const px = meters / metersPerPixel;
+    if (px < NAMES.minPx) return;
+    const size = Math.min(px, NAMES.maxPx);
+    pen.font = `${italic ? "italic " : ""}600 ${size}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+    pen.lineWidth = Math.max(1.6, size * 0.18);
+    pen.lineJoin = "round";
+    const letters = [...text];
+    const widths = letters.map((letter) => pen.measureText(letter).width);
+    const gap = size * NAMES.tracking;
+    const textWidth = widths.reduce((sum, w) => sum + w, 0) + gap * (letters.length - 1);
+    const points: [number, number][] = [];
+    for (let i = 0; i < line.length; i += 2) points.push([line[i]!, line[i + 1]!]);
+    const lengths = [0];
+    for (let i = 1; i < points.length; i++)
+      lengths.push(lengths[i - 1]! + Math.hypot(points[i]![0] - points[i - 1]![0], points[i]![1] - points[i - 1]![1]));
+    const total = lengths.at(-1)!;
+    if (total < textWidth * 1.15 || total * metersPerPixel < minLengthM) return;
+    // Une fois : la tuile qui contient le milieu de la voie l'ecrit.
+    const middle = pointAt(points, lengths, total / 2);
+    const [mx, my] = toCanvas(0, 0, 1);
+    const [nx, ny] = toCanvas(1, 1, 1);
+    if (middle[0] < Math.min(mx, nx) || middle[0] >= Math.max(mx, nx) || middle[1] < Math.min(my, ny) || middle[1] >= Math.max(my, ny))
+      return;
+    // Bandeau de papier sous le texte (couche des routes) : il efface le bati sous les lettres, qui s'y lisent.
+    halos.lineCap = "round";
+    halos.lineJoin = "round";
+    halos.lineWidth = size * 1.5;
+    halos.beginPath();
+    const from = (total - textWidth) / 2;
+    for (let i = 0; i <= 12; i++) {
+      const [hx, hy] = pointAt(points, lengths, from + (textWidth * i) / 12);
+      if (i === 0) halos.moveTo(hx, hy);
+      else halos.lineTo(hx, hy);
+    }
+    halos.stroke();
+
+    // A l'endroit : de gauche a droite.
+    const reversed = points.at(-1)![0] < points[0]![0];
+    let along = from;
+    letters.forEach((letter, i) => {
+      const center = along + widths[i]! / 2;
+      const at = reversed ? total - center : center;
+      const [x, y] = pointAt(points, lengths, at);
+      const [ax, ay] = pointAt(points, lengths, Math.max(0, at - 1));
+      const [bx, by] = pointAt(points, lengths, Math.min(total, at + 1));
+      pen.save();
+      pen.translate(x, y);
+      pen.rotate(Math.atan2(by - ay, bx - ax) + (reversed ? Math.PI : 0));
+      pen.fillText(letter, -widths[i]! / 2, size * 0.36);
+      pen.restore();
+      along += widths[i]! + gap;
+    });
+  };
+
+  pen.fillStyle = "#ff0000";
+  // Troncons d'une meme voie, en pixels de l'image.
+  const named = (layer: VectorLayer | undefined, of: (feature: VectorFeature) => string) => {
+    const lines = new Map<string, number[][]>();
+    for (const feature of layer?.features ?? []) {
+      const name = of(feature);
+      if (feature.type !== GEOMETRY.line || !name) continue;
+      const parts = lines.get(name) ?? [];
+      for (const part of partsOf(layer!, feature)) {
+        const points: number[] = [];
+        for (let i = 0; i < part.length; i += 2) points.push(...toCanvas(part[i]!, part[i + 1]!, layer!.extent));
+        parts.push(points);
+      }
+      lines.set(name, parts);
+    }
+    return lines;
+  };
+  const write = (
+    lines: Map<string, number[][]>,
+    meters: (name: string) => number | null,
+    italic: boolean,
+    minLengthM: (name: string) => number,
+  ) => {
+    for (const [name, parts] of lines) {
+      const size = meters(name);
+      if (size === null) continue;
+      for (const chain of joinLines(parts)) place(chain, name, size, italic, minLengthM(name));
+    }
+  };
+  const streets = named(layers.get("toponyme_routier_odonyme_lin"), (f) => String(f.properties.nom_desabrege ?? ""));
+  write(
+    streets,
+    (name) => (NAMES.skipped.test(name) ? null : NAMES.major.test(name) ? NAMES.majorM : NAMES.streetM),
+    false,
+    (name) => (NAMES.major.test(name) ? 0 : NAMES.longStreetM),
+  );
+  const rivers = named(layers.get("toponyme_hydro_lin"), (f) => String(f.properties.texte ?? "").toUpperCase());
+  write(
+    rivers,
+    () => NAMES.riverM,
+    true,
+    () => 0,
+  );
+}
+
+/** Troncons bout a bout recolles en polylignes, du plus long au plus court. */
+function joinLines(parts: number[][]): number[][] {
+  const key = (x: number, y: number) => `${Math.round(x)},${Math.round(y)}`;
+  const ends = new Map<string, number[]>();
+  parts.forEach((part, i) => {
+    for (const k of [key(part[0]!, part[1]!), key(part.at(-2)!, part.at(-1)!)]) ends.set(k, [...(ends.get(k) ?? []), i]);
+  });
+  const used = new Set<number>();
+  const chains: number[][] = [];
+  parts.forEach((part, i) => {
+    if (used.has(i)) return;
+    used.add(i);
+    const chain = [...part];
+    // Prolonge par les deux bouts tant qu'un troncon y commence ou y finit.
+    for (const forward of [true, false]) {
+      for (;;) {
+        const [x, y] = forward ? [chain.at(-2)!, chain.at(-1)!] : [chain[0]!, chain[1]!];
+        const next = (ends.get(key(x, y)) ?? []).find((j) => !used.has(j));
+        if (next === undefined) break;
+        used.add(next);
+        const piece = parts[next]!;
+        const head = Math.hypot(piece[0]! - x, piece[1]! - y) < Math.hypot(piece.at(-2)! - x, piece.at(-1)! - y);
+        const ordered = head ? piece : reversedLine(piece);
+        if (forward) chain.push(...ordered.slice(2));
+        else chain.unshift(...reversedLine(ordered).slice(0, -2));
+      }
+    }
+    chains.push(chain);
+  });
+  return chains.sort((a, b) => b.length - a.length);
+}
+
+const reversedLine = (line: number[]): number[] => {
+  const out: number[] = [];
+  for (let i = line.length - 2; i >= 0; i -= 2) out.push(line[i]!, line[i + 1]!);
   return out;
+};
+
+/** Point a la distance `at` le long de la polyligne `points` (longueurs cumulees `lengths`). */
+function pointAt(points: [number, number][], lengths: number[], at: number): [number, number] {
+  let i = 1;
+  while (i < lengths.length - 1 && lengths[i]! < at) i++;
+  const span = lengths[i]! - lengths[i - 1]! || 1;
+  const t = Math.min(1, Math.max(0, (at - lengths[i - 1]!) / span));
+  const [a, b] = [points[i - 1]!, points[i]!];
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { drawLandcoverTile, landcoverZoom, mercatorTiles, packLandcover, tilePointToLonLat, type Pen } from "./Landcover.ts";
+import { drawLandcoverTile, landcoverZoom, mercatorTiles, tilePointToLonLat, type Pen } from "./Landcover.ts";
 import { GEOMETRY, vectorLayer } from "./VectorTile.ts";
 
 const close = (a: number, b: number, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);
@@ -59,10 +59,4 @@ test("dessin : couleurs par couche, polygones remplis, routes a leur largeur", (
   assert.ok(calls.includes("move 0,10") && calls.includes("line 360,10"));
   // 9 m sur une toile ou un pixel vaut ~111 km : largeur minimale d'un demi-pixel.
   assert.ok(calls.includes("width 0.5"));
-});
-
-test("empaquetage : routes dans l'alpha", () => {
-  const areas = new Uint8ClampedArray([255, 10, 20, 255, 0, 0, 0, 255]);
-  const roads = new Uint8ClampedArray([0, 0, 0, 255, 200, 200, 200, 255]);
-  assert.deepEqual([...packLandcover(areas, roads)], [255, 10, 20, 0, 0, 0, 0, 200]);
 });

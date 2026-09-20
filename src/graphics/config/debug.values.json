@@ -1,20 +1,24 @@
 {
   "tweakpane": {
     "terrain": {
-      "exaggeration": 1,
-      "segments": 256
+      "exaggeration": 2.5,
+      "segments": 1024,
+      "adaptive": true,
+      "landcover": 1
     },
     "lights": {
       "intensity": 4,
       "azimuth": 117,
       "elevation": 22,
-      "ambient": 0.2
+      "ambient": 0.2,
+      "bounce": 0.35
     },
     "render": {
       "auto": true
     },
     "buildings": {
-      "height": 1
+      "height": 1,
+      "technique": "extrusion"
     },
     "mask": {
       "softness": 0.6,
@@ -27,7 +31,39 @@
       "newsprint": 0.5,
       "bleed": 0.25,
       "fibers": 0.65,
-      "stipple": 0.85
+      "depthEdge": 0.01,
+      "normalEdge": 0.2,
+      "line": 1,
+      "wobble": 1.5,
+      "grain": 0.5,
+      "near": 29,
+      "far": 215,
+      "depth": 0.6,
+      "screen": 5,
+      "dark": 0.08,
+      "light": 0.8,
+      "amount": 1,
+      "detail": 1,
+      "hatching": 1,
+      "cross": 0.55,
+      "waves": 1,
+      "newsprintScale": 3.8000000000000003,
+      "clouds": 0.19999999999999996,
+      "cloudRadius": 153
+    },
+    "camera": {
+      "tiltNear": 70,
+      "rollMax": 0.33,
+      "rollPerTurn": -0.125,
+      "rollPerPan": 0.5,
+      "rollPerMouse": 0.02
+    },
+    "shading": {
+      "coarseSteps": 8,
+      "lodBias": 0,
+      "contact": 0.14,
+      "stepTexels": 0.5,
+      "fineSteps": 78
     }
   }
 }
