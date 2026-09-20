@@ -11,6 +11,7 @@ export const NODE_ID = {
   LIGHTS: "lights",
   LABELS: "labels",
   PANEL: "panel",
+  INTRO: "intro",
   SURVEY: "survey",
   BUILDINGS: "buildings",
   PLANES: "planes",

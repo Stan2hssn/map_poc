@@ -43,7 +43,19 @@ export const CHARSET =
  * dependance ni fichier a livrer. Une police MSDF (trois canaux) garderait les angles plus francs ; a cette
  * taille de texte, la difference ne se voit pas.
  */
+/** Atlas deja construits : en batir un coute une cinquantaine de millisecondes, une fois suffit. */
+const built = new Map<string, SdfFont>();
+
 export function createSdfFont(family: string, weight = 600, characters = CHARSET): SdfFont {
+  const key = `${weight} ${family} ${characters.length}`;
+  const known = built.get(key);
+  if (known) return known;
+  const font = buildSdfFont(family, weight, characters);
+  built.set(key, font);
+  return font;
+}
+
+function buildSdfFont(family: string, weight: number, characters: string): SdfFont {
   const cell = SIZE + 2 * PAD;
   // Deux cases de plus que les caracteres : le carre plein et le disque.
   const columns = Math.ceil(Math.sqrt(characters.length + 2));

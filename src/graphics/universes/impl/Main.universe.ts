@@ -15,6 +15,7 @@ import { MapCameraNode } from "@graphics/nodes/cameras/MapCamera.node.ts";
 import type { MapFocusId } from "@graphics/config/focus.config.ts";
 import { labelSettings } from "@graphics/materials/Label.material.ts";
 import { Labels3DNode } from "@graphics/nodes/labels/Labels3D.node.ts";
+import { IntroNode } from "@graphics/nodes/intro/Intro.node.ts";
 import { PanelNode } from "@graphics/nodes/panel/Panel.node.ts";
 import { CloudsNode } from "@graphics/nodes/sky/Clouds.node.ts";
 import { PlanesNode } from "@graphics/nodes/sky/Planes.node.ts";
@@ -123,6 +124,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   private readonly _terrain: TerrainNode;
   private readonly _labels: Labels3DNode;
   private readonly _panel: PanelNode;
+  private readonly _intro3d: IntroNode;
   private readonly _survey: SurveyNode;
   private readonly _buildings: BuildingsNode;
   private readonly _planes: PlanesNode;
@@ -172,7 +174,9 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     // Le rideau du panneau vient par-dessus les noms, puisqu'il les recouvre a l'ouverture.
     const labelsPass = new OverlayPass(() => this._labels.scene);
     const panelPass = new OverlayPass(() => this._panel.scene);
-    const composer = new EffectComposer([new RenderPass(), inkPass, labelsPass, panelPass], {
+    // L'intro est au-dessus de tout : elle couvre la page jusqu'au depart de l'experience.
+    const introPass = new OverlayPass(() => this._intro3d.scene);
+    const composer = new EffectComposer([new RenderPass(), inkPass, labelsPass, panelPass, introPass], {
       normalDepth: true,
     });
     super(
@@ -213,6 +217,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       for (const listener of this._selectionListeners) listener({ name: place.name, lon: place.lon, lat: place.lat });
     });
     this._panel = new PanelNode(device.renderer.domElement, () => this.camera as Camera);
+    this._intro3d = new IntroNode(device.renderer.domElement, () => this.camera as Camera);
     this._survey = new SurveyNode(terrain, device.renderer.domElement, () => this.camera as Camera);
     this._buildings = new BuildingsNode(terrain);
     // map tourne sur WebGPURenderer (WebGPU ou son repli WebGL2).
@@ -233,6 +238,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
         NODE_ID.SURVEY,
         NODE_ID.LABELS,
         NODE_ID.PANEL,
+        NODE_ID.INTRO,
       ],
     });
   }
@@ -273,6 +279,11 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     return { extentKm: this._terrain.extentKm, lon: (west + east) / 2, lat: (south + north) / 2 };
   }
 
+  /** L'experience peut partir : le cercle de l'intro s'ouvre pour le dire. */
+  setIntroReady(ready: boolean): void {
+    this._intro3d.ready = ready;
+  }
+
   /** Page blanche : la carte se charge, mais rien n'est dessine tant que `drawMap` n'est pas appele. */
   holdIntro(): void {
     this._intro.reveal = 0;
@@ -297,6 +308,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
         this._survey,
         this._labels,
         this._panel,
+        this._intro3d,
       ]);
       this._nodesRegistered = true;
     }
@@ -324,6 +336,8 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     inkSettings.reveal.value = eased;
     // Les noms arrivent apres le trait, une fois la carte bien ouverte.
     this._labels.intro = Math.max(0, eased * 2 - 1);
+    // Le rideau de l'intro se retire des le depart, un peu avant que la carte ne finisse de s'ouvrir.
+    this._intro3d.target = Math.min(1, intro.target);
     // Ce qui vole au-dessus de la carte n'apparait qu'avec elle.
     for (const node of [this._clouds, this._planes, this._survey]) node.getObject3D().visible = eased > 0.02;
     this._lights.relief(terrainSettings.relief.value);
@@ -337,6 +351,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       this._buildings.settled &&
       this._labels.settled &&
       this._panel.settled &&
+      this._intro3d.settled &&
       terrainSettings.landcoverReveal.value >= 1;
     this._sinceRender += dt;
     // Ce qui bouge tout seul (vehicules, avions, vent dans les arbres) : l'image n'est alors jamais tout a fait

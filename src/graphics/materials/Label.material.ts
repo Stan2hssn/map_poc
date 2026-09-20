@@ -24,9 +24,10 @@ export const labelSettings = {
  * noms inattrapables.
  *
  * Attributs par instance : `glyph` (uv du caractere dans l'atlas), `screen` (coin et taille en pixels dans le
- * repere de l'etiquette) et `tint` (part de survol, le texte passe a l'accent).
+ * repere de l'etiquette) et `tint` (part de survol, le texte passe a l'accent). `reveal` dit la part dessinee :
+ * l'intro a la sienne, sinon son mot suivrait l'apparition des noms de la carte.
  */
-export function createLabelMaterial(atlas: Texture): MeshBasicNodeMaterial {
+export function createLabelMaterial(atlas: Texture, reveal: ReturnType<typeof uniform<number>> = labelSettings.reveal): MeshBasicNodeMaterial {
   // Deux faces : l'axe y de l'ecran descend, celui du repere monte, et cette inversion retourne le sens des
   // triangles du quadrilatere. En une seule face, toutes les etiquettes sont dos a la camera et disparaissent.
   const material = new MeshBasicNodeMaterial({ transparent: true, depthTest: false, depthWrite: false, side: DoubleSide });
@@ -42,7 +43,7 @@ export function createLabelMaterial(atlas: Texture): MeshBasicNodeMaterial {
   const uv = vec2(glyph.x.add(corner.x.mul(glyph.z)), glyph.y.add(corner.y.mul(glyph.w)));
   const distance = texture(atlas, uv).r;
   material.colorNode = mix(color(INK), color(HOVER), tint);
-  material.opacityNode = smoothstep(EDGE.level - EDGE.soft, EDGE.level + EDGE.soft, distance).mul(labelSettings.reveal);
+  material.opacityNode = smoothstep(EDGE.level - EDGE.soft, EDGE.level + EDGE.soft, distance).mul(reveal);
   return material;
 }
 
