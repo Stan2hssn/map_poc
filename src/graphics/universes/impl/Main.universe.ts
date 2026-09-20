@@ -15,6 +15,7 @@ import { MapCameraNode } from "@graphics/nodes/cameras/MapCamera.node.ts";
 import type { MapFocusId } from "@graphics/config/focus.config.ts";
 import { labelSettings } from "@graphics/materials/Label.material.ts";
 import { Labels3DNode } from "@graphics/nodes/labels/Labels3D.node.ts";
+import { PanelNode } from "@graphics/nodes/panel/Panel.node.ts";
 import { CloudsNode } from "@graphics/nodes/sky/Clouds.node.ts";
 import { PlanesNode } from "@graphics/nodes/sky/Planes.node.ts";
 import { SurveyNode } from "@graphics/nodes/survey/Survey.node.ts";
@@ -121,6 +122,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   private readonly _lights = new LightsNode();
   private readonly _terrain: TerrainNode;
   private readonly _labels: Labels3DNode;
+  private readonly _panel: PanelNode;
   private readonly _survey: SurveyNode;
   private readonly _buildings: BuildingsNode;
   private readonly _planes: PlanesNode;
@@ -167,8 +169,10 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     const ink = new InkEffect({ anchorAt: inkAnchorAt });
     const inkPass = new EffectPass([ink]);
     // L'interface se dessine apres l'encre : sinon la passe la prendrait pour un relief et la hachurerait.
+    // Le rideau du panneau vient par-dessus les noms, puisqu'il les recouvre a l'ouverture.
     const labelsPass = new OverlayPass(() => this._labels.scene);
-    const composer = new EffectComposer([new RenderPass(), inkPass, labelsPass], {
+    const panelPass = new OverlayPass(() => this._panel.scene);
+    const composer = new EffectComposer([new RenderPass(), inkPass, labelsPass, panelPass], {
       normalDepth: true,
     });
     super(
@@ -208,6 +212,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       this.goToPlace({ name: place.name, lon: place.lon, lat: place.lat });
       for (const listener of this._selectionListeners) listener({ name: place.name, lon: place.lon, lat: place.lat });
     });
+    this._panel = new PanelNode(device.renderer.domElement, () => this.camera as Camera);
     this._survey = new SurveyNode(terrain, device.renderer.domElement, () => this.camera as Camera);
     this._buildings = new BuildingsNode(terrain);
     // map tourne sur WebGPURenderer (WebGPU ou son repli WebGL2).
@@ -227,6 +232,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
         NODE_ID.CLOUDS,
         NODE_ID.SURVEY,
         NODE_ID.LABELS,
+        NODE_ID.PANEL,
       ],
     });
   }
@@ -290,6 +296,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
         this._clouds,
         this._survey,
         this._labels,
+        this._panel,
       ]);
       this._nodesRegistered = true;
     }
@@ -329,6 +336,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       this._terrain.settled &&
       this._buildings.settled &&
       this._labels.settled &&
+      this._panel.settled &&
       terrainSettings.landcoverReveal.value >= 1;
     this._sinceRender += dt;
     // Ce qui bouge tout seul (vehicules, avions, vent dans les arbres) : l'image n'est alors jamais tout a fait

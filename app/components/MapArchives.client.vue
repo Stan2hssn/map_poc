@@ -126,7 +126,7 @@ defineExpose({ place })
 </script>
 
 <template>
-  <aside v-if="place" class="fonds" :class="{ 'is-shown': shown }" aria-label="Fonds du territoire">
+  <aside v-if="place" data-fonds class="fonds" :class="{ 'is-shown': shown }" aria-label="Fonds du territoire">
     <header class="fonds__head">
       <div class="fonds__top">
         <span class="fonds__code">Fonds {{ place.name.slice(0, 3).toUpperCase() }}-012</span>
@@ -205,25 +205,11 @@ defineExpose({ place })
   opacity: 1;
 }
 
-/* Rideau : des lignes a 45 degres qui balaient le panneau a l'ouverture, puis s'effacent. */
-.fonds::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background-image: repeating-linear-gradient(45deg, rgb(var(--ui-ink) / 0.5) 0 1px, transparent 1px 5px);
-  opacity: 0.85;
-  transition: opacity 700ms ease 120ms, clip-path 760ms cubic-bezier(0.16, 1, 0.3, 1);
-  clip-path: inset(0 0 0 0);
-  pointer-events: none;
-}
-
-.fonds.is-shown::before {
-  opacity: 0;
-  clip-path: inset(0 0 100% 0);
-}
-
-/* Chaque entree monte a son tour : le fonds se depose, il ne surgit pas. */
+/*
+ * Le rideau d'ouverture n'est plus en CSS : c'est un plan WebGL cale sur ce rectangle (`PanelNode`), qui se
+ * retire par taches. Il ecrit `--fonds-reveal` ici, et le contenu apparait derriere lui.
+ */
+/* Chaque entree monte a son tour, derriere le rideau : le fonds se depose, il ne surgit pas. */
 .fonds__list li,
 .fonds__head,
 .fonds__tabs,
@@ -232,6 +218,12 @@ defineExpose({ place })
   opacity: 0;
   transition: translate 560ms cubic-bezier(0.16, 1, 0.3, 1) var(--delay, 0ms),
     opacity 460ms ease var(--delay, 0ms);
+}
+
+/* Le fond du panneau se pose au rythme du rideau, pas avant : sinon on le voit arriver sous lui. */
+.fonds {
+  background: rgb(var(--ui-paper) / calc(0.97 * var(--fonds-reveal, 0)));
+  border-left-color: rgb(var(--ui-ink) / calc(0.3 * var(--fonds-reveal, 0)));
 }
 
 .fonds__head {
