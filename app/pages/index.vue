@@ -71,8 +71,7 @@ onBeforeUnmount(() => {
 <template>
   <main class="shell" @pointerenter="hovered = true" @pointermove="onMove" @pointerdown="draw">
     <ThreeStage @ready="onReady" />
-    <MapFocus v-if="drawn" />
-    <MapShortcuts v-if="drawn" />
+    <MapChrome v-if="drawn" />
 
     <p v-if="!drawn" ref="note" class="note" :class="{ 'is-ready': started && hovered }" aria-live="polite">
       <span>Click to draw the map</span>

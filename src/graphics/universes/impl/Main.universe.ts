@@ -217,6 +217,12 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     this._labels.setFocus(focus);
   }
 
+  /** Largeur de la vue et point vise, pour l'echelle et les coordonnees de l'interface. */
+  readout(): { extentKm: number; lon: number; lat: number } {
+    const { west, east, south, north } = this._terrain.bounds;
+    return { extentKm: this._terrain.extentKm, lon: (west + east) / 2, lat: (south + north) / 2 };
+  }
+
   /** Page blanche : la carte se charge, mais rien n'est dessine tant que `drawMap` n'est pas appele. */
   holdIntro(): void {
     this._intro.reveal = 0;

@@ -1,0 +1,424 @@
+/*
+ * Chrome de la carte (`MapChrome`) : en-tete, rail des regards, releves, frise, attribution.
+ * Direction artistique de l'export : encre sur papier, une seule couleur d'accent, deux voix typographiques.
+ */
+:root {
+  --ui-ink: 29 42 77;
+  --ui-paper: 241 236 224;
+  /* Une seule couleur d'accent, reservee au direct et au survol. Meme valeur que `inkSettings.hoverInk`. */
+  --ui-accent: #b3452f;
+  --font-voice: 'Bodoni Moda', Georgia, serif;
+  /* Tout texte pose sur l'encre porte ce halo de papier, sinon il se perd dans les hachures denses. */
+  --ui-halo: 0 0 4px rgb(var(--ui-paper) / 0.95), 0 1px 14px rgb(var(--ui-paper) / 0.92),
+    0 0 26px rgb(var(--ui-paper) / 0.75);
+  /* Sous 0,58, les petits caracteres ne tiennent plus sur les hachures. */
+  --ui-faint: rgb(var(--ui-ink) / 0.58);
+  --ui-mid: rgb(var(--ui-ink) / 0.66);
+}
+
+.chrome {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  color: rgb(var(--ui-ink));
+  text-shadow: var(--ui-halo);
+}
+
+/* L'interface se dessine avec la carte, pas avant. */
+:root[data-map-intro='hold'] .chrome {
+  opacity: 0;
+  transition: none;
+}
+
+.chrome {
+  transition: opacity 900ms ease 500ms;
+}
+
+.chrome button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-shadow: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* Voix technique : capitales espacees, petit corps. */
+.chrome__tech {
+  font: 500 0.625rem/1 var(--font-map);
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--ui-faint);
+}
+
+/* ---- En-tete ---- */
+.chrome__head {
+  position: absolute;
+  top: 34px;
+  right: 44px;
+  left: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
+}
+
+.chrome__brand {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+}
+
+.chrome__wordmark {
+  font: 500 1.125rem/1 var(--font-voice);
+  letter-spacing: 0.34em;
+}
+
+.chrome__rule {
+  width: 1px;
+  height: 22px;
+  background: rgb(var(--ui-ink) / 0.25);
+}
+
+.chrome__crumbs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 500 0.625rem/1 var(--font-map);
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+}
+
+.chrome__crumbs span {
+  color: var(--ui-faint);
+}
+
+.chrome__crumb {
+  color: var(--ui-faint);
+  transition: color 160ms ease;
+}
+
+.chrome__crumb:hover,
+.chrome__crumb:focus-visible {
+  color: var(--ui-accent);
+}
+
+.chrome__crumb.is-active {
+  color: rgb(var(--ui-ink));
+}
+
+.chrome__tools {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+/* Champ a filet bas seul, comme un bordereau d'archive. */
+.chrome__search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 260px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgb(var(--ui-ink) / 0.35);
+}
+
+.chrome__search span {
+  width: 11px;
+  height: 11px;
+  border: 1px solid rgb(var(--ui-ink) / 0.55);
+  border-radius: 50%;
+}
+
+.chrome__search input {
+  width: 100%;
+  border: 0;
+  background: none;
+  color: rgb(var(--ui-ink));
+  font: 500 0.6875rem/1 var(--font-map);
+  letter-spacing: 0.14em;
+  pointer-events: auto;
+}
+
+.chrome__search input::placeholder {
+  color: var(--ui-faint);
+}
+
+.chrome__search input:focus {
+  outline: none;
+}
+
+.chrome__method {
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgb(var(--ui-ink) / 0.25);
+  font: 500 0.625rem/1 var(--font-map);
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: rgb(var(--ui-ink) / 0.62);
+}
+
+/* ---- Rail des quatre regards ---- */
+.chrome__rail {
+  position: absolute;
+  top: 50%;
+  left: 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  translate: 0 -50%;
+}
+
+.chrome__rail > .chrome__tech {
+  margin-bottom: 4px;
+}
+
+.chrome__look {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.chrome__look i {
+  width: 14px;
+  height: 1px;
+  background: rgb(var(--ui-ink) / 0.3);
+  transition: width 200ms ease, background 200ms ease;
+}
+
+.chrome__look.is-active i {
+  width: 30px;
+  background: rgb(var(--ui-ink));
+}
+
+.chrome__look b,
+.chrome__look em {
+  font-style: normal;
+}
+
+.chrome__look b {
+  font: 600 0.6875rem/1 var(--font-map);
+  letter-spacing: 0.2em;
+  color: var(--ui-faint);
+}
+
+.chrome__look em {
+  font: 500 0.8125rem/1 var(--font-map);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ui-mid);
+}
+
+.chrome__look.is-active b,
+.chrome__look.is-active em {
+  font-weight: 600;
+  color: rgb(var(--ui-ink));
+}
+
+.chrome__look[disabled] {
+  cursor: default;
+}
+
+/* ---- Releves ---- */
+.chrome__survey {
+  position: absolute;
+  bottom: 34px;
+  left: 44px;
+  display: flex;
+  align-items: flex-end;
+  gap: 34px;
+}
+
+.chrome__scale {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chrome__scale div:last-child {
+  display: flex;
+  width: 148px;
+  height: 6px;
+  border: 1px solid rgb(var(--ui-ink) / 0.55);
+  border-top: 0;
+}
+
+.chrome__scale div:last-child i {
+  flex: 1;
+}
+
+.chrome__scale div:last-child i:first-child {
+  border-right: 1px solid rgb(var(--ui-ink) / 0.55);
+}
+
+.chrome__coords {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font: 500 0.625rem/1.5 var(--font-map);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgb(var(--ui-ink) / 0.62);
+}
+
+.chrome__compass {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.chrome__compass b {
+  font: 600 0.625rem/1 var(--font-map);
+  letter-spacing: 0.2em;
+  color: rgb(var(--ui-ink) / 0.7);
+}
+
+.chrome__compass i {
+  width: 1px;
+  height: 22px;
+  background: rgb(var(--ui-ink) / 0.45);
+}
+
+.chrome__compass s {
+  width: 20px;
+  height: 20px;
+  margin-top: -32px;
+  border: 1px solid rgb(var(--ui-ink) / 0.3);
+  border-radius: 50%;
+}
+
+/* ---- Frise ---- */
+.chrome__timeline {
+  position: absolute;
+  bottom: 34px;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  width: min(660px, 42vw);
+  translate: -50% 0;
+}
+
+.chrome__timeline header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.chrome__live {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 0.625rem/1 var(--font-map);
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ui-accent);
+}
+
+.chrome__live i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+}
+
+.chrome__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 46px;
+}
+
+.chrome__bars i {
+  flex: 1;
+  background-image: repeating-linear-gradient(45deg, rgb(var(--ui-ink) / 0.75) 0 1px, transparent 1px 3px);
+}
+
+.chrome__bars i.is-live {
+  background-image: repeating-linear-gradient(45deg, var(--ui-accent) 0 1px, transparent 1px 3px);
+}
+
+.chrome__timeline hr {
+  height: 1px;
+  margin: 0;
+  border: 0;
+  background: rgb(var(--ui-ink) / 0.45);
+}
+
+.chrome__decades {
+  display: flex;
+  justify-content: space-between;
+  font: 500 0.625rem/1 var(--font-map);
+  letter-spacing: 0.22em;
+  color: rgb(var(--ui-ink) / 0.62);
+}
+
+.chrome__decades span:last-child {
+  color: var(--ui-accent);
+}
+
+/* ---- Attribution ---- */
+.chrome__credit {
+  position: absolute;
+  right: 44px;
+  bottom: 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  text-align: right;
+  font: 500 0.5625rem/1.6 var(--font-map);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ui-faint);
+}
+
+.chrome__loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.24em;
+}
+
+.chrome__loading i {
+  width: 22px;
+  height: 3px;
+  background-image: repeating-linear-gradient(45deg, rgb(var(--ui-ink) / 0.6) 0 1px, transparent 1px 3px);
+}
+
+/* La frise tient entre les releves et l'attribution : sous cette largeur, les trois se chevauchent. */
+@media (max-width: 1280px) {
+  .chrome__timeline {
+    display: none;
+  }
+}
+
+@media (max-width: 1024px) {
+  .chrome__rail {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .chrome__head {
+    right: 20px;
+    left: 20px;
+  }
+
+  .chrome__search {
+    width: 140px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chrome,
+  .chrome__look i,
+  .chrome__crumb {
+    transition: none;
+  }
+}

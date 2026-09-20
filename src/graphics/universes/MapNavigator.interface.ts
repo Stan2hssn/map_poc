@@ -12,6 +12,8 @@ export default interface IMapNavigator {
   flyTo(view: MapView): void;
   /** Niveau nomme par la carte : communes, departements ou regions. */
   setFocus(focus: MapFocusId): void;
+  /** Releves affiches par l'interface : largeur de la vue et point vise. */
+  readout(): { extentKm: number; lon: number; lat: number };
   /** Rien n'est dessine : la page reste blanche pendant que la carte se charge. */
   holdIntro(): void;
   /** La carte se dessine en s'ouvrant, et vole vers `view` si elle est donnee. */

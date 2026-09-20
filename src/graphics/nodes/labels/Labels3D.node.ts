@@ -36,10 +36,14 @@ const TIERS = 3;
 const EASE = 0.2;
 /** Les villes retenues restent dans la partie nette du sol. */
 const REACH = GROUND_FADE.near;
-const TOP_MARGIN_PX = 48;
+/** Les noms restent sous l'en-tete de l'interface (`MapChrome`), qui occupe le haut de la page. */
+const TOP_MARGIN_PX = 104;
 const RESELECT_MS = 250;
-/** Mise en page (px) : corps du numero et du nom, interligne, epaisseur du trait et diametre du point. */
-const TYPE = { index: 24, name: 14, lead: 18, line: 1, dot: 7 };
+/**
+ * Mise en page (px) : corps du nom, filet sous le nom, epaisseur de la hampe et diametre du point.
+ * Nom seul, sans numero de classement : celui-ci vit desormais dans le rail des regards de l'interface.
+ */
+const TYPE = { name: 15, rule: 7, line: 1, dot: 9 };
 /** Quadrilateres reserves : sept etiquettes, leur trait, leur point et une trentaine de caracteres. */
 const MAX_QUADS = MAX_LABELS * 36;
 /** Police des etiquettes : celle de la page (voir `--font-map`), et sa graisse. */
@@ -246,7 +250,7 @@ export class Labels3DNode extends Object3DNodeBase {
     const font = this._font!;
     this._quads = 0;
     let hovered: Place | null = null;
-    for (const [rank, place] of this._order.entries()) {
+    for (const place of this._order) {
       const label = this._labels.get(place);
       const ground = label ? this._ground(place) : null;
       if (!label || !ground) continue;
@@ -261,16 +265,17 @@ export class Labels3DNode extends Object3DNodeBase {
       this._quad(font.solid, -TYPE.line / 2, top, TYPE.line, -top);
       this._quad(font.disc, -TYPE.dot / 2, -TYPE.dot / 2, TYPE.dot, TYPE.dot);
 
-      const index = String(rank + 1).padStart(2, "0");
-      const name = place.name;
-      const width = Math.max(textWidth(font, index) * TYPE.index, textWidth(font, name) * TYPE.name);
-      const box = { x: ground.x, y: ground.y + top - TYPE.index - TYPE.lead, width, height: TYPE.index + TYPE.lead };
+      const name = place.name.toUpperCase();
+      const width = textWidth(font, name) * TYPE.name;
+      // La boite cliquable est celle du nom, au pixel pres : le texte est pose aux memes coordonnees.
+      const box = { x: ground.x, y: ground.y + top - TYPE.name, width, height: TYPE.name + TYPE.rule };
       label.box = box;
       const over =
         this._pointer.x >= box.x && this._pointer.x <= box.x + box.width && this._pointer.y >= box.y && this._pointer.y <= box.y + box.height;
       if (over) hovered = place;
-      this._text(font, index, 0, top - TYPE.lead, TYPE.index);
       this._text(font, name, 0, top, TYPE.name);
+      // Filet sous le nom, comme sur les maquettes.
+      this._quad(font.solid, 0, top + TYPE.rule, width * 0.62, 1);
     }
     this._hovered = hovered;
     this._canvas.style.cursor = hovered ? "pointer" : "";

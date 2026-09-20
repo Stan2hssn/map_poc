@@ -62,7 +62,7 @@ export default defineNuxtConfig({
     },
   },
 
-  css: ['~/assets/css/main.css', '~/assets/css/labels.css'],
+  css: ['~/assets/css/main.css', '~/assets/css/labels.css', '~/assets/css/chrome.css'],
 
   build: {
     transpile: ['gsap'],
@@ -99,7 +99,10 @@ export default defineNuxtConfig({
         // Relief, PLAN IGN et communes : la connexion (TLS compris) s'ouvre pendant que le moteur demarre.
         { rel: 'preconnect', href: 'https://data.geopf.fr', crossorigin: '' },
         { rel: 'preconnect', href: 'https://geo.api.gouv.fr', crossorigin: '' },
-        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Manrope:wght@500;700&display=swap' },
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&display=swap',
+        },
       ],
     },
   },
