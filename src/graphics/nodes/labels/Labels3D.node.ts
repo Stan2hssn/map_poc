@@ -42,6 +42,11 @@ const HOVER_PER_S = 2.2;
 const SETTLED = 0.01;
 /** Marge autour d'un nom ou la carte cesse de suivre la souris, en pixels : de quoi finir le geste. */
 const AIM_PX = 28;
+/**
+ * Pas de temps maximal pris en compte par les animations (ms). Rasteriser un contour bloque l'image ; sans
+ * cette borne, le `dt` qui suit avale toute la transition d'un coup et le rouge parait instantane.
+ */
+const MAX_STEP_MS = 40;
 /** Les villes retenues restent dans la partie nette du sol. */
 const REACH = GROUND_FADE.near;
 /** Les noms restent sous l'en-tete de l'interface (`MapChrome`), qui occupe le haut de la page. */
@@ -204,7 +209,7 @@ export class Labels3DNode extends Object3DNodeBase {
     return this._font ? this._scene : null;
   }
 
-  override update(dt: number): void {
+  override update(_time: number, dt: number): void {
     if (!this._font) return;
     this._breathe(dt);
     // Pas pendant un vol : il traverserait des departements pour rien.
@@ -225,8 +230,9 @@ export class Labels3DNode extends Object3DNodeBase {
    * demande n'est applique qu'une fois les etiquettes sorties.
    */
   private _breathe(dt: number): void {
+    const capped = Math.min(dt, MAX_STEP_MS);
     const step = (value: number, target: number, perSecond: number) => {
-      const k = Math.min(1, (dt / 1000) * perSecond);
+      const k = Math.min(1, (capped / 1000) * perSecond);
       return Math.abs(target - value) < SETTLED ? target : value + (target - value) * k;
     };
     this._fade.value = step(this._fade.value, this._fade.target, FADE_PER_S);
@@ -336,7 +342,10 @@ export class Labels3DNode extends Object3DNodeBase {
       const target = LINE_PX + label.tier * TIER_PX;
       label.length = label.length === null ? target : label.length + (target - label.length) * EASE;
       if (Math.abs(target - label.length) > 0.5) moving = true;
-      const top = Math.max(TOP_MARGIN_PX, ground.y - label.length) - ground.y;
+      // La marge haute garde les etages : sans le decalage, deux noms voisins plaques en haut retombent sur
+      // la meme ligne et se superposent.
+      const floor = TOP_MARGIN_PX + label.tier * TIER_PX;
+      const top = Math.max(floor, ground.y - label.length) - ground.y;
 
       // Trait du point vers le texte, et point pose au sol.
       this._quad(font.solid, -TYPE.line / 2, top, TYPE.line, -top);

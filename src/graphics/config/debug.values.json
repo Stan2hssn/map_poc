@@ -64,6 +64,9 @@
       "contact": 0.14,
       "stepTexels": 0.5,
       "fineSteps": 78
+    },
+    "life": {
+      "boats": 0.6
     }
   }
 }
