@@ -23,7 +23,7 @@
     "mask": {
       "softness": 0.6,
       "jitter": 0.12,
-      "radiusX": 95,
+      "radiusX": 70,
       "radiusY": 95,
       "shift": 0
     },

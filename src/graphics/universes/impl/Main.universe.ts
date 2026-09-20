@@ -213,6 +213,8 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     // map tourne sur WebGPURenderer (WebGPU ou son repli WebGL2).
     this._renderStats = new RenderStatsHelper(device.renderer as WebGPURenderer);
     cameraNode.isActive = () => this.camera === cameraNode.camera;
+    // La carte se fige quand on vise un nom : sinon la parallaxe le deplace pendant qu'on l'approche.
+    cameraNode.holdParallax = () => this._labels.aiming;
 
     this.registerContract({
       id: NODE_ID.CONTRACT_BASE,
@@ -314,7 +316,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     terrainSettings.drawnReveal.value = eased;
     inkSettings.reveal.value = eased;
     // Les noms arrivent apres le trait, une fois la carte bien ouverte.
-    labelSettings.reveal.value = Math.max(0, eased * 2 - 1);
+    this._labels.intro = Math.max(0, eased * 2 - 1);
     // Ce qui vole au-dessus de la carte n'apparait qu'avec elle.
     for (const node of [this._clouds, this._planes, this._survey]) node.getObject3D().visible = eased > 0.02;
     this._lights.relief(terrainSettings.relief.value);
@@ -326,6 +328,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       camera.elements.every((v, i) => Math.abs(v - this._renderedCamera.elements[i]!) < STILL) &&
       this._terrain.settled &&
       this._buildings.settled &&
+      this._labels.settled &&
       terrainSettings.landcoverReveal.value >= 1;
     this._sinceRender += dt;
     // Ce qui bouge tout seul (vehicules, avions, vent dans les arbres) : l'image n'est alors jamais tout a fait

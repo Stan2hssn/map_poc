@@ -53,6 +53,11 @@ export class MapCameraNode extends NodeBase {
   readonly settings = { tiltNear: 52, tiltFar: 25, rollMax: 0.12, rollPerTurn: -0.05, rollPerPan: -0.08, rollPerMouse: -0.02 };
   /** Faux pendant que la camera orbitale de debug (Shift+C) a la main. */
   isActive: () => boolean = () => true;
+  /**
+   * Tenir la parallaxe : la carte cesse de suivre la souris. Pose quand le pointeur vise un nom, sinon
+   * l'etiquette se deplace pendant qu'on l'approche et devient impossible a attraper.
+   */
+  holdParallax: () => boolean = () => false;
   private readonly _element: HTMLElement;
   private readonly _heightAt: (x: number, z: number) => number;
   private readonly _view: MapCameraView;
@@ -118,7 +123,7 @@ export class MapCameraNode extends NodeBase {
     if (!this._drag.enabled) return;
     const mouse = this._input?.mouse;
     const before = this._parallax.x;
-    if (mouse) this._parallax.lerp(this._mouse.set(mouse.nx, mouse.ny), 1 - Math.exp(-dt / PARALLAX_EASE_MS));
+    if (mouse && !this.holdParallax()) this._parallax.lerp(this._mouse.set(mouse.nx, mouse.ny), 1 - Math.exp(-dt / PARALLAX_EASE_MS));
     this._turn(dt, dt > 0 ? ((this._parallax.x - before) * 1000) / dt : 0);
     this._place();
   }

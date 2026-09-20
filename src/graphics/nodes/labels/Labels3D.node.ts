@@ -1,6 +1,6 @@
 import { Object3DNodeBase } from "@_core/nodes/object3d/Object3DNode.base.ts";
 import { TERRAIN_CONFIG } from "@graphics/config/terrain.config.ts";
-import { createLabelMaterial, labelViewport } from "@graphics/materials/Label.material.ts";
+import { createLabelMaterial, labelSettings, labelViewport } from "@graphics/materials/Label.material.ts";
 import { GROUND_FADE } from "@graphics/materials/Terrain.material.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import type { TerrainNode } from "@graphics/nodes/terrain/Terrain.node.ts";
@@ -34,6 +34,14 @@ const LINE_PX = 90;
 const TIER_PX = 64;
 const TIERS = 3;
 const EASE = 0.2;
+/** Vitesse de l'apparition et de la sortie des etiquettes (part par seconde). */
+const FADE_PER_S = 3.2;
+/** Vitesse a laquelle le rouge gagne le territoire survole, et le quitte. */
+const HOVER_PER_S = 2.2;
+/** En deca, une valeur qui converge est consideree arrivee. */
+const SETTLED = 0.01;
+/** Marge autour d'un nom ou la carte cesse de suivre la souris, en pixels : de quoi finir le geste. */
+const AIM_PX = 28;
 /** Les villes retenues restent dans la partie nette du sol. */
 const REACH = GROUND_FADE.near;
 /** Les noms restent sous l'en-tete de l'interface (`MapChrome`), qui occupe le haut de la page. */
@@ -102,6 +110,13 @@ export class Labels3DNode extends Object3DNodeBase {
   /** Contour du lieu survole, donne au sol pour qu'il le marque (`terrainSettings.hoverArea`). */
   private readonly _mask = new AreaMaskHelper();
   private _focus: MapFocusId = "communes";
+  /** Rien ne bouge plus dans les etiquettes : l'univers peut alors sauter des images (voir `settled`). */
+  private _settled = false;
+  private _aiming = false;
+  /** Part apparue des etiquettes, et sa cible : le changement de niveau les fait sortir puis revenir. */
+  private readonly _fade = { value: 1, target: 1 };
+  /** Niveau demande pendant que les etiquettes s'effacent ; applique une fois qu'elles ont disparu. */
+  private _wanted: MapFocusId | null = null;
 
   constructor(canvas: HTMLElement, terrain: TerrainNode, camera: () => Camera, onSelect: (place: Place) => void) {
     const geometry = new InstancedBufferGeometry();
@@ -125,9 +140,27 @@ export class Labels3DNode extends Object3DNodeBase {
     terrainSettings.hoverArea.value = this._mask.texture;
   }
 
-  /** Niveau nomme par la carte. Changer de niveau vide les lieux et recharge la source qui convient. */
+  /**
+   * Niveau nomme par la carte. Les etiquettes sortent d'abord, le niveau ne change qu'une fois la page nette,
+   * et les nouvelles reviennent : on ne voit jamais deux jeux de noms se croiser.
+   */
   setFocus(focus: MapFocusId): void {
-    if (focus === this._focus) return;
+    if (focus === this._focus || focus === this._wanted) return;
+    this._wanted = focus;
+    this._fade.target = 0;
+  }
+
+  /** Vrai quand plus rien ne bouge : ni apparition, ni longueur de hampe, ni survol en cours. */
+  get settled(): boolean {
+    return this._settled;
+  }
+
+  /** Le pointeur approche un nom : la carte doit cesser de suivre la souris, sinon le nom lui echappe. */
+  get aiming(): boolean {
+    return this._aiming;
+  }
+
+  private _applyFocus(focus: MapFocusId): void {
     this._focus = focus;
     this._hovered = null;
     this._order = [];
@@ -171,8 +204,9 @@ export class Labels3DNode extends Object3DNodeBase {
     return this._font ? this._scene : null;
   }
 
-  override update(): void {
+  override update(dt: number): void {
     if (!this._font) return;
+    this._breathe(dt);
     // Pas pendant un vol : il traverserait des departements pour rien.
     if (!this._terrain.flying) this._communes?.update(this._terrain.bounds, this._terrain.extentKm);
     const selection = `${this._terrain.viewVersion}:${this._places.version}`;
@@ -184,6 +218,27 @@ export class Labels3DNode extends Object3DNodeBase {
     }
     labelViewport(this._canvas.clientWidth, this._canvas.clientHeight, (this._camera() as PerspectiveCamera).fov ?? 50);
     this._layout();
+  }
+
+  /**
+   * Apparition, sortie et montee du rouge : tout ce qui avance tout seul d'une image a l'autre. Le niveau
+   * demande n'est applique qu'une fois les etiquettes sorties.
+   */
+  private _breathe(dt: number): void {
+    const step = (value: number, target: number, perSecond: number) => {
+      const k = Math.min(1, (dt / 1000) * perSecond);
+      return Math.abs(target - value) < SETTLED ? target : value + (target - value) * k;
+    };
+    this._fade.value = step(this._fade.value, this._fade.target, FADE_PER_S);
+    if (this._wanted && this._fade.value <= SETTLED) {
+      this._applyFocus(this._wanted);
+      this._wanted = null;
+      this._fade.target = 1;
+    }
+    labelSettings.reveal.value = this._fade.value * this._intro;
+    const wanted = this._marked ? 1 : 0;
+    this._hoverReveal = step(this._hoverReveal, wanted, HOVER_PER_S);
+    terrainSettings.hoverReveal.value = this._hoverReveal;
   }
 
   override dispose(): void {
@@ -269,6 +324,8 @@ export class Labels3DNode extends Object3DNodeBase {
     const font = this._font!;
     this._quads = 0;
     let hovered: Place | null = null;
+    let moving = false;
+    let aiming = false;
     for (const place of this._order) {
       const label = this._labels.get(place);
       const ground = label ? this._ground(place) : null;
@@ -278,6 +335,7 @@ export class Labels3DNode extends Object3DNodeBase {
       this._point.set(scene.x, this._terrain.heightAt(scene.x, scene.z), scene.z);
       const target = LINE_PX + label.tier * TIER_PX;
       label.length = label.length === null ? target : label.length + (target - label.length) * EASE;
+      if (Math.abs(target - label.length) > 0.5) moving = true;
       const top = Math.max(TOP_MARGIN_PX, ground.y - label.length) - ground.y;
 
       // Trait du point vers le texte, et point pose au sol.
@@ -302,10 +360,28 @@ export class Labels3DNode extends Object3DNodeBase {
       const over =
         this._pointer.x >= box.x && this._pointer.x <= box.x + box.width && this._pointer.y >= box.y && this._pointer.y <= box.y + box.height;
       if (over) hovered = place;
+      // Plus large que la boite : la carte se fige des qu'on approche, pas seulement une fois dessus.
+      if (
+        this._pointer.x >= box.x - AIM_PX &&
+        this._pointer.x <= box.x + box.width + AIM_PX &&
+        this._pointer.y >= box.y - AIM_PX &&
+        this._pointer.y <= box.y + box.height + AIM_PX
+      )
+        aiming = true;
     }
+    this._aiming = aiming;
+    const changed = hovered !== this._hovered;
     this._hovered = hovered;
     this._canvas.style.cursor = hovered ? "pointer" : "";
     this._markHovered(hovered);
+    // Tant qu'une valeur avance, l'univers doit redessiner : sinon la boite de survol continuerait de bouger
+    // sous un texte fige sur la derniere image, et l'on ne pourrait plus attraper les noms.
+    this._settled =
+      !moving &&
+      !changed &&
+      this._wanted === null &&
+      Math.abs(this._fade.target - this._fade.value) < SETTLED &&
+      Math.abs((this._marked ? 1 : 0) - this._hoverReveal) < SETTLED;
     for (const attribute of [this._glyphs, this._screen, this._anchors]) attribute.needsUpdate = true;
     (this._mesh.geometry as InstancedBufferGeometry).instanceCount = this._quads;
   }
@@ -348,8 +424,13 @@ export class Labels3DNode extends Object3DNodeBase {
    */
   private _markHovered(place: Place | null): void {
     if (place === this._marked) return;
+    // Le contour ne s'efface qu'une fois le rouge retire : sinon il disparait d'un coup au lieu de refluer.
+    if (!place) {
+      this._marked = null;
+      return;
+    }
     this._marked = place;
-    this._draw(place?.rings);
+    this._draw(place.rings);
     if (!place || place.rings || !place.code) return;
     const abort = this._abort;
     fetchCommuneRings(place.code, abort!.signal)
@@ -370,6 +451,14 @@ export class Labels3DNode extends Object3DNodeBase {
 
   /** Dernier lieu donne au masque : il ne se redessine que lorsque le survol change. */
   private _marked: Place | null = null;
+  /** Part rouge du territoire survole, et part dessinee voulue par l'intro. */
+  private _hoverReveal = 0;
+  private _intro = 1;
+
+  /** Part dessinee voulue par l'intro : les noms arrivent apres le trait. */
+  set intro(value: number) {
+    this._intro = value;
+  }
 
   /** Point au sol a l'ecran, null hors de l'ecran. */
   private _ground(place: Place): { x: number; y: number } | null {
