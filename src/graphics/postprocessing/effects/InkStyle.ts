@@ -24,7 +24,7 @@ export const inkSettings = {
   paper: uniform(new Color(0xf1ece0)),
   ink: uniform(new Color(0x1d2a4d)),
   /** Encre du lieu tenu sous la souris : son trait passe au rouge (marque posee par le sol, voir `HOVER_BAND`). */
-  hoverInk: uniform(new Color(0xc0392b)),
+  hoverInk: uniform(new Color(0xb3452f)),
   /** Lavis pose sur le papier du lieu survole : sans lui, un departement plat n'a presque pas de trait a teinter. */
   hoverWash: uniform(0.12),
   /** Force du trait de perimetre du lieu survole (0 : aucun). */
