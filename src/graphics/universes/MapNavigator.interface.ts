@@ -23,6 +23,10 @@ export default interface IMapNavigator {
   readout(): { extentKm: number; lon: number; lat: number };
   /** Prevenu quand un nom de la carte est choisi ; rend de quoi se desabonner. */
   onPlaceSelected(listener: (place: SelectedPlace) => void): () => void;
+  /** Lieux du niveau courant dont le nom approche `query`, pour la recherche de l'interface. */
+  searchPlaces(query: string, limit: number): SelectedPlace[];
+  /** Cadre et vol jusqu'a un lieu : un territoire entier tient dans la vue, une ville arrive de pres. */
+  goToPlace(place: SelectedPlace): void;
   /** Rien n'est dessine : la page reste blanche pendant que la carte se charge. */
   holdIntro(): void;
   /** La carte se dessine en s'ouvrant, et vole vers `view` si elle est donnee. */

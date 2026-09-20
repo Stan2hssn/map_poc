@@ -61,6 +61,15 @@ export class PlaceIndex {
     this.version++;
   }
 
+  /** Lieux dont le nom commence par `query`, les plus peuples d'abord ; accents et casse ignores. */
+  search(query: string, limit: number): Place[] {
+    const key = keyOf(query);
+    if (!key) return [];
+    const starts = this._places.filter((p) => keyOf(p.name).startsWith(key));
+    const inside = this._places.filter((p) => !starts.includes(p) && keyOf(p.name).includes(key));
+    return [...starts, ...inside].slice(0, limit);
+  }
+
   /**
    * Au plus `limit` lieux de `bounds`, du plus peuple au moins peuple, parmi ceux que `accept` retient.
    * Les lieux deux cents fois moins peuples que le premier sont ignores.

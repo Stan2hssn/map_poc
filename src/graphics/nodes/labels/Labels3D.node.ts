@@ -51,6 +51,14 @@ const FONT = '"Manrope", system-ui, sans-serif';
 const WEIGHT = 600;
 
 
+/** Boite en pixels, en decalage depuis le point ancre de l'etiquette. */
+interface Box {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
 interface Label {
   place: Place;
   tier: number;
@@ -148,6 +156,16 @@ export class Labels3DNode extends Object3DNodeBase {
     super.onUnmounted();
   }
 
+  /** Lieux du niveau courant dont le nom approche `query`. */
+  search(query: string, limit: number): Place[] {
+    return this._places.search(query, limit);
+  }
+
+  /** Lieu connu portant ce nom, avec son contour s'il en a un. */
+  find(name: string): Place | null {
+    return this._places.search(name, 1)[0] ?? null;
+  }
+
   /** La scene des etiquettes, a poser sur l'image finie (`OverlayPass`) ; null tant que la police se prepare. */
   get scene(): Scene | null {
     return this._font ? this._scene : null;
@@ -195,7 +213,8 @@ export class Labels3DNode extends Object3DNodeBase {
       return;
     }
     fetchWorldCities(abort.signal)
-      .then((places) => this._places.add(places))
+      // La carte ne parle que de la France : une ville etrangere n'a pas de fonds a ouvrir.
+      .then((places) => this._places.add(places.filter((place) => place.country === "FRA")))
       .catch((error: unknown) => {
         if (!abort.signal.aborted) console.warn("[Labels] lieux indisponibles", error);
       });
@@ -267,15 +286,22 @@ export class Labels3DNode extends Object3DNodeBase {
 
       const name = place.name.toUpperCase();
       const width = textWidth(font, name) * TYPE.name;
-      // La boite cliquable est celle du nom, au pixel pres : le texte est pose aux memes coordonnees.
-      const box = { x: ground.x, y: ground.y + top - TYPE.name, width, height: TYPE.name + TYPE.rule };
+      // Filet sous le nom, comme sur les maquettes.
+      this._quad(font.solid, 0, top + TYPE.rule, width * 0.62, 1);
+      // La boite cliquable est tiree des quadrilateres effectivement ecrits, pas recalculee a cote : c'est le
+      // seul moyen qu'elle ne puisse pas deriver du texte, quelles que soient les metriques de la police.
+      const drawn = this._text(font, name, 0, top, TYPE.name);
+      // Serree sur le dessin : la case d'un glyphe deborde en haut (marge du champ) et en bas (hampes).
+      const box = {
+        x: ground.x + drawn.left,
+        y: ground.y + top - font.cap * TYPE.name,
+        width: drawn.width,
+        height: font.cap * TYPE.name + TYPE.rule,
+      };
       label.box = box;
       const over =
         this._pointer.x >= box.x && this._pointer.x <= box.x + box.width && this._pointer.y >= box.y && this._pointer.y <= box.y + box.height;
       if (over) hovered = place;
-      this._text(font, name, 0, top, TYPE.name);
-      // Filet sous le nom, comme sur les maquettes.
-      this._quad(font.solid, 0, top + TYPE.rule, width * 0.62, 1);
     }
     this._hovered = hovered;
     this._canvas.style.cursor = hovered ? "pointer" : "";
@@ -284,15 +310,27 @@ export class Labels3DNode extends Object3DNodeBase {
     (this._mesh.geometry as InstancedBufferGeometry).instanceCount = this._quads;
   }
 
-  /** Suite de caracteres a partir du point d'ecriture (x, y) : chacun avance du sien. */
-  private _text(font: SdfFont, text: string, x: number, y: number, size: number): void {
+  /**
+   * Suite de caracteres a partir du point d'ecriture (x, y) : chacun avance du sien. Rend la boite des
+   * quadrilateres poses, en decalage depuis le point ancre — de quoi en faire une zone cliquable exacte.
+   */
+  private _text(font: SdfFont, text: string, x: number, y: number, size: number): Box {
     let pen = x;
+    const box = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
     for (const char of text) {
       const glyph = font.glyphs.get(char);
       if (!glyph) continue;
-      this._quad(glyph, pen + glyph.left * size, y + glyph.top * size, glyph.width * size, glyph.height * size);
+      const left = pen + glyph.left * size;
+      const top = y + glyph.top * size;
+      this._quad(glyph, left, top, glyph.width * size, glyph.height * size);
+      box.left = Math.min(box.left, left);
+      box.top = Math.min(box.top, top);
+      box.right = Math.max(box.right, left + glyph.width * size);
+      box.bottom = Math.max(box.bottom, top + glyph.height * size);
       pen += glyph.advance * size;
     }
+    if (box.left === Infinity) return { left: 0, top: 0, width: 0, height: 0 };
+    return { left: box.left, top: box.top, width: box.right - box.left, height: box.bottom - box.top };
   }
 
   private _quad(glyph: Glyph, x: number, y: number, width: number, height: number): void {

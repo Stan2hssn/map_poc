@@ -90,6 +90,27 @@ const WATER_CONTROLS = [
   ["seaTone", { label: "ton de la mer", min: 0.5, max: 1, step: 0.01 }],
 ] as const;
 
+/** Marge autour d'un territoire quand on vole jusqu'a lui : il ne touche pas les bords. */
+const FIT_MARGIN = 1.25;
+
+/** Largeur de vue (km) qui contient le contour, sans descendre sous l'echelle d'une ville. */
+function extentOfRings(rings: [number, number][][]): number {
+  let west = Infinity;
+  let east = -Infinity;
+  let south = Infinity;
+  let north = -Infinity;
+  for (const ring of rings)
+    for (const [lon, lat] of ring) {
+      west = Math.min(west, lon);
+      east = Math.max(east, lon);
+      south = Math.min(south, lat);
+      north = Math.max(north, lat);
+    }
+  const cos = Math.cos((((south + north) / 2) * Math.PI) / 180);
+  const km = Math.max((east - west) * 111.32 * cos, (north - south) * 111.32);
+  return Math.max(CITY_EXTENT_KM, km * FIT_MARGIN);
+}
+
 /** Camera immobile : aucun coefficient de sa matrice n'a bouge de plus que cela. */
 const STILL = 1e-5;
 /** Duree (ms) de l'ouverture de la carte a l'intro. */
@@ -183,9 +204,9 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     terrain.projectFrom = () => cameraNode.camera;
     terrain.lookAxis = (into) => cameraNode.lookAxis(into);
     // Un nom de ville clique : vol jusqu'a elle, bati en relief, sans reculer si l'on est deja plus pres.
-    this._labels = new Labels3DNode(device.renderer.domElement, terrain, () => this.camera as Camera, ({ name, lon, lat }) => {
-      terrain.flyTo({ lon, lat, extentKm: Math.min(terrain.extentKm, CITY_EXTENT_KM) });
-      for (const listener of this._selectionListeners) listener({ name, lon, lat });
+    this._labels = new Labels3DNode(device.renderer.domElement, terrain, () => this.camera as Camera, (place) => {
+      this.goToPlace({ name: place.name, lon: place.lon, lat: place.lat });
+      for (const listener of this._selectionListeners) listener({ name: place.name, lon: place.lon, lat: place.lat });
     });
     this._survey = new SurveyNode(terrain, device.renderer.domElement, () => this.camera as Camera);
     this._buildings = new BuildingsNode(terrain);
@@ -223,6 +244,19 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   onPlaceSelected(listener: (place: SelectedPlace) => void): () => void {
     this._selectionListeners.add(listener);
     return () => this._selectionListeners.delete(listener);
+  }
+
+  searchPlaces(query: string, limit: number): SelectedPlace[] {
+    return this._labels.search(query, limit).map(({ name, lon, lat }) => ({ name, lon, lat }));
+  }
+
+  /**
+   * Vol jusqu'a un lieu : un departement ou une region tient tout entier dans la vue (son contour donne son
+   * emprise), une ville arrive de pres. Sans contour connu, on garde l'echelle d'une ville.
+   */
+  goToPlace({ name, lon, lat }: SelectedPlace): void {
+    const rings = this._labels.find(name)?.rings;
+    this._terrain.flyTo({ lon, lat, extentKm: rings ? extentOfRings(rings) : Math.min(this._terrain.extentKm, CITY_EXTENT_KM) });
   }
 
   /** Largeur de la vue et point vise, pour l'echelle et les coordonnees de l'interface. */

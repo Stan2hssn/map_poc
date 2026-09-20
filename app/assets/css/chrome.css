@@ -56,6 +56,19 @@
   color: var(--ui-faint);
 }
 
+/* Voile de papier : l'interface se lit sur les hachures les plus denses. Repris des maquettes. */
+.chrome__veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(var(--ui-paper) / 0.78) 0%,
+    rgb(var(--ui-paper) / 0) 20%,
+    rgb(var(--ui-paper) / 0) 68%,
+    rgb(var(--ui-paper) / 0.86) 100%
+  );
+}
+
 /* ---- En-tete ---- */
 .chrome__head {
   position: absolute;
@@ -72,14 +85,17 @@
   display: flex;
   align-items: center;
   gap: 26px;
+  min-width: 0;
 }
 
 .chrome__wordmark {
+  flex: none;
   font: 500 1.125rem/1 var(--font-voice);
   letter-spacing: 0.34em;
 }
 
 .chrome__rule {
+  flex: none;
   width: 1px;
   height: 22px;
   background: rgb(var(--ui-ink) / 0.25);
@@ -89,46 +105,38 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
   font: 500 0.625rem/1 var(--font-map);
   letter-spacing: 0.35em;
   text-transform: uppercase;
+  color: var(--ui-faint);
+  white-space: nowrap;
 }
 
 .chrome__crumbs span {
-  color: var(--ui-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.chrome__crumb {
-  color: var(--ui-faint);
-  transition: color 160ms ease;
-}
-
-.chrome__crumb:hover,
-.chrome__crumb:focus-visible {
-  color: var(--ui-accent);
-}
-
-.chrome__crumb.is-active {
+/* Le dernier maillon est la ou l'on se trouve. */
+.chrome__crumbs .is-here {
   color: rgb(var(--ui-ink));
 }
 
-.chrome__tools {
-  display: flex;
-  align-items: center;
-  gap: 28px;
-}
-
-/* Champ a filet bas seul, comme un bordereau d'archive. */
+/* ---- Recherche ---- */
 .chrome__search {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 260px;
+  flex: none;
+  width: min(260px, 26vw);
   padding-bottom: 8px;
   border-bottom: 1px solid rgb(var(--ui-ink) / 0.35);
 }
 
-.chrome__search span {
+.chrome__search > span {
+  flex: none;
   width: 11px;
   height: 11px;
   border: 1px solid rgb(var(--ui-ink) / 0.55);
@@ -137,6 +145,7 @@
 
 .chrome__search input {
   width: 100%;
+  min-width: 0;
   border: 0;
   background: none;
   color: rgb(var(--ui-ink));
@@ -153,16 +162,36 @@
   outline: none;
 }
 
-.chrome__method {
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgb(var(--ui-ink) / 0.25);
-  font: 500 0.625rem/1 var(--font-map);
-  letter-spacing: 0.35em;
-  text-transform: uppercase;
-  color: rgb(var(--ui-ink) / 0.62);
+.chrome__hits {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  z-index: 1;
+  margin: 8px 0 0;
+  padding: 4px 0;
+  list-style: none;
+  background: rgb(var(--ui-paper) / 0.97);
+  border: 1px solid rgb(var(--ui-ink) / 0.2);
 }
 
-/* ---- Rail des quatre regards ---- */
+.chrome__hits button {
+  display: block;
+  width: 100%;
+  padding: 7px 12px;
+  text-align: left;
+  font: 500 0.6875rem/1 var(--font-map);
+  letter-spacing: 0.12em;
+  color: rgb(var(--ui-ink) / 0.8);
+  text-shadow: none;
+}
+
+.chrome__hits button:hover {
+  background: rgb(var(--ui-ink) / 0.06);
+  color: var(--ui-accent);
+}
+
+/* ---- Rail des niveaux ---- */
 .chrome__rail {
   position: absolute;
   top: 50%;
@@ -190,14 +219,10 @@
   transition: width 200ms ease, background 200ms ease;
 }
 
-.chrome__look.is-active i {
-  width: 30px;
-  background: rgb(var(--ui-ink));
-}
-
 .chrome__look b,
 .chrome__look em {
   font-style: normal;
+  transition: color 200ms ease;
 }
 
 .chrome__look b {
@@ -213,35 +238,51 @@
   color: var(--ui-mid);
 }
 
-.chrome__look.is-active b,
-.chrome__look.is-active em {
-  font-weight: 600;
+.chrome__look:hover b,
+.chrome__look:hover em {
   color: rgb(var(--ui-ink));
 }
 
-.chrome__look[disabled] {
-  cursor: default;
+/* Le niveau affiche porte l'accent : c'est le seul endroit de l'interface ou il sert, avec le survol. */
+.chrome__look.is-active i {
+  width: 30px;
+  background: var(--ui-accent);
 }
 
-/* ---- Releves ---- */
-.chrome__survey {
+.chrome__look.is-active b,
+.chrome__look.is-active em {
+  font-weight: 600;
+  color: var(--ui-accent);
+}
+
+/* ---- Pied : une seule rangee, les blocs se serrent au lieu de se chevaucher ---- */
+.chrome__foot {
   position: absolute;
+  right: 44px;
   bottom: 34px;
   left: 44px;
   display: flex;
   align-items: flex-end;
-  gap: 34px;
+  justify-content: space-between;
+  gap: clamp(16px, 3vw, 48px);
+}
+
+.chrome__survey {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(14px, 2vw, 34px);
+  min-width: 0;
 }
 
 .chrome__scale {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: none;
 }
 
 .chrome__scale div:last-child {
   display: flex;
-  width: 148px;
   height: 6px;
   border: 1px solid rgb(var(--ui-ink) / 0.55);
   border-top: 0;
@@ -259,55 +300,71 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex: none;
   font: 500 0.625rem/1.5 var(--font-map);
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: rgb(var(--ui-ink) / 0.62);
 }
 
-.chrome__compass {
+.chrome__legend {
   display: flex;
   flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.chrome__legend > div {
+  display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 18px;
+  font: 500 0.625rem/1 var(--font-map);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ui-mid);
+  white-space: nowrap;
 }
 
-.chrome__compass b {
-  font: 600 0.625rem/1 var(--font-map);
-  letter-spacing: 0.2em;
-  color: rgb(var(--ui-ink) / 0.7);
+.chrome__legend span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
 }
 
-.chrome__compass i {
-  width: 1px;
-  height: 22px;
-  background: rgb(var(--ui-ink) / 0.45);
+.chrome__legend i {
+  flex: none;
+  width: 8px;
+  height: 8px;
 }
 
-.chrome__compass s {
-  width: 20px;
-  height: 20px;
-  margin-top: -32px;
-  border: 1px solid rgb(var(--ui-ink) / 0.3);
-  border-radius: 50%;
+.chrome__legend i.is-donnee {
+  background: rgb(var(--ui-ink));
+}
+
+.chrome__legend i.is-interpretation {
+  border: 1px solid rgb(var(--ui-ink) / 0.7);
+}
+
+.chrome__legend i.is-opinion {
+  border: 1px solid rgb(var(--ui-ink) / 0.4);
+  background-image: repeating-linear-gradient(45deg, rgb(var(--ui-ink) / 0.8) 0 1px, transparent 1px 3px);
 }
 
 /* ---- Frise ---- */
 .chrome__timeline {
-  position: absolute;
-  bottom: 34px;
-  left: 50%;
   display: flex;
   flex-direction: column;
   gap: 9px;
-  width: min(660px, 42vw);
-  translate: -50% 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 660px;
 }
 
 .chrome__timeline header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  gap: 12px;
 }
 
 .chrome__live {
@@ -318,6 +375,7 @@
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: var(--ui-accent);
+  white-space: nowrap;
 }
 
 .chrome__live i {
@@ -334,12 +392,24 @@
   height: 46px;
 }
 
-.chrome__bars i {
+.chrome__bars button {
   flex: 1;
+  min-width: 0;
   background-image: repeating-linear-gradient(45deg, rgb(var(--ui-ink) / 0.75) 0 1px, transparent 1px 3px);
+  transition: opacity 180ms ease;
 }
 
-.chrome__bars i.is-live {
+.chrome__bars button.is-live {
+  background-image: repeating-linear-gradient(45deg, var(--ui-accent) 0 1px, transparent 1px 3px);
+}
+
+/* Hors de la periode retenue, la barre s'efface sans disparaitre. */
+.chrome__bars button.is-out {
+  opacity: 0.28;
+}
+
+.chrome__bars button:hover {
+  opacity: 1;
   background-image: repeating-linear-gradient(45deg, var(--ui-accent) 0 1px, transparent 1px 3px);
 }
 
@@ -358,19 +428,13 @@
   color: rgb(var(--ui-ink) / 0.62);
 }
 
-.chrome__decades span:last-child {
+.chrome__decades .is-live {
   color: var(--ui-accent);
 }
 
 /* ---- Attribution ---- */
 .chrome__credit {
-  position: absolute;
-  right: 44px;
-  bottom: 34px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
+  flex: none;
   text-align: right;
   font: 500 0.5625rem/1.6 var(--font-map);
   letter-spacing: 0.2em;
@@ -378,95 +442,37 @@
   color: var(--ui-faint);
 }
 
-.chrome__loading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  letter-spacing: 0.24em;
+/* Les blocs cedent dans cet ordre : la legende, puis la frise, puis le rail. */
+@media (max-width: 1500px) {
+  .chrome__legend {
+    display: none;
+  }
 }
 
-.chrome__loading i {
-  width: 22px;
-  height: 3px;
-  background-image: repeating-linear-gradient(45deg, rgb(var(--ui-ink) / 0.6) 0 1px, transparent 1px 3px);
-}
-
-/* La frise tient entre les releves et l'attribution : sous cette largeur, les trois se chevauchent. */
-@media (max-width: 1280px) {
+@media (max-width: 1150px) {
   .chrome__timeline {
     display: none;
   }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 900px) {
   .chrome__rail {
     display: none;
   }
-}
 
-@media (max-width: 900px) {
-  .chrome__head {
+  .chrome__head,
+  .chrome__foot {
     right: 20px;
     left: 20px;
-  }
-
-  .chrome__search {
-    width: 140px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .chrome,
   .chrome__look i,
-  .chrome__crumb {
+  .chrome__look b,
+  .chrome__look em,
+  .chrome__bars button {
     transition: none;
-  }
-}
-
-/* ---- Legende des trois statuts (ecran 04) ---- */
-.chrome__legend {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.chrome__legend > div {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  font: 500 0.625rem/1 var(--font-map);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ui-mid);
-}
-
-.chrome__legend span {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.chrome__legend i {
-  width: 8px;
-  height: 8px;
-}
-
-.chrome__legend i.is-donnee {
-  background: rgb(var(--ui-ink));
-}
-
-.chrome__legend i.is-interpretation {
-  border: 1px solid rgb(var(--ui-ink) / 0.7);
-}
-
-.chrome__legend i.is-opinion {
-  border: 1px solid rgb(var(--ui-ink) / 0.4);
-  background-image: repeating-linear-gradient(45deg, rgb(var(--ui-ink) / 0.8) 0 1px, transparent 1px 3px);
-}
-
-/* La legende demande de la place : elle cede avant les releves. */
-@media (max-width: 1100px) {
-  .chrome__legend {
-    display: none;
   }
 }

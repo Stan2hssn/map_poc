@@ -26,6 +26,8 @@ export interface SdfFont {
   disc: Glyph;
   /** Demi-largeur du degrade, en cadratins : le shader y adoucit le bord. */
   spread: number;
+  /** Hauteur des capitales, en cadratins : la case d'un glyphe est plus haute que son dessin. */
+  cap: number;
 }
 
 /** Taille de rendu d'un caractere (px) et marge autour, ou le champ de distance s'etale. */
@@ -59,6 +61,10 @@ export function createSdfFont(family: string, weight = 600, characters = CHARSET
   context.font = `${weight} ${SIZE}px ${family}`;
   context.textBaseline = "alphabetic";
   context.fillStyle = "#fff";
+
+  // La case porte la marge du champ de distance et toute la hampe : pour cerner un nom en capitales, c'est
+  // la hauteur du H qu'il faut, pas celle de la case.
+  const cap = context.measureText("H").actualBoundingBoxAscent / SIZE;
 
   const boxes: { char: string; column: number; row: number; metrics: TextMetrics }[] = [];
   characters.split("").forEach((char, index) => {
@@ -120,6 +126,7 @@ export function createSdfFont(family: string, weight = 600, characters = CHARSET
     solid: cellGlyph(solidColumn, solidRow, PAD),
     disc: cellGlyph(discColumn, discRow, 0),
     spread: PAD / SIZE,
+    cap,
   };
 }
 

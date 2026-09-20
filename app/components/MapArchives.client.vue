@@ -51,38 +51,90 @@ const SAMPLE: Entry[] = [
   },
 ]
 
+/** Le panneau se range quand le territoire quitte la vue : on ne lit pas Lyon en regardant Marseille. */
+const AWAY = 1.2
+/** Duree du comptage des chiffres, et retard entre deux entrees qui apparaissent. */
+const COUNT_MS = 900
+const STEP_MS = 90
+
 const place = ref<SelectedPlace | null>(null)
 const tab = ref(TABS[0])
+const shown = ref(false)
+const archives = ref(0)
 let unsubscribe: (() => void) | null = null
+let watcher = 0
+let counting = 0
 
 /** Le panneau est un aperçu : le fonds complet n'existe pas encore, ces chiffres sont ceux de la maquette. */
-const counts = { archives: '318', period: '1961 · 2026', media: '14' }
+const counts = { archives: 318, period: '1961 · 2026', media: '14' }
+
+function navigator() {
+  const universes = useThreeStage().read()?.runtime.output.getActiveUniverses() ?? []
+  return universes.find(isMapNavigator) ?? null
+}
+
+/** Les chiffres se remplissent plutot que d'apparaitre : le fonds se compte sous les yeux. */
+function count() {
+  const start = performance.now()
+  cancelAnimationFrame(counting)
+  const step = () => {
+    const t = Math.min(1, (performance.now() - start) / COUNT_MS)
+    archives.value = Math.round(counts.archives * (1 - (1 - t) ** 3))
+    if (t < 1) counting = requestAnimationFrame(step)
+  }
+  counting = requestAnimationFrame(step)
+}
 
 function open(next: SelectedPlace) {
   place.value = next
   tab.value = TABS[0]
+  shown.value = false
+  archives.value = 0
+  // L'etat d'entree est pose sur une image, sinon la transition est sautee.
+  requestAnimationFrame(() => {
+    shown.value = true
+    count()
+  })
+}
+
+function close() {
+  shown.value = false
+  place.value = null
+}
+
+/** Le territoire est-il encore sous les yeux ? Sinon, le panneau se range tout seul. */
+function watch() {
+  const at = navigator()?.readout()
+  const here = place.value
+  if (!at || !here) return
+  const away = Math.hypot((here.lon - at.lon) * Math.cos((at.lat * Math.PI) / 180), here.lat - at.lat) * 111.32
+  if (away > at.extentKm * AWAY) close()
 }
 
 onMounted(() => {
-  const universes = useThreeStage().read()?.runtime.output.getActiveUniverses() ?? []
-  unsubscribe = universes.find(isMapNavigator)?.onPlaceSelected(open) ?? null
+  unsubscribe = navigator()?.onPlaceSelected(open) ?? null
+  watcher = window.setInterval(watch, 400)
 })
 
-onBeforeUnmount(() => unsubscribe?.())
+onBeforeUnmount(() => {
+  unsubscribe?.()
+  clearInterval(watcher)
+  cancelAnimationFrame(counting)
+})
 
 defineExpose({ place })
 </script>
 
 <template>
-  <aside v-if="place" class="fonds" aria-label="Fonds du territoire">
+  <aside v-if="place" class="fonds" :class="{ 'is-shown': shown }" aria-label="Fonds du territoire">
     <header class="fonds__head">
       <div class="fonds__top">
         <span class="fonds__code">Fonds {{ place.name.slice(0, 3).toUpperCase() }}-012</span>
-        <button type="button" class="fonds__close" aria-label="Fermer le fonds" @click="place = null">×</button>
+        <button type="button" class="fonds__close" aria-label="Fermer le fonds" @click="close">×</button>
       </div>
       <h2 class="fonds__name">{{ place.name }}</h2>
       <div class="fonds__figures">
-        <div><span>Archives</span><b>{{ counts.archives }}</b></div>
+        <div><span>Archives</span><b>{{ archives }}</b></div>
         <div><span>Période</span><b>{{ counts.period }}</b></div>
         <div><span>Médias</span><b>{{ counts.media }}</b></div>
       </div>
@@ -104,7 +156,12 @@ defineExpose({ place })
     </nav>
 
     <ol class="fonds__list">
-      <li v-for="entry in SAMPLE" :key="entry.title" :class="{ 'is-shaded': entry.status === 'interpretation' }">
+      <li
+        v-for="(entry, i) in SAMPLE"
+        :key="entry.title"
+        :class="{ 'is-shaded': entry.status === 'interpretation' }"
+        :style="{ '--delay': `${220 + i * STEP_MS}ms` }"
+      >
         <div class="fonds__meta" :class="{ 'is-live': entry.status === 'vivante' }">
           <i :class="`is-${entry.status}`" />
           <span>{{ entry.date }}</span>
@@ -137,6 +194,75 @@ defineExpose({ place })
   border-left: 1px solid rgb(var(--ui-ink) / 0.3);
   color: rgb(var(--ui-ink));
   pointer-events: auto;
+  /* Le panneau arrive en coulissant, derriere un rideau de lignes comme celles du plan. */
+  translate: 12px 0;
+  opacity: 0;
+  transition: translate 620ms cubic-bezier(0.16, 1, 0.3, 1), opacity 420ms ease;
+}
+
+.fonds.is-shown {
+  translate: 0 0;
+  opacity: 1;
+}
+
+/* Rideau : des lignes a 45 degres qui balaient le panneau a l'ouverture, puis s'effacent. */
+.fonds::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-image: repeating-linear-gradient(45deg, rgb(var(--ui-ink) / 0.5) 0 1px, transparent 1px 5px);
+  opacity: 0.85;
+  transition: opacity 700ms ease 120ms, clip-path 760ms cubic-bezier(0.16, 1, 0.3, 1);
+  clip-path: inset(0 0 0 0);
+  pointer-events: none;
+}
+
+.fonds.is-shown::before {
+  opacity: 0;
+  clip-path: inset(0 0 100% 0);
+}
+
+/* Chaque entree monte a son tour : le fonds se depose, il ne surgit pas. */
+.fonds__list li,
+.fonds__head,
+.fonds__tabs,
+.fonds__foot {
+  translate: 0 10px;
+  opacity: 0;
+  transition: translate 560ms cubic-bezier(0.16, 1, 0.3, 1) var(--delay, 0ms),
+    opacity 460ms ease var(--delay, 0ms);
+}
+
+.fonds__head {
+  --delay: 60ms;
+}
+
+.fonds__tabs {
+  --delay: 140ms;
+}
+
+.fonds__foot {
+  --delay: 520ms;
+}
+
+.fonds.is-shown .fonds__list li,
+.fonds.is-shown .fonds__head,
+.fonds.is-shown .fonds__tabs,
+.fonds.is-shown .fonds__foot {
+  translate: 0 0;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fonds,
+  .fonds::before,
+  .fonds__list li,
+  .fonds__head,
+  .fonds__tabs,
+  .fonds__foot {
+    transition: none;
+  }
 }
 
 .fonds__head {
