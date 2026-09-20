@@ -1,5 +1,12 @@
 import type { MapFocusId } from "@graphics/config/focus.config.ts";
 
+/** Lieu choisi sur la carte, tel que l'interface en a besoin. */
+export interface SelectedPlace {
+  name: string;
+  lon: number;
+  lat: number;
+}
+
 export interface MapView {
   lon: number;
   lat: number;
@@ -14,6 +21,8 @@ export default interface IMapNavigator {
   setFocus(focus: MapFocusId): void;
   /** Releves affiches par l'interface : largeur de la vue et point vise. */
   readout(): { extentKm: number; lon: number; lat: number };
+  /** Prevenu quand un nom de la carte est choisi ; rend de quoi se desabonner. */
+  onPlaceSelected(listener: (place: SelectedPlace) => void): () => void;
   /** Rien n'est dessine : la page reste blanche pendant que la carte se charge. */
   holdIntro(): void;
   /** La carte se dessine en s'ouvrant, et vole vers `view` si elle est donnee. */

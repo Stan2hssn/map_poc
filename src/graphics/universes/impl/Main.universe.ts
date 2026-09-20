@@ -23,7 +23,7 @@ import { TerrainNode } from "@graphics/nodes/terrain/Terrain.node.ts";
 import { EffectComposer, EffectPass, InkEffect, inkSettings, newsprintMap, OverlayPass, RenderPass } from "@graphics/postprocessing/index.ts";
 import { IgnElevationProvider } from "@graphics/terrain/IgnElevationProvider.ts";
 import type IMapNavigator from "@graphics/universes/MapNavigator.interface.ts";
-import type { MapView } from "@graphics/universes/MapNavigator.interface.ts";
+import type { MapView, SelectedPlace } from "@graphics/universes/MapNavigator.interface.ts";
 import { Color, Matrix4, Scene, type Camera, type Texture } from "three";
 import type { WebGPURenderer } from "three/webgpu";
 import type { UniverseId } from "../Universe.id.ts";
@@ -122,6 +122,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
    * navigation) qui l'ouvre.
    */
   private readonly _intro = { reveal: 0, target: 0 };
+  private readonly _selectionListeners = new Set<(place: SelectedPlace) => void>();
 
   constructor(device: IThreeDeviceSlice) {
     const scene = new Scene();
@@ -182,9 +183,10 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     terrain.projectFrom = () => cameraNode.camera;
     terrain.lookAxis = (into) => cameraNode.lookAxis(into);
     // Un nom de ville clique : vol jusqu'a elle, bati en relief, sans reculer si l'on est deja plus pres.
-    this._labels = new Labels3DNode(device.renderer.domElement, terrain, () => this.camera as Camera, ({ lon, lat }) =>
-      terrain.flyTo({ lon, lat, extentKm: Math.min(terrain.extentKm, CITY_EXTENT_KM) }),
-    );
+    this._labels = new Labels3DNode(device.renderer.domElement, terrain, () => this.camera as Camera, ({ name, lon, lat }) => {
+      terrain.flyTo({ lon, lat, extentKm: Math.min(terrain.extentKm, CITY_EXTENT_KM) });
+      for (const listener of this._selectionListeners) listener({ name, lon, lat });
+    });
     this._survey = new SurveyNode(terrain, device.renderer.domElement, () => this.camera as Camera);
     this._buildings = new BuildingsNode(terrain);
     // map tourne sur WebGPURenderer (WebGPU ou son repli WebGL2).
@@ -215,6 +217,12 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   /** Niveau nomme par la carte : communes, departements ou regions (onglets de focus). */
   setFocus(focus: MapFocusId): void {
     this._labels.setFocus(focus);
+  }
+
+  /** Interface prevenue du lieu choisi : elle ouvre son fonds et complete son fil d'Ariane. */
+  onPlaceSelected(listener: (place: SelectedPlace) => void): () => void {
+    this._selectionListeners.add(listener);
+    return () => this._selectionListeners.delete(listener);
   }
 
   /** Largeur de la vue et point vise, pour l'echelle et les coordonnees de l'interface. */

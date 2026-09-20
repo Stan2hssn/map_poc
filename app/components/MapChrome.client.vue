@@ -8,7 +8,7 @@
  */
 import { MAP_VIEWS } from '@graphics/config/views.config.ts'
 import type { MapFocusId } from '@graphics/config/focus.config.ts'
-import { isMapNavigator } from '@graphics/universes/MapNavigator.interface.ts'
+import { isMapNavigator, type SelectedPlace } from '@graphics/universes/MapNavigator.interface.ts'
 
 /** Longueur visee de la barre d'echelle, en pixels. */
 const SCALE_PX = 148
@@ -18,16 +18,16 @@ const READ_MS = 200
 const BARS = [22, 31, 26, 44, 38, 57, 49, 68, 61, 83, 72, 94, 78, 100]
 const DECADES = ['1958', '1970', '1981', '1995', '2007', '2017', '2027']
 const LOOKS = [
-  { rank: '01', label: 'Mediatique', ready: true },
+  { rank: '01', label: 'Médiatique', ready: true },
   { rank: '02', label: 'Municipale', ready: false },
-  { rank: '03', label: 'Europeenne', ready: false },
-  { rank: '04', label: 'Presidentielle', ready: false },
+  { rank: '03', label: 'Européenne', ready: false },
+  { rank: '04', label: 'Présidentielle', ready: false },
 ]
 /** Fil d'Ariane : le niveau de focus que chaque entree demande. `null` : retour a la vue France. */
 const CRUMBS: { label: string; focus: MapFocusId | null }[] = [
   { label: 'France', focus: null },
-  { label: 'Region', focus: 'regions' },
-  { label: 'Departement', focus: 'departements' },
+  { label: 'Région', focus: 'regions' },
+  { label: 'Département', focus: 'departements' },
   { label: 'Ville', focus: 'communes' },
 ]
 
@@ -35,7 +35,10 @@ const focus = ref<MapFocusId | null>(null)
 const scale = ref({ label: '', width: SCALE_PX })
 const coords = ref({ lat: '', lon: '' })
 const query = ref('')
+/** Territoire choisi : il complete le fil d'Ariane a la place du niveau Ville. */
+const chosen = ref<SelectedPlace | null>(null)
 let timer = 0
+let unsubscribe: (() => void) | null = null
 
 function navigator() {
   const universes = useThreeStage().read()?.runtime.output.getActiveUniverses() ?? []
@@ -44,8 +47,13 @@ function navigator() {
 
 function go(crumb: (typeof CRUMBS)[number]) {
   focus.value = crumb.focus
+  chosen.value = null
   if (!crumb.focus) navigator()?.flyTo(MAP_VIEWS.france)
   else navigator()?.setFocus(crumb.focus)
+}
+
+function labelOf(crumb: (typeof CRUMBS)[number]) {
+  return crumb.focus === 'communes' && chosen.value ? chosen.value.name : crumb.label
 }
 
 /** Distance ronde (1, 2 ou 5 fois une puissance de dix) la plus proche de `SCALE_PX` a l'ecran. */
@@ -77,9 +85,16 @@ function read() {
 onMounted(() => {
   read()
   timer = window.setInterval(read, READ_MS)
+  unsubscribe = navigator()?.onPlaceSelected((place) => {
+    chosen.value = place
+    focus.value = 'communes'
+  }) ?? null
 })
 
-onBeforeUnmount(() => clearInterval(timer))
+onBeforeUnmount(() => {
+  clearInterval(timer)
+  unsubscribe?.()
+})
 </script>
 
 <template>
@@ -98,7 +113,7 @@ onBeforeUnmount(() => clearInterval(timer))
               :aria-current="focus === crumb.focus ? 'true' : undefined"
               @click="go(crumb)"
             >
-              {{ crumb.label }}
+              {{ labelOf(crumb) }}
             </button>
           </template>
         </nav>
@@ -109,7 +124,7 @@ onBeforeUnmount(() => clearInterval(timer))
           <span />
           <input v-model="query" type="search" placeholder="Chercher un territoire" aria-label="Chercher un territoire">
         </label>
-        <div class="chrome__method">Methode</div>
+        <div class="chrome__method">Méthode</div>
       </div>
     </header>
 
@@ -142,6 +157,14 @@ onBeforeUnmount(() => clearInterval(timer))
         <b>N</b>
         <i />
         <s />
+      </div>
+      <div class="chrome__legend">
+        <div class="chrome__tech">Légende</div>
+        <div>
+          <span><i class="is-donnee" />Donnée</span>
+          <span><i class="is-interpretation" />Interprétation</span>
+          <span><i class="is-opinion" />Opinion</span>
+        </div>
       </div>
     </div>
 

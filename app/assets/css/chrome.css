@@ -422,3 +422,51 @@
     transition: none;
   }
 }
+
+/* ---- Legende des trois statuts (ecran 04) ---- */
+.chrome__legend {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.chrome__legend > div {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font: 500 0.625rem/1 var(--font-map);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ui-mid);
+}
+
+.chrome__legend span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.chrome__legend i {
+  width: 8px;
+  height: 8px;
+}
+
+.chrome__legend i.is-donnee {
+  background: rgb(var(--ui-ink));
+}
+
+.chrome__legend i.is-interpretation {
+  border: 1px solid rgb(var(--ui-ink) / 0.7);
+}
+
+.chrome__legend i.is-opinion {
+  border: 1px solid rgb(var(--ui-ink) / 0.4);
+  background-image: repeating-linear-gradient(45deg, rgb(var(--ui-ink) / 0.8) 0 1px, transparent 1px 3px);
+}
+
+/* La legende demande de la place : elle cede avant les releves. */
+@media (max-width: 1100px) {
+  .chrome__legend {
+    display: none;
+  }
+}
