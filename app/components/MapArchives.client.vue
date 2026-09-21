@@ -53,17 +53,28 @@ const SAMPLE: Entry[] = [
 
 /** Le panneau se range quand le territoire quitte la vue : on ne lit pas Lyon en regardant Marseille. */
 const AWAY = 1.2
-/** Duree du comptage des chiffres, et retard entre deux entrees qui apparaissent. */
+/** Duree du comptage des chiffres. */
 const COUNT_MS = 900
-const STEP_MS = 90
+/**
+ * Duree de l'effacement de la feuille (`PanelNode`, `ERASE_MS`) : le panneau reste monte jusqu'au bout, sinon
+ * son texte disparaitrait d'un coup sous une feuille qui se consume encore.
+ */
+const LEAVE_MS = 700
+/** Changement de territoire, panneau ouvert : la feuille reste, le texte se reecrit en cette duree. */
+const SWAP_MS = 700
+/** Seuil d'ecriture de chaque bloc : il apparait quand la feuille en est la (`--fonds-reveal`). */
+const AT = { head: 0.22, tabs: 0.34, list: 0.42, step: 0.07, foot: 0.72 }
 
 const place = ref<SelectedPlace | null>(null)
 const tab = ref(TABS[0])
-const shown = ref(false)
+const leaving = ref(false)
 const archives = ref(0)
+const panel = ref<HTMLElement | null>(null)
 let unsubscribe: (() => void) | null = null
 let watcher = 0
 let counting = 0
+let swapping = 0
+let unmount = 0
 
 /** Le panneau est un aperçu : le fonds complet n'existe pas encore, ces chiffres sont ceux de la maquette. */
 const counts = { archives: 318, period: '1961 · 2026', media: '14' }
@@ -85,31 +96,53 @@ function count() {
   counting = requestAnimationFrame(step)
 }
 
-function open(next: SelectedPlace) {
-  place.value = next
-  tab.value = TABS[0]
-  shown.value = false
-  archives.value = 0
-  // L'etat d'entree est pose sur une image, sinon la transition est sautee.
-  requestAnimationFrame(() => {
-    shown.value = true
-    count()
-  })
+/** Le texte se reecrit sans que la feuille ne bouge : `--swap` remonte de 0 a 1, et borne l'ecriture. */
+function swap() {
+  const start = performance.now()
+  cancelAnimationFrame(swapping)
+  const step = () => {
+    const t = Math.min(1, (performance.now() - start) / SWAP_MS)
+    panel.value?.style.setProperty('--swap', t.toFixed(3))
+    if (t < 1) swapping = requestAnimationFrame(step)
+  }
+  swapping = requestAnimationFrame(step)
 }
 
+function open(next: SelectedPlace) {
+  const wasOpen = !!place.value && !leaving.value
+  clearTimeout(unmount)
+  leaving.value = false
+  place.value = next
+  tab.value = TABS[0]
+  archives.value = 0
+  count()
+  if (wasOpen) swap()
+}
+
+/** La feuille se consume, puis le panneau s'en va : jusque-la il reste monte, son texte s'efface avec elle. */
 function close() {
-  shown.value = false
-  place.value = null
+  if (!place.value || leaving.value) return
+  leaving.value = true
+  clearTimeout(unmount)
+  unmount = window.setTimeout(() => {
+    place.value = null
+    leaving.value = false
+  }, LEAVE_MS)
 }
 
 /** Le territoire est-il encore sous les yeux ? Sinon, le panneau se range tout seul. */
 function watch() {
   const at = navigator()?.readout()
   const here = place.value
-  if (!at || !here) return
+  // En vol, la vue se resserre avant d'arriver : le lieu vise parait loin alors qu'on y va.
+  if (!at || !here || at.flying) return
   const away = Math.hypot((here.lon - at.lon) * Math.cos((at.lat * Math.PI) / 180), here.lat - at.lat) * 111.32
   if (away > at.extentKm * AWAY) close()
 }
+
+// L'interface se range a gauche du panneau tant qu'il est la (`chrome.css`) ; elle ne revient qu'une fois la
+// feuille consumee, sinon elle s'ecrirait par-dessus.
+watchEffect(() => document.documentElement.toggleAttribute('data-fonds-open', !!place.value))
 
 onMounted(() => {
   unsubscribe = navigator()?.onPlaceSelected(open) ?? null
@@ -117,17 +150,27 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  document.documentElement.removeAttribute('data-fonds-open')
   unsubscribe?.()
   clearInterval(watcher)
+  clearTimeout(unmount)
   cancelAnimationFrame(counting)
+  cancelAnimationFrame(swapping)
 })
 
 defineExpose({ place })
 </script>
 
 <template>
-  <aside v-if="place" data-fonds class="fonds" :class="{ 'is-shown': shown }" aria-label="Fonds du territoire">
-    <header class="fonds__head">
+  <aside
+    v-if="place"
+    ref="panel"
+    data-fonds
+    :data-state="leaving ? 'leave' : 'enter'"
+    class="fonds"
+    aria-label="Fonds du territoire"
+  >
+    <header class="fonds__head" :style="{ '--at': AT.head }">
       <div class="fonds__top">
         <span class="fonds__code">Fonds {{ place.name.slice(0, 3).toUpperCase() }}-012</span>
         <button type="button" class="fonds__close" aria-label="Fermer le fonds" @click="close">×</button>
@@ -140,7 +183,7 @@ defineExpose({ place })
       </div>
     </header>
 
-    <nav class="fonds__tabs" aria-label="Type d'archive">
+    <nav class="fonds__tabs" aria-label="Type d'archive" :style="{ '--at': AT.tabs }">
       <div>
         <button
           v-for="name in TABS"
@@ -160,7 +203,7 @@ defineExpose({ place })
         v-for="(entry, i) in SAMPLE"
         :key="entry.title"
         :class="{ 'is-shaded': entry.status === 'interpretation' }"
-        :style="{ '--delay': `${220 + i * STEP_MS}ms` }"
+        :style="{ '--at': AT.list + i * AT.step }"
       >
         <div class="fonds__meta" :class="{ 'is-live': entry.status === 'vivante' }">
           <i :class="`is-${entry.status}`" />
@@ -173,7 +216,7 @@ defineExpose({ place })
       </li>
     </ol>
 
-    <footer class="fonds__foot">
+    <footer class="fonds__foot" :style="{ '--at': AT.foot }">
       <span>{{ SAMPLE.length }} de {{ counts.archives }}</span>
       <span class="fonds__all">Tout le fonds<i /></span>
     </footer>
@@ -189,72 +232,24 @@ defineExpose({ place })
   z-index: 5;
   display: flex;
   flex-direction: column;
-  width: min(452px, 92vw);
-  background: rgb(var(--ui-paper) / 0.97);
-  border-left: 1px solid rgb(var(--ui-ink) / 0.3);
+  width: var(--fonds-width);
   color: rgb(var(--ui-ink));
   pointer-events: auto;
-  /* Le panneau arrive en coulissant, derriere un rideau de lignes comme celles du plan. */
-  translate: 12px 0;
-  opacity: 0;
-  transition: translate 620ms cubic-bezier(0.16, 1, 0.3, 1), opacity 420ms ease;
-}
-
-.fonds.is-shown {
-  translate: 0 0;
-  opacity: 1;
 }
 
 /*
- * Le rideau d'ouverture n'est plus en CSS : c'est un plan WebGL cale sur ce rectangle (`PanelNode`), qui se
- * retire par taches. Il ecrit `--fonds-reveal` ici, et le contenu apparait derriere lui.
+ * Pas de fond ni de bordure ici : la feuille est un plan WebGL cale sur ce rectangle (`PanelNode`), qui s'ecrit
+ * par taches avec un bord d'encre et se consume a la fermeture. Il pose `--fonds-reveal` sur cet element ;
+ * chaque bloc s'ecrit quand le front atteint son seuil (`--at`), et s'efface de meme. `--swap` fait reecrire
+ * le texte quand on change de territoire sans refermer.
  */
-/* Chaque entree monte a son tour, derriere le rideau : le fonds se depose, il ne surgit pas. */
 .fonds__list li,
 .fonds__head,
 .fonds__tabs,
 .fonds__foot {
-  translate: 0 10px;
-  opacity: 0;
-  transition: translate 560ms cubic-bezier(0.16, 1, 0.3, 1) var(--delay, 0ms),
-    opacity 460ms ease var(--delay, 0ms);
-}
-
-/* Le fond du panneau se pose au rythme du rideau, pas avant : sinon on le voit arriver sous lui. */
-.fonds {
-  background: rgb(var(--ui-paper) / calc(0.97 * var(--fonds-reveal, 0)));
-  border-left-color: rgb(var(--ui-ink) / calc(0.3 * var(--fonds-reveal, 0)));
-}
-
-.fonds__head {
-  --delay: 60ms;
-}
-
-.fonds__tabs {
-  --delay: 140ms;
-}
-
-.fonds__foot {
-  --delay: 520ms;
-}
-
-.fonds.is-shown .fonds__list li,
-.fonds.is-shown .fonds__head,
-.fonds.is-shown .fonds__tabs,
-.fonds.is-shown .fonds__foot {
-  translate: 0 0;
-  opacity: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .fonds,
-  .fonds::before,
-  .fonds__list li,
-  .fonds__head,
-  .fonds__tabs,
-  .fonds__foot {
-    transition: none;
-  }
+  --in: clamp(0, calc((min(var(--fonds-reveal, 0), var(--swap, 1)) - var(--at, 0)) * 6), 1);
+  opacity: var(--in);
+  translate: 0 calc((1 - var(--in)) * 10px);
 }
 
 .fonds__head {

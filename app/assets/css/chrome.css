@@ -14,6 +14,8 @@
   /* Sous 0,58, les petits caracteres ne tiennent plus sur les hachures. */
   --ui-faint: rgb(var(--ui-ink) / 0.58);
   --ui-mid: rgb(var(--ui-ink) / 0.66);
+  /* Largeur du panneau d'archives : l'interface lui laisse la place quand il est ouvert. */
+  --fonds-width: min(452px, 92vw);
 }
 
 .chrome {
@@ -253,6 +255,20 @@
 .chrome__look.is-active em {
   font-weight: 600;
   color: var(--ui-accent);
+}
+
+/*
+ * Panneau ouvert : sa feuille est dessinee dans le rendu, sous tout le HTML ; l'en-tete et le pied se retirent
+ * a sa gauche plutot que de s'ecrire par-dessus lui.
+ */
+.chrome__head,
+.chrome__foot {
+  transition: right 620ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root[data-fonds-open] .chrome__head,
+:root[data-fonds-open] .chrome__foot {
+  right: calc(var(--fonds-width) + 32px);
 }
 
 /* ---- Pied : une seule rangee, les blocs se serrent au lieu de se chevaucher ---- */

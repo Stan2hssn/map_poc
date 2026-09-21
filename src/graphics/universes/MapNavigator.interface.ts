@@ -19,8 +19,8 @@ export default interface IMapNavigator {
   flyTo(view: MapView): void;
   /** Niveau nomme par la carte : communes, departements ou regions. */
   setFocus(focus: MapFocusId): void;
-  /** Releves affiches par l'interface : largeur de la vue et point vise. */
-  readout(): { extentKm: number; lon: number; lat: number };
+  /** Releves affiches par l'interface : largeur de la vue, point vise, et si un vol est en cours. */
+  readout(): { extentKm: number; lon: number; lat: number; flying: boolean };
   /** Prevenu quand un nom de la carte est choisi ; rend de quoi se desabonner. */
   onPlaceSelected(listener: (place: SelectedPlace) => void): () => void;
   /** Lieux du niveau courant dont le nom approche `query`, pour la recherche de l'interface. */

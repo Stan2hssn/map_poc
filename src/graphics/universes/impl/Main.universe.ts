@@ -273,9 +273,9 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   }
 
   /** Largeur de la vue et point vise, pour l'echelle et les coordonnees de l'interface. */
-  readout(): { extentKm: number; lon: number; lat: number } {
+  readout(): { extentKm: number; lon: number; lat: number; flying: boolean } {
     const { west, east, south, north } = this._terrain.bounds;
-    return { extentKm: this._terrain.extentKm, lon: (west + east) / 2, lat: (south + north) / 2 };
+    return { extentKm: this._terrain.extentKm, lon: (west + east) / 2, lat: (south + north) / 2, flying: this._terrain.flying };
   }
 
   /** L'experience peut partir : le mot de l'intro prend toute son encre. */
