@@ -19,8 +19,6 @@ import type { Node } from "three/webgpu";
 export const inkSettings = {
   /** 0 : image telle quelle (carte de nuit), 1 : dessin. */
   amount: uniform(1),
-  /** Part dessinee de la page (intro) : a 0, il ne reste que le papier nu, sans journal ni nuages. */
-  reveal: uniform(1),
   paper: uniform(new Color(0xf1ece0)),
   ink: uniform(new Color(0x1d2a4d)),
   /** Encre du lieu tenu sous la souris : son trait passe au rouge (marque posee par le sol, voir `HOVER_BAND`). */

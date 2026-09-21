@@ -1,6 +1,5 @@
 import { Object3DNodeBase } from "@_core/nodes/object3d/Object3DNode.base.ts";
 import { createLabelMaterial, pixelScale } from "@graphics/materials/Label.material.ts";
-import { pageErased, terrainSettings } from "@graphics/materials/Terrain.material.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import { createSdfFont, type SdfFont } from "@graphics/text/SdfFont.ts";
 import {
@@ -15,7 +14,8 @@ import {
   type Camera,
   type PerspectiveCamera,
 } from "three";
-import { cameraPosition, positionWorld, uniform } from "three/tsl";
+import { uniform } from "three/tsl";
+import { mapUncovered, pageTransition } from "@graphics/postprocessing/effects/PageTransition.ts";
 import type { MeshBasicNodeMaterial } from "three/webgpu";
 
 /** Distance des plans devant la camera (unites de scene) : quelconque, l'echelle la compense. */
@@ -31,8 +31,6 @@ const READY_RADIUS = 44;
 const WORD_ALPHA = { waiting: 0.4, ready: 1 };
 const ALPHA_PER_S = 4;
 const MAX_STEP_MS = 40;
-/** Au-dela (unites de scene), un rayon qui rase l'horizon s'arrete : pas d'infini dans les coordonnees. */
-const SHEET_REACH = 1e4;
 const QUAD = new Float32Array([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0]);
 
 /** Un texte de l'intro : son maillage, et le point d'ecriture a l'ecran (px), garde quand son HTML s'en va. */
@@ -43,22 +41,12 @@ interface Line {
 }
 
 /**
- * Part effacee du texte au fragment : le point du sol qu'il couvre, lu par le masque de la carte. Le titre et
- * le mot partent la ou la carte s'ouvre, dans le meme geste qu'elle.
- */
-function erasedByMap() {
-  const ray = positionWorld.sub(cameraPosition);
-  const reach = cameraPosition.y.div(ray.y.negate().max(1e-4)).min(SHEET_REACH);
-  return pageErased(cameraPosition.xz.add(ray.xz.mul(reach)));
-}
-
-/**
  * Textes de l'intro dessines dans le rendu : le titre, et le mot pose au-dessus du cercle du curseur. Leur
  * mise en page reste en HTML (alignement DOM vers WebGL, comme dans les projets de reference) ; le rendu les
- * ecrit a la meme place, avec la meme police, pour que le depart de l'experience puisse les effacer comme la
- * carte s'ouvre — par le masque de la carte lui-meme (`pageErased`), pas par un rideau a part.
+ * ecrit a la meme place, avec la meme police, pour que le masque de composition qui decouvre la carte les
+ * efface sur son passage, net, avec la page (`mapUncovered`).
  *
- * Le fond de l'intro n'est pas ici : c'est la feuille de la passe d'encre avant la carte, hachuree sur les
+ * Le fond de l'intro n'est pas ici : c'est la page que la passe d'encre pose sur la carte, hachuree sur les
  * bords avec les hachures memes de la carte.
  */
 export class IntroNode extends Object3DNodeBase {
@@ -103,7 +91,7 @@ export class IntroNode extends Object3DNodeBase {
   }
 
   override update(_time: number, dt: number): void {
-    const opened = terrainSettings.drawnReveal.value;
+    const opened = pageTransition.progress.value;
     this._scene.visible = opened < 1;
     if (!this._scene.visible) {
       this._settled = true;
@@ -220,7 +208,7 @@ export class IntroNode extends Object3DNodeBase {
     geometry.setAttribute("tint", new InstancedBufferAttribute(new Float32Array(letters.length).fill(tint), 1));
     geometry.setAttribute("fade", new InstancedBufferAttribute(new Float32Array(letters.length).fill(1), 1));
     geometry.instanceCount = letters.length;
-    const mesh = new Mesh(geometry, createLabelMaterial(font.texture, alpha, erasedByMap()));
+    const mesh = new Mesh(geometry, createLabelMaterial(font.texture, { reveal: alpha, erase: mapUncovered() }));
     mesh.frustumCulled = false;
     // Largeur sans l'interlettrage final, comme la boite que le navigateur centre ; hauteur des capitales.
     mesh.userData = { width: pen - spacing, cap: font.cap };

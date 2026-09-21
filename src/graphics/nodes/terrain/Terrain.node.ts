@@ -233,6 +233,16 @@ export class TerrainNode extends Object3DNodeBase {
     this._flight = { from, to, destination: this._viewOf(to), path, duration, elapsed: 0 };
   }
 
+  /** Pose la vue sans vol : l'intro l'installe sous sa page, rien ne doit y voyager. */
+  jumpTo(view: MapView): void {
+    this._flight = null;
+    this._glide.x = this._glide.z = 0;
+    Object.assign(this.center, { lon: view.lon, lat: view.lat });
+    this.extentKm = MathUtils.clamp(view.extentKm, C.minExtentKm, C.maxExtentKm);
+    this._setView();
+    this._syncGoal();
+  }
+
   /** Altitude affichee (unites de scene) au point (x, z) de la scene. */
   heightAt(x: number, z: number): number {
     const k = this.kmPerUnit;

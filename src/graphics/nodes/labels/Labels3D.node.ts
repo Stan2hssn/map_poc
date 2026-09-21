@@ -1,6 +1,6 @@
 import { Object3DNodeBase } from "@_core/nodes/object3d/Object3DNode.base.ts";
 import { TERRAIN_CONFIG } from "@graphics/config/terrain.config.ts";
-import { createLabelMaterial, labelSettings, pixelScale } from "@graphics/materials/Label.material.ts";
+import { createLabelMaterial, pixelScale } from "@graphics/materials/Label.material.ts";
 import { GROUND_FADE } from "@graphics/materials/Terrain.material.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import type { TerrainNode } from "@graphics/nodes/terrain/Terrain.node.ts";
@@ -283,7 +283,11 @@ export class Labels3DNode extends Object3DNodeBase {
     if (!this._terrain.flying) this._communes?.update(this._terrain.bounds, this._terrain.extentKm);
     const selection = `${this._terrain.viewVersion}:${this._places.version}`;
     const now = performance.now();
-    if (selection !== this._selection && now - this._selectedAt > RESELECT_MS) {
+    if (this._intro < 1) {
+      // Sous la page d'entree : ni noms ni survol. Ils entrent une fois la carte entierement decouverte.
+      for (const label of this._labels.values()) this._leave(label, 0);
+      this._selection = "";
+    } else if (selection !== this._selection && now - this._selectedAt > RESELECT_MS) {
       this._selection = selection;
       this._selectedAt = now;
       this._select();
@@ -310,7 +314,6 @@ export class Labels3DNode extends Object3DNodeBase {
       this._applyFocus(this._wanted);
       this._wanted = null;
     }
-    labelSettings.reveal.value = this._intro;
     this._accents.step(capped);
     this._hoverStep = Math.min(1, (capped / 1000) * LABEL_HOVER_PER_S);
   }
@@ -439,12 +442,19 @@ export class Labels3DNode extends Object3DNodeBase {
       return true;
     });
 
+    const candidates = picked.map((place, i) => ({ place, ...taken[i]! }));
+    // Le territoire accentue montre toujours son nom, et en premier : c'est lui qu'on regarde.
+    const held = this._accents.held as Place | null;
+    if (held && !picked.includes(held)) {
+      const at = this._ground(held);
+      if (at) candidates.unshift({ place: held, ...at });
+    }
+
     // Etages : du plus peuple au moins peuple, chaque nom prend le premier etage ou il ne couvre aucun nom deja
     // pose, le sien d'abord (une hampe qui change d'etage s'allonge en douceur). Sans place, il n'est pas montre.
     const names: NameBox[] = [];
     const tiers = new Map<Place, number>();
-    picked.forEach((place, i) => {
-      const { x, y } = taken[i]!;
+    candidates.forEach(({ place, x, y }) => {
       const current = this._labels.get(place)?.tier;
       const order = current === undefined ? ALL_TIERS : [current, ...ALL_TIERS.filter((t) => t !== current)];
       for (const tier of order) {
@@ -455,13 +465,13 @@ export class Labels3DNode extends Object3DNodeBase {
         return;
       }
     });
-    const shown = picked.filter((place) => tiers.has(place));
+    const shown = candidates.filter(({ place }) => tiers.has(place));
 
     for (const label of this._labels.values()) if (!tiers.has(label.place)) this._leave(label, 0);
     // Les nouvelles entrent l'une apres l'autre, de gauche a droite ; une etiquette qui sortait revient d'ou
     // elle en est.
     let entering = 0;
-    const byX = shown.map((place) => ({ place, x: taken[picked.indexOf(place)]!.x })).sort((a, b) => a.x - b.x);
+    const byX = [...shown].sort((a, b) => a.x - b.x);
     for (const { place } of byX) {
       const tier = tiers.get(place)!;
       const label = this._labels.get(place);
@@ -473,7 +483,7 @@ export class Labels3DNode extends Object3DNodeBase {
       label.delay = 0;
       label.tier = tier;
     }
-    this._order = shown;
+    this._order = shown.map(({ place }) => place);
   }
 
   /** Boite du nom d'un lieu a l'ecran (px) s'il montait a cet etage, avec une marge de lecture. */
@@ -555,19 +565,21 @@ export class Labels3DNode extends Object3DNodeBase {
       this._rigs[i]!.place = null;
     }
 
-    // Un geste en cours deplace la carte : il ne designe rien.
-    const hovered = this._pressed ? null : this._pick(camera);
+    // Un geste en cours deplace la carte : il ne designe rien. Sous la page d'entree non plus.
+    const hovered = this._pressed || this._intro < 1 ? null : this._pick(camera);
     this._aiming = this._aim(hovered);
     const changed = hovered !== this._hovered;
     this._hovered = hovered;
     this._canvas.style.cursor = hovered ? "pointer" : "";
     // L'accent vient du nom survole, sinon du sol sous le pointeur — sauf pres d'un nom, ou il attend le nom.
-    this._designate(hovered ?? (this._aiming || this._pressed ? null : this._groundPlace(camera)));
+    this._designate(hovered ?? (this._aiming || this._pressed || this._intro < 1 ? null : this._groundPlace(camera)));
     // Tant qu'une valeur avance, l'univers doit redessiner : sinon la zone de survol continuerait de bouger
     // sous un texte fige sur la derniere image, et l'on ne pourrait plus attraper les noms.
     let hovering = false;
+    // Le nom se teinte aussi quand c'est son territoire qu'on survole sur la carte.
+    const accented = this._accents.held;
     for (const label of this._labels.values()) {
-      const wanted = label.place === hovered ? 1 : 0;
+      const wanted = label.place === hovered || label.place === accented ? 1 : 0;
       if (Math.abs(wanted - label.hover) > SETTLED) hovering = true;
       label.hover += (wanted - label.hover) * this._hoverStep;
     }
@@ -644,7 +656,13 @@ export class Labels3DNode extends Object3DNodeBase {
    * son code : son contour est demande au premier survol, puis garde sur le lieu.
    */
   private _designate(place: Place | null): void {
+    const held = this._accents.held;
     this._accents.hold(place && !this._isHere(place) ? place : null, place?.rings);
+    // Le nom du territoire accentue doit paraitre (ou repartir) tout de suite, sans attendre que la vue bouge.
+    if (this._accents.held !== held) {
+      this._selection = "";
+      this._selectedAt = -Infinity;
+    }
     if (place === this._target) return;
     this._target = place;
     if (!place || place.rings || !place.code) return;
@@ -731,8 +749,8 @@ export class Labels3DNode extends Object3DNodeBase {
   /** Communes trouvees sous le pointeur sans etiquette : gardees, pour qu'un retour reprenne le meme accent. */
   private readonly _strays = new Map<string, Place>();
 
-  /** Part dessinee voulue par l'intro. */
-  private _intro = 1;
+  /** Part decouverte de la carte sous la page d'entree : les noms attendent qu'elle le soit entierement. */
+  private _intro = 0;
 
   /** Part dessinee voulue par l'intro : les noms arrivent apres le trait. */
   set intro(value: number) {

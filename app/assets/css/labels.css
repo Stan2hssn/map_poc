@@ -38,10 +38,10 @@
   translate: -100% -50%;
 }
 
-/* Intro : tant que la carte n'est pas dessinee, son interface ne l'est pas non plus ; elle arrive ensuite. */
+/* Intro : les releves arrivent avec l'interface, quand la carte est presque entierement decouverte. */
 .map-survey {
   transition:
-    opacity 900ms ease 500ms,
+    opacity 700ms ease 1800ms,
     clip-path 620ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 

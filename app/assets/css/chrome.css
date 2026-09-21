@@ -27,14 +27,64 @@
   text-shadow: var(--ui-halo);
 }
 
-/* L'interface se dessine avec la carte, pas avant. */
-:root[data-map-intro='hold'] .chrome {
-  opacity: 0;
-  transition: none;
+/*
+ * L'interface arrive quand le masque de composition a presque fini de decouvrir la carte (`INTRO_MS`, 2,4 s),
+ * bloc par bloc : l'en-tete, le rail, puis le pied. Montee a l'ouverture de l'experience, elle n'a pas d'etat
+ * « avant » d'ou partir : une animation, pas une transition.
+ */
+.chrome__veil,
+.chrome__head,
+.chrome__rail,
+.chrome__foot {
+  animation: chrome-in 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.chrome {
-  transition: opacity 900ms ease 500ms;
+.chrome__veil {
+  animation-name: chrome-veil-in;
+  animation-delay: 1300ms;
+}
+
+.chrome__head {
+  animation-delay: 1500ms;
+}
+
+/* Le rail est centre par une translation : il monte depuis la sienne. */
+.chrome__rail {
+  animation-name: chrome-rail-in;
+  animation-delay: 1650ms;
+}
+
+.chrome__foot {
+  animation-delay: 1800ms;
+}
+
+@keyframes chrome-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+@keyframes chrome-rail-in {
+  from {
+    opacity: 0;
+    translate: 0 calc(-50% + 8px);
+  }
+}
+
+@keyframes chrome-veil-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chrome__veil,
+  .chrome__head,
+  .chrome__rail,
+  .chrome__foot {
+    animation-duration: 1ms;
+  }
 }
 
 .chrome button {

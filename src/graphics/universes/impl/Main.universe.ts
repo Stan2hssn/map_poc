@@ -4,7 +4,7 @@ import { NodeGraph } from "@_core/nodes/NodeGraph.ts";
 import { UniverseBase } from "@_core/universes/Universe.base.ts";
 import { ASSET_KEYS } from "@graphics/assets/assets.manifest.ts";
 import { TERRAIN_CONFIG } from "@graphics/config/terrain.config.ts";
-import { CITY_EXTENT_KM } from "@graphics/config/views.config.ts";
+import { CITY_EXTENT_KM, MAP_VIEWS } from "@graphics/config/views.config.ts";
 import { FOLDER_ID, TAB_ID } from "@graphics/debug/Debug.id.ts";
 import { RenderStatsHelper } from "@graphics/debug/RenderStats.helper.ts";
 import { DynamicQualityHelper } from "@graphics/device/DynamicQuality.helper.ts";
@@ -13,7 +13,6 @@ import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import { BuildingsNode } from "@graphics/nodes/buildings/Buildings.node.ts";
 import { MapCameraNode } from "@graphics/nodes/cameras/MapCamera.node.ts";
 import type { MapFocusId } from "@graphics/config/focus.config.ts";
-import { labelSettings } from "@graphics/materials/Label.material.ts";
 import { Labels3DNode } from "@graphics/nodes/labels/Labels3D.node.ts";
 import { IntroNode } from "@graphics/nodes/intro/Intro.node.ts";
 import { PanelNode } from "@graphics/nodes/panel/Panel.node.ts";
@@ -22,7 +21,7 @@ import { PlanesNode } from "@graphics/nodes/sky/Planes.node.ts";
 import { SurveyNode } from "@graphics/nodes/survey/Survey.node.ts";
 import { LightsNode } from "@graphics/nodes/lights/Lights.node.ts";
 import { TerrainNode } from "@graphics/nodes/terrain/Terrain.node.ts";
-import { EffectComposer, EffectPass, InkEffect, inkSettings, newsprintMap, OverlayPass, RenderPass } from "@graphics/postprocessing/index.ts";
+import { EffectComposer, EffectPass, InkEffect, inkSettings, newsprintMap, OverlayPass, pageTransition, RenderPass } from "@graphics/postprocessing/index.ts";
 import { IgnElevationProvider } from "@graphics/terrain/IgnElevationProvider.ts";
 import type IMapNavigator from "@graphics/universes/MapNavigator.interface.ts";
 import type { MapView, SelectedPlace } from "@graphics/universes/MapNavigator.interface.ts";
@@ -115,8 +114,11 @@ function extentOfRings(rings: [number, number][][]): number {
 
 /** Camera immobile : aucun coefficient de sa matrice n'a bouge de plus que cela. */
 const STILL = 1e-5;
-/** Duree (ms) de l'ouverture de la carte a l'intro. */
-const INTRO_MS = 3000;
+/**
+ * Duree (ms) du passage de la page d'entree a la carte, comptee a l'horloge : ses premieres images sont les
+ * premieres de la carte, lourdes ; en pas bornes, le passage patinerait.
+ */
+const INTRO_MS = 2400;
 
 export class MainUniverse extends UniverseBase<UniverseId> implements IMapNavigator {
   private readonly _cameraNode: MapCameraNode;
@@ -142,11 +144,11 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   private readonly _renderedCamera = new Matrix4();
   private _sinceRender = Infinity;
   /**
-   * Intro : part ouverte de la zone dessinee, et la part visee. La page nait blanche — attendre que la page
-   * appelle `holdIntro` laisserait la carte paraitre le temps d'une image ; c'est `drawMap` (ou toute
-   * navigation) qui l'ouvre.
+   * Intro : part decouverte de la carte sous la page d'entree (`pageTransition`), la part visee, et le depart
+   * du passage en cours. La page couvre tout des la premiere image — attendre que la page appelle `holdIntro`
+   * laisserait la carte paraitre le temps d'une image ; c'est `drawMap` (ou toute navigation) qui la retire.
    */
-  private readonly _intro = { reveal: 0, target: 0 };
+  private readonly _intro = { value: 0, target: 0, from: 0, since: 0 };
   private readonly _selectionListeners = new Set<(place: SelectedPlace) => void>();
 
   constructor(device: IThreeDeviceSlice) {
@@ -283,15 +285,19 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     this._intro3d.ready = ready;
   }
 
-  /** Page blanche : la carte se charge, mais rien n'est dessine tant que `drawMap` n'est pas appele. */
+  /**
+   * Page d'entree : la carte attend dessous, deja posee sur la France (sans vol : le passage ne doit pas
+   * decouvrir un dezoom), et se charge pendant qu'on lit la page.
+   */
   holdIntro(): void {
-    this._intro.reveal = 0;
-    this._intro.target = 0;
+    Object.assign(this._intro, { value: 0, target: 0, from: 0 });
+    this._terrain.jumpTo(MAP_VIEWS.france);
   }
 
-  /** La carte se dessine en s'ouvrant depuis le point vise, puis vole vers `view` si elle est donnee. */
+  /** La page se retire et decouvre la carte, puis la vue vole vers `view` si elle est donnee. */
   drawMap(view?: MapView): void {
-    this._intro.target = 1;
+    if (this._intro.target === 1) return;
+    Object.assign(this._intro, { target: 1, from: this._intro.value, since: performance.now() });
     if (view) this._terrain.flyTo(view);
   }
 
@@ -324,19 +330,18 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     super.update(time, dt);
     // A l'encre, l'effet plein ecran dessine l'image ; la carte de nuit ne passe par rien.
     this._inkPass.enabled = inkSettings.amount.value > 0.5;
-    // Intro : la zone dessinee s'ouvre depuis le point vise. Elle part vite et finit doucement.
+    // Intro : le masque de composition retire la page, lentement au depart et a l'arrivee.
     const intro = this._intro;
-    if (intro.reveal !== intro.target) {
-      const step = dt / INTRO_MS;
-      intro.reveal = intro.target > intro.reveal ? Math.min(intro.target, intro.reveal + step) : Math.max(intro.target, intro.reveal - step);
+    if (intro.value !== intro.target) {
+      const t = Math.min(1, (performance.now() - intro.since) / (INTRO_MS * Math.abs(intro.target - intro.from)));
+      intro.value = intro.from + (intro.target - intro.from) * t;
     }
-    const eased = intro.reveal * intro.reveal * (3 - 2 * intro.reveal);
-    terrainSettings.drawnReveal.value = eased;
-    inkSettings.reveal.value = eased;
-    // Les noms arrivent apres le trait, une fois la carte bien ouverte.
-    this._labels.intro = Math.max(0, eased * 2 - 1);
+    const v = intro.value;
+    pageTransition.progress.value = v < 0.5 ? 4 * v ** 3 : 1 - (-2 * v + 2) ** 3 / 2;
+    // Les noms n'entrent qu'une fois la carte entierement decouverte : sous la page, ils n'ont rien a faire.
+    this._labels.intro = v;
     // Ce qui vole au-dessus de la carte n'apparait qu'avec elle.
-    for (const node of [this._clouds, this._planes, this._survey]) node.getObject3D().visible = eased > 0.02;
+    for (const node of [this._clouds, this._planes, this._survey]) node.getObject3D().visible = v > 0;
     this._lights.relief(terrainSettings.relief.value);
     this._renderStats.update(dt);
 
@@ -349,6 +354,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       this._labels.settled &&
       this._panel.settled &&
       this._intro3d.settled &&
+      intro.value === intro.target &&
       terrainSettings.landcoverReveal.value >= 1;
     this._sinceRender += dt;
     // Ce qui bouge tout seul (vehicules, avions, vent dans les arbres) : l'image n'est alors jamais tout a fait

@@ -250,8 +250,6 @@ export const terrainSettings = {
   maskRadius: uniform(new Vector2(...M.radius)),
   /** Agrandissement de la zone en vue large (`TERRAIN_CONFIG.mask.widen`). */
   maskScale: uniform(1),
-  /** Ouverture de la zone dessinee a l'arrivee (0 : page blanche, 1 : carte entiere) : voir l'intro. */
-  drawnReveal: uniform(1),
   /** Simplification au loin : hauteur (m) sous laquelle un batiment lointain n'est plus dessine, au plus. */
   simplify: uniform(10),
   /** Secondes ecoulees : vent dans les arbres, houle des traits de l'eau. */
@@ -323,25 +321,12 @@ export function revealNoise(geo: Node): Node {
  */
 export function drawnMask(xz: Node): Node {
   const local = vec2(xz.x.mul(s.maskAxis.y).sub(xz.y.mul(s.maskAxis.x)), xz.dot(s.maskAxis));
-  const distance = length(local.div(s.maskRadius.mul(s.maskScale).mul(s.drawnReveal.max(1e-3))));
+  const distance = length(local.div(s.maskRadius.mul(s.maskScale)));
   const geo = geoAt(xz);
   const at = (scale: Node) => read(s.mistNoise, geo.mul(scale).mul(MASK_FREQUENCY / NOISE_CELLS));
   const noise = mix(at(s.mistScales.x), at(s.mistScales.y), s.mistBlend);
   const edge = distance.add(noise.sub(0.5).mul(s.maskJitter));
   return smoothstep(s.maskSoftness.oneMinus(), 1, edge).oneMinus();
-}
-
-/** Au-dela de cette part de l'ouverture, ce que le masque n'atteindra pas s'efface par les memes taches. */
-const PAGE_LATE = 0.6;
-
-/**
- * Part effacee de la page d'avant la carte (hachures, titre, mot du curseur) au point `xz` du sol : c'est le
- * masque de la carte qui s'ouvre, le meme geste — pas un second rideau. Ce qu'il ne gagne jamais (les bords,
- * le haut de l'ecran) part en fin d'ouverture, par les taches de `pencilReveal`.
- */
-export function pageErased(xz: Node): Node {
-  const late = smoothstep(PAGE_LATE, 1, s.drawnReveal);
-  return max(drawnMask(xz), pencilReveal(geoAt(xz), late));
 }
 
 // L'apercu est tres agrandi : une B-spline en 4 lectures bilineaires evite les facettes.

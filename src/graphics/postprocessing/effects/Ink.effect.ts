@@ -19,7 +19,8 @@ import {
   vec4,
 } from "three/tsl";
 import type { Node } from "three/webgpu";
-import { HOVER_BAND, pageErased } from "@graphics/materials/Terrain.material.ts";
+import { HOVER_BAND } from "@graphics/materials/Terrain.material.ts";
+import { mapUncovered } from "./PageTransition.ts";
 import type IEffect from "./Effect.interface.ts";
 import type { EffectContext } from "./Effect.interface.ts";
 import {
@@ -131,15 +132,15 @@ export class InkEffect implements IEffect {
     const sheet = mix(sheetGround, this._worldAt(at, ctx).xz, shown);
     const near = smoothstep(this.newsprintReach.x, this.newsprintReach.y, length(sheet)).oneMinus();
     const paper = paperAt(screen).mul(newsprintAt(sheet, near));
-    // Avant que la carte ne soit dessinee, la feuille n'est pas vierge : ses nuages portent quelques hachures,
-    // et ses bords les hachures memes de la carte, qui l'annoncent. Le masque de la carte, en s'ouvrant, les
-    // efface : un seul geste, pas un rideau retire puis une carte qui s'ouvre (`pageErased`).
+    const marked = max(drawing, rim.mul(k.hoverRim));
+    const map = inkOnPaper(marked, screen, paper, hovered);
+    // Page d'entree, posee sur la carte deja dessinee : la meme feuille, ses nuages portant quelques hachures,
+    // et sur ses bords les hachures memes de la carte, qui l'annoncent. Le masque de composition la retire
+    // pour decouvrir la carte (`mapUncovered`) ; le masque de la carte, lui, ne bouge pas.
     const sides = smoothstep(0, INTRO_SIDES.reach, min(uv.x, uv.x.oneMinus())).oneMinus();
     const idle = luminance(paper).max(0).pow(1 / 2.2).mul(mix(float(IDLE_TONE), float(INTRO_SIDES.tone), sides));
-    const erased = max(shown, pageErased(sheetGround));
-    const sketch = inkCoverage(idle, screen, { far: sides.oneMinus() }).mul(erased.oneMinus());
-    const marked = max(max(drawing, sketch), rim.mul(k.hoverRim));
-    return vec4(mix(input.rgb, inkOnPaper(marked, screen, paper, hovered), k.amount), input.a);
+    const page = inkOnPaper(inkCoverage(idle, screen, { far: sides.oneMinus() }), screen, paper);
+    return vec4(mix(input.rgb, mix(page, map, mapUncovered()), k.amount), input.a);
   }
 
   /** Rayon du pixel `at` depuis la camera, et le point du sol (y = 0) qu'il vise, replie au-dessus de l'horizon. */

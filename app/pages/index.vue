@@ -7,7 +7,6 @@
  *
  * Le cercle du curseur, lui, reste pour toute l'experience (`MapCursor`).
  */
-import { MAP_VIEWS } from '@graphics/config/views.config.ts'
 import { isMapNavigator } from '@graphics/universes/MapNavigator.interface.ts'
 
 const started = ref(false)
@@ -30,7 +29,8 @@ function draw() {
   if (drawn.value || !started.value) return
   drawn.value = true
   document.documentElement.dataset.mapIntro = 'drawn'
-  navigator()?.drawMap(MAP_VIEWS.france)
+  // La carte attend deja sur la France sous la page (`holdIntro`) : rien a survoler en partant.
+  navigator()?.drawMap()
 }
 
 onMounted(() => {
