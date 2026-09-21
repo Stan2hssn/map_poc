@@ -21,11 +21,12 @@ function skyMaterial(color: number, roughness: number): MeshStandardNodeMaterial
 const COUNT = 4;
 /**
  * Vol : altitude au-dessus du plus haut relief de la vue (unites de scene), cercle traverse (en profondeurs de la
- * zone dessinee), duree d'une traversee (s, a toutes les echelles), longueur d'un avion (unites : un symbole de
- * carte plus qu'une maquette), attente entre deux passages (s), largeurs de vue entre lesquelles ils s'effacent
- * (km : a l'echelle d'un pays, un avion de la taille d'une ville n'a aucun sens).
+ * zone dessinee), duree d'une traversee (s), longueur d'un avion (unites : un symbole de carte plus qu'une
+ * maquette), attente entre deux passages (s), largeurs de vue entre lesquelles ils s'effacent (km : a l'echelle
+ * d'un pays, un avion de la taille d'une ville n'a aucun sens). Altitude, longueur et duree valent pour une vue
+ * large de `refKm` : ailleurs, elles suivent l'echelle de la carte.
  */
-const SKY = { above: 7, reach: 1.2, crossSeconds: 26, length: 3.2, wait: [2, 9], fromKm: 25, toKm: 70 } as const;
+const SKY = { above: 7, reach: 1.2, crossSeconds: 26, length: 3.2, wait: [2, 9], fromKm: 25, toKm: 70, refKm: 12, maxSize: 2 } as const;
 const COLOR = 0x2b3144;
 /** Ombre au sol : teinte, et ecart au relief (unites). */
 const SHADOW = { color: 0x9a9a9a, lift: 0.05 } as const;
@@ -54,7 +55,8 @@ function planeGeometry(): BufferGeometry {
 /**
  * Avions, peu nombreux : chacun traverse la zone dessinee en ligne droite, au-dessus du relief, puis un autre passe
  * un peu plus tard, d'ailleurs ; son ombre glisse sur le sol, ce qui dit sa hauteur. Ils volent au-dessus de la
- * carte : un glisser ou un zoom les emporte avec elle. A l'encre comme le reste.
+ * carte, a son echelle : un glisser les emporte avec elle, un zoom les grandit ou les rapetisse avec elle.
+ * A l'encre comme le reste.
  */
 export class PlanesNode extends Object3DNodeBase {
   /** Part des avions montres (0 : aucun). */
@@ -86,7 +88,11 @@ export class PlanesNode extends Object3DNodeBase {
     const t = this._terrain;
     const s = terrainSettings;
     const reach = s.maskRadius.value.y * s.maskScale.value * SKY.reach;
-    const altitude = s.relief.value * t.heightScale + SKY.above;
+    // Ils volent dans l'espace de la carte, pas dans celui de l'ecran : au dezoom, ils rapetissent avec elle
+    // au lieu de garder leur taille pendant que tout le reste diminue. Borne en zoom avant : la camera ne
+    // s'eloigne pas avec l'echelle, un avion trop grand volerait a sa hauteur.
+    const size = Math.min(SKY.maxSize, SKY.refKm / Math.max(1e-3, t.extentKm));
+    const altitude = s.relief.value * t.heightScale + SKY.above * size;
     const sun = s.sun.value;
     // La carte glisse ou change d'echelle sous eux : ils suivent le sol.
     const zoom = this._extent > 0 ? this._extent / t.extentKm : 1;
@@ -109,7 +115,7 @@ export class PlanesNode extends Object3DNodeBase {
         plane.wait -= seconds;
         if (plane.wait <= 0) this._launch(plane, reach);
       } else {
-        const speed = (reach * 2) / SKY.crossSeconds;
+        const speed = ((reach * 2) / SKY.crossSeconds) * size;
         position.x += Math.cos(plane.heading) * speed * seconds;
         position.z -= Math.sin(plane.heading) * speed * seconds;
         if (Math.hypot(position.x, position.z) > reach * 1.05) plane.wait = SKY.wait[0] + Math.random() * (SKY.wait[1] - SKY.wait[0]);
@@ -118,13 +124,13 @@ export class PlanesNode extends Object3DNodeBase {
       const flying = plane.wait <= 0;
       this.lively ||= flying;
       TURN.setFromAxisAngle(UP, plane.heading);
-      this._mesh.setMatrixAt(i, this._matrix.compose(position, TURN, SCALE.setScalar(flying ? 1 : 0)));
+      this._mesh.setMatrixAt(i, this._matrix.compose(position, TURN, SCALE.setScalar(flying ? size : 0)));
       // Ombre : le long du soleil jusqu'au sol, aplatie.
       const ground = t.heightAt(position.x, position.z);
       const along = sun.y > 0.05 ? (altitude - ground) / sun.y : 0;
       AT.set(position.x - sun.x * along, 0, position.z - sun.z * along);
       AT.y = t.heightAt(AT.x, AT.z) + SHADOW.lift;
-      this._shadows.setMatrixAt(i, this._matrix.compose(AT, TURN, SCALE.set(flying ? 1 : 0, 0.02, flying ? 1 : 0)));
+      this._shadows.setMatrixAt(i, this._matrix.compose(AT, TURN, SCALE.set(flying ? size : 0, 0.02, flying ? size : 0)));
     });
     this._mesh.instanceMatrix.needsUpdate = true;
     this._shadows.instanceMatrix.needsUpdate = true;
