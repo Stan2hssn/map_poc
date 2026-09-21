@@ -60,7 +60,9 @@ export class TerrainGesturesHelper {
     element.addEventListener("pointermove", this._move);
     element.addEventListener("pointerup", this._up);
     element.addEventListener("pointercancel", this._up);
+    element.addEventListener("lostpointercapture", this._up);
     element.addEventListener("wheel", this._wheel, { passive: false });
+    window.addEventListener("blur", this._reset);
   }
 
   dispose(): void {
@@ -68,7 +70,9 @@ export class TerrainGesturesHelper {
     this._element.removeEventListener("pointermove", this._move);
     this._element.removeEventListener("pointerup", this._up);
     this._element.removeEventListener("pointercancel", this._up);
+    this._element.removeEventListener("lostpointercapture", this._up);
     this._element.removeEventListener("wheel", this._wheel);
+    window.removeEventListener("blur", this._reset);
   }
 
   private _ground(clientX: number, clientY: number): Vector3 | null {
@@ -87,6 +91,13 @@ export class TerrainGesturesHelper {
     this._pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     this._dragging = false;
     this._pinch = 0;
+    // Capture : le relachement arrive ici meme au-dessus du panneau, de l'interface ou hors de la fenetre.
+    // Sans elle, le geste restait ouvert et la carte suivait la souris a son retour.
+    try {
+      this._element.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointeur deja relache : rien a capturer.
+    }
     if (!this.enabled) return;
     if (this._pointers.size === 2) this._pinch = this._midpoint().distance;
     if (this._pointers.size !== 1 || event.button !== 0) return;
@@ -97,6 +108,8 @@ export class TerrainGesturesHelper {
 
   private readonly _move = (event: PointerEvent): void => {
     if (!this._pointers.has(event.pointerId)) return;
+    // Filet de securite : une souris qui bouge sans bouton enfonce a forcement ete relachee ailleurs.
+    if (event.pointerType === "mouse" && event.buttons === 0) return this._up(event);
     this._pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (!this.enabled) return;
 
@@ -139,8 +152,15 @@ export class TerrainGesturesHelper {
   };
 
   private readonly _up = (event: PointerEvent): void => {
-    this._pointers.delete(event.pointerId);
+    if (!this._pointers.delete(event.pointerId)) return;
     if (this._dragging) this._fling();
+    this._dragging = false;
+    this._pinch = 0;
+  };
+
+  /** Fenetre quittee (changement d'onglet, alerte) : aucun geste ne survit, et rien ne part en glissade. */
+  private readonly _reset = (): void => {
+    this._pointers.clear();
     this._dragging = false;
     this._pinch = 0;
   };
