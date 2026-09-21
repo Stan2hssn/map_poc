@@ -35,11 +35,14 @@ export default defineNuxtModule({
     addVitePlugin(sondeModuleGraph() as never)
 
     // Reglages du panneau Tweakpane (cle `tweakpane`) et etat du panneau GL
-    // (cle `gl`), fusionnes dans le meme fichier. Pas de route `/timeline` :
-    // aucun theatre dans ce projet pour l'instant.
+    // (cle `gl`), fusionnes dans le meme fichier ; pistes de la timeline, une
+    // cle par theatre, dans le leur.
     const { resolve } = createResolver(import.meta.url)
     addVitePlugin(
       sondeStateWriter('/__sonde/debug', resolve('../../src/graphics/config/debug.values.json')) as never
+    )
+    addVitePlugin(
+      sondeStateWriter('/__sonde/timeline', resolve('../../src/graphics/config/timeline.tracks.json')) as never
     )
 
     // Le fichier reste sous `app/` : la racine Vite de Nuxt y est fixee, et un

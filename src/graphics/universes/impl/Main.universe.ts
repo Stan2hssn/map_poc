@@ -15,6 +15,8 @@ import { MapCameraNode } from "@graphics/nodes/cameras/MapCamera.node.ts";
 import type { MapFocusId } from "@graphics/config/focus.config.ts";
 import { Labels3DNode } from "@graphics/nodes/labels/Labels3D.node.ts";
 import { IntroNode } from "@graphics/nodes/intro/Intro.node.ts";
+import { createIntroTheatre, INTRO_THEATRE } from "@graphics/timeline/IntroTheatre.ts";
+import type { Theatre, TheatreBinding } from "@graphics/timeline/Theatre.ts";
 import { PanelNode } from "@graphics/nodes/panel/Panel.node.ts";
 import { CloudsNode } from "@graphics/nodes/sky/Clouds.node.ts";
 import { PlanesNode } from "@graphics/nodes/sky/Planes.node.ts";
@@ -114,11 +116,6 @@ function extentOfRings(rings: [number, number][][]): number {
 
 /** Camera immobile : aucun coefficient de sa matrice n'a bouge de plus que cela. */
 const STILL = 1e-5;
-/**
- * Duree (ms) du passage de la page d'entree a la carte, comptee a l'horloge : ses premieres images sont les
- * premieres de la carte, lourdes ; en pas bornes, le passage patinerait.
- */
-const INTRO_MS = 2400;
 
 export class MainUniverse extends UniverseBase<UniverseId> implements IMapNavigator {
   private readonly _cameraNode: MapCameraNode;
@@ -144,11 +141,14 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   private readonly _renderedCamera = new Matrix4();
   private _sinceRender = Infinity;
   /**
-   * Intro : part decouverte de la carte sous la page d'entree (`pageTransition`), la part visee, et le depart
-   * du passage en cours. La page couvre tout des la premiere image — attendre que la page appelle `holdIntro`
-   * laisserait la carte paraitre le temps d'une image ; c'est `drawMap` (ou toute navigation) qui la retire.
+   * Intro : timeline du passage de la page d'entree a la carte, reglee dans SONDE (`IntroTheatre`). A sa
+   * premiere image la page couvre tout — attendre que la page appelle `holdIntro` laisserait la carte paraitre
+   * le temps d'une image ; c'est `drawMap` (ou toute navigation) qui la lance.
    */
-  private readonly _intro = { value: 0, target: 0, from: 0, since: 0 };
+  private readonly _introTheatre: Theatre;
+  private _introStarted = false;
+  /** La timeline a ecrit dans la scene depuis la derniere image (lecture, ou reglage dans SONDE). */
+  private _introMoved = false;
   private readonly _selectionListeners = new Set<(place: SelectedPlace) => void>();
 
   constructor(device: IThreeDeviceSlice) {
@@ -219,6 +219,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     });
     this._panel = new PanelNode(device.renderer.domElement, () => this.camera as Camera);
     this._intro3d = new IntroNode(device.renderer.domElement, () => this.camera as Camera);
+    this._introTheatre = this._createIntroTheatre();
     this._survey = new SurveyNode(terrain, device.renderer.domElement, () => this.camera as Camera);
     this._buildings = new BuildingsNode(terrain);
     // map tourne sur WebGPURenderer (WebGPU ou son repli WebGL2).
@@ -246,7 +247,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
 
   flyTo(view: MapView): void {
     // Naviguer, c'est vouloir la carte : l'intro, si elle attendait encore, s'ouvre.
-    if (this._intro.target < 1) this.drawMap();
+    if (!this._introStarted) this.drawMap();
     this._terrain.flyTo(view);
   }
 
@@ -290,15 +291,64 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
    * decouvrir un dezoom), et se charge pendant qu'on lit la page.
    */
   holdIntro(): void {
-    Object.assign(this._intro, { value: 0, target: 0, from: 0 });
+    this._introStarted = false;
+    this._introTheatre.pause();
+    this._introTheatre.seek(0);
     this._terrain.jumpTo(MAP_VIEWS.france);
   }
 
   /** La page se retire et decouvre la carte, puis la vue vole vers `view` si elle est donnee. */
   drawMap(view?: MapView): void {
-    if (this._intro.target === 1) return;
-    Object.assign(this._intro, { target: 1, from: this._intro.value, since: performance.now() });
+    if (this._introStarted) return;
+    this._introStarted = true;
+    this._introTheatre.seek(0);
+    this._introTheatre.play();
     if (view) this._terrain.flyTo(view);
+  }
+
+  /** Theatres offerts a la timeline de SONDE. */
+  getTheatre(id: string): Theatre | undefined {
+    return id === INTRO_THEATRE ? this._introTheatre : undefined;
+  }
+
+  getTheatreIds(): string[] {
+    return [INTRO_THEATRE];
+  }
+
+  /**
+   * Ce que la timeline de l'intro sait ecrire : le masque de composition, l'entree de chaque bloc de
+   * l'interface (une variable CSS que `chrome.css` lit) et celle des noms.
+   */
+  private _createIntroTheatre(): Theatre {
+    const scalar = (u: { value: number }): TheatreBinding => ({ get: () => u.value, set: (v) => (u.value = v) });
+    const cssVar = (name: string): TheatreBinding => {
+      let value = 1;
+      return {
+        get: () => value,
+        set: (v) => {
+          value = v;
+          document.documentElement.style.setProperty(name, v.toFixed(3));
+        },
+      };
+    };
+    const t = pageTransition;
+    const theatre = createIntroTheatre({
+      passage: {
+        progres: scalar(t.progress),
+        bras: scalar(t.arms),
+        torsion: scalar(t.twist),
+        rayon: scalar(t.radius),
+        decalage: scalar(t.armDelay),
+        fibres: scalar(t.fibres),
+        fibre: scalar(t.fibre),
+        taches: scalar(t.blot),
+        echelle: scalar(t.blotScale),
+      },
+      interface: { entete: cssVar("--intro-entete"), rail: cssVar("--intro-rail"), pied: cssVar("--intro-pied") },
+      noms: { entree: { get: () => this._labels.intro, set: (v) => (this._labels.intro = v) } },
+    });
+    theatre.tick(() => (this._introMoved = true));
+    return theatre;
   }
 
   override async beforeMount(): Promise<void> {
@@ -330,18 +380,10 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     super.update(time, dt);
     // A l'encre, l'effet plein ecran dessine l'image ; la carte de nuit ne passe par rien.
     this._inkPass.enabled = inkSettings.amount.value > 0.5;
-    // Intro : le masque de composition retire la page, lentement au depart et a l'arrivee.
-    const intro = this._intro;
-    if (intro.value !== intro.target) {
-      const t = Math.min(1, (performance.now() - intro.since) / (INTRO_MS * Math.abs(intro.target - intro.from)));
-      intro.value = intro.from + (intro.target - intro.from) * t;
-    }
-    const v = intro.value;
-    pageTransition.progress.value = v < 0.5 ? 4 * v ** 3 : 1 - (-2 * v + 2) ** 3 / 2;
-    // Les noms n'entrent qu'une fois la carte entierement decouverte : sous la page, ils n'ont rien a faire.
-    this._labels.intro = v;
+    // Intro : la timeline avance au temps reel ecoule, sans borne — une image lourde ne la fait pas patiner.
+    this._introTheatre.advance(dt / 1000);
     // Ce qui vole au-dessus de la carte n'apparait qu'avec elle.
-    for (const node of [this._clouds, this._planes, this._survey]) node.getObject3D().visible = v > 0;
+    for (const node of [this._clouds, this._planes, this._survey]) node.getObject3D().visible = pageTransition.progress.value > 0;
     this._lights.relief(terrainSettings.relief.value);
     this._renderStats.update(dt);
 
@@ -354,7 +396,8 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       this._labels.settled &&
       this._panel.settled &&
       this._intro3d.settled &&
-      intro.value === intro.target &&
+      !this._introTheatre.playing &&
+      !this._introMoved &&
       terrainSettings.landcoverReveal.value >= 1;
     this._sinceRender += dt;
     // Ce qui bouge tout seul (vehicules, avions, vent dans les arbres) : l'image n'est alors jamais tout a fait
@@ -363,6 +406,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     const render = !still || this._sinceRender >= 1000 / (lively ? LIVELY_FPS : IDLE_FPS);
     this._composer.paused = !render;
     if (render) {
+      this._introMoved = false;
       this._sinceRender = 0;
       this._renderedCamera.copy(camera);
     }

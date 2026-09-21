@@ -7,12 +7,42 @@ import {
   settingsPanel,
   shortcutsPanel,
   threeAdapter,
+  timelinePanel,
 } from '@spices/devtools'
 import { isDebugRequested } from '@_core/debug/DebugFlags.ts'
+import { EASE_NAMES, sampleEase } from '@graphics/timeline/ease.ts'
+import type { Theatre } from '@graphics/timeline/Theatre.ts'
 import { REVISION, type Scene, type WebGLRenderer } from 'three'
 
 /** Pont dev `modules/sonde` vers `src/graphics/config/debug.values.json`. */
 const DEBUG_ENDPOINT = '/__sonde/debug'
+/** Pont dev vers `src/graphics/config/timeline.tracks.json`, une cle par theatre. */
+const TIMELINE_ENDPOINT = '/__sonde/timeline'
+/**
+ * Theatres offerts dans le panneau Timeline. La liste est ici et non lue depuis l'univers : le panneau la
+ * veut au montage, bien avant que l'univers ne soit monte.
+ */
+const THEATRES = ['intro']
+
+/** Univers qui publie des theatres. Teste a l'execution, pas suppose. */
+interface TheatreHost {
+  getTheatre(id: string): Theatre | undefined
+}
+
+function asTheatreHost(value: unknown): TheatreHost | null {
+  return typeof (value as Partial<TheatreHost> | undefined)?.getTheatre === 'function' ? (value as TheatreHost) : null
+}
+
+/** Ecrit au pont, et rend l'echec au panneau plutot que de le laisser dans la console. */
+function post(endpoint: string, body: unknown): Promise<void> {
+  return fetch(endpoint, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then((response) => {
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  })
+}
 
 /**
  * Cadence lissee sur une seconde glissante. SONDE ne mesure pas les images par
@@ -64,6 +94,28 @@ export default defineNuxtPlugin(() => {
   const activeUniverse = (): unknown =>
     stage.read()?.runtime.output.getActiveUniverses().at(-1)
 
+  /**
+   * Resolu a l'ouverture de l'onglet, jamais capture au montage du plugin : le theatre n'existe qu'une fois
+   * l'univers monte. On attend au lieu d'echouer sur-le-champ, sans quoi le panneau resterait bloque sur
+   * « theatre introuvable » pour toute la session.
+   */
+  const loadTheatre = async (id: string): Promise<Theatre> => {
+    const limit = performance.now() + 20_000
+    for (;;) {
+      const theatre = asTheatreHost(activeUniverse())?.getTheatre(id)
+      if (theatre) return theatre
+      if (performance.now() > limit) throw new Error(`[sonde] theatre introuvable apres 20 s : ${id}`)
+      await new Promise((next) => setTimeout(next, 120))
+    }
+  }
+
+  /** Sans ce rappel le panneau retombe sur le presse-papier, et rien ne relirait le reglage au rechargement. */
+  const saveTimeline = (id: string, state: unknown): Promise<void> => {
+    const tracks = (state as { tracks?: unknown } | null)?.tracks
+    if (tracks === undefined) return Promise.reject(new Error('instantané sans pistes'))
+    return post(TIMELINE_ENDPOINT, { id, tracks })
+  }
+
   mountDevtools({
     // Nomme le projet : sans lui la cle retomberait sur le hostname, partage
     // par tous les projets servis depuis localhost.
@@ -72,14 +124,7 @@ export default defineNuxtPlugin(() => {
       glPanel({
         // L'etat est clef par NOM : l'identifiant du moteur est un uuid
         // regenere a chaque chargement.
-        save: (state) =>
-          fetch(DEBUG_ENDPOINT, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ id: 'gl', tracks: state }),
-          }).then((response) => {
-            if (!response.ok) throw new Error(`HTTP ${response.status}`)
-          }),
+        save: (state) => post(DEBUG_ENDPOINT, { id: 'gl', tracks: state }),
         adapter: threeAdapter({
           renderer: () => (stage.read()?.renderer as WebGLRenderer | undefined) ?? null,
           scene: () => {
@@ -89,6 +134,13 @@ export default defineNuxtPlugin(() => {
           fps,
           name: `three ${REVISION}`,
         }),
+      }),
+      timelinePanel({
+        ids: THEATRES,
+        loadTheatre,
+        easeNames: EASE_NAMES,
+        sampleEase,
+        save: saveTimeline,
       }),
       consolePanel(),
       netPanel(),

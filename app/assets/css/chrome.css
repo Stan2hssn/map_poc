@@ -28,63 +28,28 @@
 }
 
 /*
- * L'interface arrive quand le masque de composition a presque fini de decouvrir la carte (`INTRO_MS`, 2,4 s),
- * bloc par bloc : l'en-tete, le rail, puis le pied. Montee a l'ouverture de l'experience, elle n'a pas d'etat
- * « avant » d'ou partir : une animation, pas une transition.
+ * L'interface arrive bloc par bloc quand le masque de composition a presque fini de decouvrir la carte. Le
+ * rythme est dans la timeline de l'intro (SONDE, theatre `intro`, objet `interface`), qui ecrit l'entree de
+ * chaque bloc (0 a 1) dans une variable ; sans intro, elles valent 1.
  */
-.chrome__veil,
-.chrome__head,
-.chrome__rail,
-.chrome__foot {
-  animation: chrome-in 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
 .chrome__veil {
-  animation-name: chrome-veil-in;
-  animation-delay: 1300ms;
+  opacity: var(--intro-entete, 1);
 }
 
 .chrome__head {
-  animation-delay: 1500ms;
+  opacity: var(--intro-entete, 1);
+  translate: 0 calc((1 - var(--intro-entete, 1)) * 8px);
 }
 
 /* Le rail est centre par une translation : il monte depuis la sienne. */
 .chrome__rail {
-  animation-name: chrome-rail-in;
-  animation-delay: 1650ms;
+  opacity: var(--intro-rail, 1);
+  translate: 0 calc(-50% + (1 - var(--intro-rail, 1)) * 8px);
 }
 
 .chrome__foot {
-  animation-delay: 1800ms;
-}
-
-@keyframes chrome-in {
-  from {
-    opacity: 0;
-    translate: 0 8px;
-  }
-}
-
-@keyframes chrome-rail-in {
-  from {
-    opacity: 0;
-    translate: 0 calc(-50% + 8px);
-  }
-}
-
-@keyframes chrome-veil-in {
-  from {
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .chrome__veil,
-  .chrome__head,
-  .chrome__rail,
-  .chrome__foot {
-    animation-duration: 1ms;
-  }
+  opacity: var(--intro-pied, 1);
+  translate: 0 calc((1 - var(--intro-pied, 1)) * 8px);
 }
 
 .chrome button {
@@ -251,7 +216,6 @@
   display: flex;
   flex-direction: column;
   gap: 22px;
-  translate: 0 -50%;
 }
 
 .chrome__rail > .chrome__tech {

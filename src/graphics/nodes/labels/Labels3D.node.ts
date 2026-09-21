@@ -752,7 +752,11 @@ export class Labels3DNode extends Object3DNodeBase {
   /** Part decouverte de la carte sous la page d'entree : les noms attendent qu'elle le soit entierement. */
   private _intro = 0;
 
-  /** Part dessinee voulue par l'intro : les noms arrivent apres le trait. */
+  /** Entree des noms, pilotee par la timeline de l'intro : sous la page d'entree, ils n'ont rien a faire. */
+  get intro(): number {
+    return this._intro;
+  }
+
   set intro(value: number) {
     this._intro = value;
   }
