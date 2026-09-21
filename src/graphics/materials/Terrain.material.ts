@@ -449,25 +449,31 @@ function shoreAt(blockUv: Node): { land: Node; depth: Node } {
  * une derivee n'a pas de sens dans une branche que tous les pixels ne prennent pas.
  */
 function seaLines(geo: Node, depth: Node, aa: Node): Node {
+  const at = (scale: Node) => penWater(geo.mul(scale), depth, aa.mul(scale));
+  return mix(at(s.mistScales.x), at(s.mistScales.y), s.mistBlend);
+}
+
+/**
+ * Le trait de l'eau en un point `p` (une cellule de bruit par unite, `waterLines` traits par unite), a la
+ * profondeur `depth` ; `aa` vaut un pixel en unites de `p`. C'est celui de la mer de la carte (`seaLines`),
+ * et celui des bords de la page d'entree, qui la dessine comme de l'eau.
+ */
+export function penWater(p: Node, depth: Node, aa: Node): Node {
   // 1 au bord de l'eau, 0 au milieu : c'est la que la mer s'agite.
   const surf = depth.mul(0.5).oneMinus().clamp(0, 1).mul(s.waterSurf);
-  const at = (scale: Node) => {
-    const p = geo.mul(scale);
-    const noise = (cells: number, shift: number) => read(s.mistNoise, p.mul(cells / NOISE_CELLS).add(shift)).sub(0.5);
-    const wave = noise(WAVE_CELLS, 0).mul(s.waterWave);
-    const jitter = noise(SURF_CELLS, 0.37).mul(surf);
-    const along = p.x.add(p.y).mul(s.waterLines).add(wave).add(jitter);
-    // Trait plus gras, plus maigre, comme un crayon : seulement pres de la rive.
-    const width = s.waterWidth.mul(noise(SURF_CELLS, 0.71).mul(surf).add(1)).max(0.01);
-    const soft = aa.mul(scale).mul(s.waterLines);
-    const level = (halvings: number) => {
-      const shrink = 2 ** -halvings;
-      const distance = abs(along.mul(shrink).add(0.5).fract().sub(0.5));
-      return smoothstep(width, soft.mul(shrink).add(width), distance).oneMinus();
-    };
-    return mix(mix(level(0), level(1), depth.clamp(0, 1)), level(2), depth.sub(1).clamp(0, 1));
+  const noise = (cells: number, shift: number) => read(s.mistNoise, p.mul(cells / NOISE_CELLS).add(shift)).sub(0.5);
+  const wave = noise(WAVE_CELLS, 0).mul(s.waterWave);
+  const jitter = noise(SURF_CELLS, 0.37).mul(surf);
+  const along = p.x.add(p.y).mul(s.waterLines).add(wave).add(jitter);
+  // Trait plus gras, plus maigre, comme un crayon : seulement pres de la rive.
+  const width = s.waterWidth.mul(noise(SURF_CELLS, 0.71).mul(surf).add(1)).max(0.01);
+  const soft = aa.mul(s.waterLines);
+  const level = (halvings: number) => {
+    const shrink = 2 ** -halvings;
+    const distance = abs(along.mul(shrink).add(0.5).fract().sub(0.5));
+    return smoothstep(width, soft.mul(shrink).add(width), distance).oneMinus();
   };
-  return mix(at(s.mistScales.x), at(s.mistScales.y), s.mistBlend);
+  return mix(mix(level(0), level(1), depth.clamp(0, 1)), level(2), depth.sub(1).clamp(0, 1));
 }
 
 /**

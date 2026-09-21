@@ -4,12 +4,14 @@ import {
   colorToDirection,
   dot,
   float,
+  fwidth,
   getViewPosition,
   length,
   luminance,
   max,
   min,
   mix,
+  mx_noise_float,
   normalize,
   perspectiveDepthToViewZ,
   smoothstep,
@@ -19,7 +21,7 @@ import {
   vec4,
 } from "three/tsl";
 import type { Node } from "three/webgpu";
-import { HOVER_BAND } from "@graphics/materials/Terrain.material.ts";
+import { HOVER_BAND, penWater, terrainSettings } from "@graphics/materials/Terrain.material.ts";
 import { mapUncovered } from "./PageTransition.ts";
 import type IEffect from "./Effect.interface.ts";
 import type { EffectContext } from "./Effect.interface.ts";
@@ -39,8 +41,12 @@ import {
 const SHEET_REACH = 1e4;
 /** Page d'avant la carte : le ton qu'on prete au papier pour qu'il porte quelques hachures (1 : papier nu). */
 const IDLE_TONE = 0.72;
-/** Ses bords : la part de l'ecran que gagnent les hachures depuis la gauche et la droite, et leur ton. */
-const INTRO_SIDES = { reach: 0.28, tone: 0.52 } as const;
+/**
+ * Ses bords, dessines comme la mer : part de l'ecran gagnee depuis la gauche et la droite, tremble du rivage
+ * (amplitude, et ondulations sur la hauteur), et cellules d'eau sur la hauteur de l'ecran — reglees pour que
+ * les traits aient l'ecart de ceux de la mer en vue France (~11 px).
+ */
+const PAGE_SEA = { reach: 0.26, shoreJitter: 0.03, shoreCells: 3, cells: 2.8, ink: 0.55 } as const;
 const NEIGHBORS = [
   [1, 0],
   [-1, 0],
@@ -135,11 +141,19 @@ export class InkEffect implements IEffect {
     const marked = max(drawing, rim.mul(k.hoverRim));
     const map = inkOnPaper(marked, screen, paper, hovered);
     // Page d'entree, posee sur la carte deja dessinee : la meme feuille, ses nuages portant quelques hachures,
-    // et sur ses bords les hachures memes de la carte, qui l'annoncent. Le masque de composition la retire
-    // pour decouvrir la carte (`mapUncovered`) ; le masque de la carte, lui, ne bouge pas.
-    const sides = smoothstep(0, INTRO_SIDES.reach, min(uv.x, uv.x.oneMinus())).oneMinus();
-    const idle = luminance(paper).max(0).pow(1 / 2.2).mul(mix(float(IDLE_TONE), float(INTRO_SIDES.tone), sides));
-    const page = inkOnPaper(inkCoverage(idle, screen, { far: sides.oneMinus() }), screen, paper);
+    // et ses bords dessines comme la mer de la carte, qui l'annoncent (`penWater`) : traits a 45 degres serres
+    // au rivage, qui s'espacent vers le bord de l'ecran. Le masque de composition la retire pour decouvrir la
+    // carte (`mapUncovered`) ; le masque de la carte, lui, ne bouge pas.
+    const fromEdge = min(uv.x, uv.x.oneMinus());
+    const shore = mx_noise_float(vec2(uv.y.mul(PAGE_SEA.shoreCells), uv.x)).mul(PAGE_SEA.shoreJitter).add(PAGE_SEA.reach);
+    const pixelUv = float(1).div(resolution.x);
+    const wet = smoothstep(shore.sub(pixelUv), shore.add(pixelUv), fromEdge).oneMinus();
+    const depth = shore.sub(fromEdge).div(PAGE_SEA.reach).mul(2).clamp(0, 2);
+    const sea = uv.mul(vec2(resolution.x.div(resolution.y), 1)).mul(PAGE_SEA.cells);
+    const waves = penWater(sea, depth, fwidth(sea.x)).mul(wet).mul(terrainSettings.waterInk).mul(PAGE_SEA.ink);
+    const idle = luminance(paper).max(0).pow(1 / 2.2).mul(IDLE_TONE);
+    const pagePaper = mix(paper, paper.mul(terrainSettings.seaTone), wet);
+    const page = inkOnPaper(max(inkCoverage(idle, screen, { far: float(1) }), waves), screen, pagePaper);
     return vec4(mix(input.rgb, mix(page, map, mapUncovered()), k.amount), input.a);
   }
 
