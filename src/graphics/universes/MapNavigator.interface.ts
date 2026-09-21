@@ -29,9 +29,11 @@ export default interface IMapNavigator {
   goToPlace(place: SelectedPlace): void;
   /** Rien n'est dessine : la page reste blanche pendant que la carte se charge. */
   holdIntro(): void;
-  /** La scene est prete : le cercle de l'intro s'ouvre pour inviter au depart. */
+  /** Chargement de la vue qui attend sous la page d'entree : part arrivee, et vue prete a etre decouverte. */
+  loadState(): { progress: number; ready: boolean };
+  /** La vue est chargee : le mot de l'intro prend toute son encre pour inviter au depart. */
   setIntroReady(ready: boolean): void;
-  /** La carte se dessine en s'ouvrant, et vole vers `view` si elle est donnee. */
+  /** La page se retire et decouvre la carte, puis la vue vole vers `view` si elle est donnee. */
   drawMap(view?: MapView): void;
 }
 

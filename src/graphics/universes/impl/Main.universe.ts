@@ -147,6 +147,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
    */
   private readonly _introTheatre: Theatre;
   private _introStarted = false;
+  private readonly _gestures: { open: boolean };
   /** La timeline a ecrit dans la scene depuis la derniere image (lecture, ou reglage dans SONDE). */
   private _introMoved = false;
   private readonly _selectionListeners = new Set<(place: SelectedPlace) => void>();
@@ -156,6 +157,9 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     scene.background = new Color(BACKGROUND);
 
     const terrain = new TerrainNode(new IgnElevationProvider());
+    // Sous la page d'entree, la carte attend cadree sur la France : un geste l'en ferait sortir sans qu'on le
+    // voie, et l'on entrerait ailleurs. Les gestes n'agissent qu'une fois l'intro lancee.
+    const gestures = { open: false };
     const cameraNode = new MapCameraNode(
       device.input,
       device.renderer.domElement,
@@ -163,9 +167,9 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       (x, z) => terrain.heightAt(x, z),
       terrain,
       {
-        pan: (dx, dz) => terrain.moveBy(dx, dz),
-        zoom: (factor, x, z) => terrain.zoomAt(factor, x, z),
-        fling: (vx, vz) => terrain.fling(vx, vz),
+        pan: (dx, dz) => gestures.open && terrain.moveBy(dx, dz),
+        zoom: (factor, x, z) => gestures.open && terrain.zoomAt(factor, x, z),
+        fling: (vx, vz) => gestures.open && terrain.fling(vx, vz),
       },
     );
 
@@ -220,6 +224,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     this._panel = new PanelNode(device.renderer.domElement, () => this.camera as Camera);
     this._intro3d = new IntroNode(device.renderer.domElement, () => this.camera as Camera);
     this._introTheatre = this._createIntroTheatre();
+    this._gestures = gestures;
     this._survey = new SurveyNode(terrain, device.renderer.domElement, () => this.camera as Camera);
     this._buildings = new BuildingsNode(terrain);
     // map tourne sur WebGPURenderer (WebGPU ou son repli WebGL2).
@@ -292,6 +297,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
    */
   holdIntro(): void {
     this._introStarted = false;
+    this._gestures.open = false;
     this._introTheatre.pause();
     this._introTheatre.seek(0);
     this._terrain.jumpTo(MAP_VIEWS.france);
@@ -301,9 +307,20 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   drawMap(view?: MapView): void {
     if (this._introStarted) return;
     this._introStarted = true;
+    this._gestures.open = true;
     this._introTheatre.seek(0);
     this._introTheatre.play();
     if (view) this._terrain.flyTo(view);
+  }
+
+  /**
+   * Chargement de la vue qui attend sous la page : relief et plan, puis les lieux a nommer. Tant qu'elle n'est
+   * pas prete, on n'entre pas — des tuiles arrivees en plein passage le font saccader.
+   */
+  loadState(): { progress: number; ready: boolean } {
+    const map = this._terrain.loadState;
+    const places = this._labels.loaded;
+    return { progress: map.progress * (places ? 1 : 0.95), ready: map.ready && places };
   }
 
   /** Theatres offerts a la timeline de SONDE. */
@@ -383,8 +400,6 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     this._inkPass.enabled = inkSettings.amount.value > 0.5;
     // Intro : la timeline avance au temps reel ecoule, sans borne — une image lourde ne la fait pas patiner.
     this._introTheatre.advance(dt / 1000);
-    // Ce qui vole au-dessus de la carte n'apparait qu'avec elle.
-    for (const node of [this._clouds, this._planes, this._survey]) node.getObject3D().visible = pageTransition.progress.value > 0;
     this._lights.relief(terrainSettings.relief.value);
     this._renderStats.update(dt);
 

@@ -752,6 +752,11 @@ export class Labels3DNode extends Object3DNodeBase {
   /** Part decouverte de la carte sous la page d'entree : les noms attendent qu'elle le soit entierement. */
   private _intro = 0;
 
+  /** Des lieux sont connus pour le niveau courant : il y a de quoi nommer la carte. */
+  get loaded(): boolean {
+    return this._places.version > 0;
+  }
+
   /** Entree des noms, pilotee par la timeline de l'intro : sous la page d'entree, ils n'ont rien a faire. */
   get intro(): number {
     return this._intro;

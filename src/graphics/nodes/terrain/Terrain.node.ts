@@ -21,6 +21,8 @@ import { Group, MathUtils, Mesh, Vector2, Vector3, type Camera, type Object3D } 
 import { LandcoverHelper } from "./Landcover.helper.ts";
 import { TerrainHeightsHelper, type HeightsView } from "./TerrainHeights.helper.ts";
 
+/** Poids du relief et du plan dans la part chargee affichee a l'entree. */
+const LOAD_SHARE = { heights: 0.75, plan: 0.25 };
 const C = TERRAIN_CONFIG;
 // Temps de reponse du plancher et du relief quand la vue change.
 const RANGE_EASE_MS = 150;
@@ -96,6 +98,8 @@ export class TerrainNode extends Object3DNodeBase {
   private _floor = 0;
   private _relief = 0;
   private readonly _glide = { x: 0, z: 0 };
+  /** Tuiles en attente au plus fort depuis le dernier `jumpTo` : la base de la part chargee. */
+  private _peakPending = 0;
   /** Vue visee par les gestes : la vue affichee la rattrape (`_ease`), comme la camera de Chartogne-Taillet. */
   private readonly _goal = { lon: C.center.lon, lat: C.center.lat, extentKm: C.extentKm as number };
   private _flight: {
@@ -233,8 +237,23 @@ export class TerrainNode extends Object3DNodeBase {
     this._flight = { from, to, destination: this._viewOf(to), path, duration, elapsed: 0 };
   }
 
+  /**
+   * Chargement de la vue affichee : part arrivee (tuiles d'altitude, puis le plan) et vue prete — relief
+   * compose, plan complet, plus rien qui bouge. Les tuiles se comptent depuis le dernier `jumpTo`.
+   */
+  get loadState(): { progress: number; ready: boolean } {
+    const pending = this._heights.pendingCount;
+    const heights = this._heights.ready ? 1 - pending / Math.max(1, this._peakPending) : 0;
+    const plan = this.landcover.complete ? 1 : 0;
+    return {
+      progress: heights * LOAD_SHARE.heights + plan * LOAD_SHARE.plan,
+      ready: this._heights.ready && pending === 0 && this.landcover.complete && this.settled,
+    };
+  }
+
   /** Pose la vue sans vol : l'intro l'installe sous sa page, rien ne doit y voyager. */
   jumpTo(view: MapView): void {
+    this._peakPending = 0;
     this._flight = null;
     this._glide.x = this._glide.z = 0;
     Object.assign(this.center, { lon: view.lon, lat: view.lat });
@@ -319,6 +338,7 @@ export class TerrainNode extends Object3DNodeBase {
     this._ease(dt);
     this._measureVelocity(lon, lat, dt);
     this._heights.update(this._view(), this._flight?.destination);
+    this._peakPending = Math.max(this._peakPending, this._heights.pendingCount);
     this.landcover.update(this._bounds, this.withBuildingHeights, this._landcoverTarget(), !this.settled);
     this._easeRange(dt);
     // Grille allegee la ou le relief ne demande rien ; jamais pendant un vol, ou la refaire sauterait.

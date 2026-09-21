@@ -1,16 +1,23 @@
 <script setup lang="ts">
 /**
- * Entree : une page presque vide. La feuille hachuree est la passe d'encre avant la carte ; le titre et le mot
- * pose sur le cercle du curseur sont dessines dans le rendu (`IntroNode`), a la place que leur donne le HTML
- * ci-dessous — qui garde la mise en page et la lecture d'ecran, mais pas l'encre. Au depart, le masque de la
- * carte s'ouvre depuis le centre et efface tout sur son passage : un seul geste.
+ * Entree : une page presque vide, composee comme la maquette par la passe d'encre, sur la carte qui attend
+ * dessous. Le titre et le mot pose sur le cercle du curseur sont dessines dans le rendu (`IntroNode`), a la place
+ * que leur donne le HTML ci-dessous — qui garde la mise en page et la lecture d'ecran, mais pas l'encre. Au
+ * depart, le masque de composition decouvre la carte et efface tout sur son passage : un seul geste.
  *
- * Le cercle du curseur, lui, reste pour toute l'experience (`MapCursor`).
+ * On n'entre qu'une fois la vue chargee : des tuiles arrivees en plein passage le font saccader. La jauge dit
+ * la part reellement arrivee. Le cercle du curseur, lui, reste pour toute l'experience (`MapCursor`).
  */
 import { isMapNavigator } from '@graphics/universes/MapNavigator.interface.ts'
 
+/** Lecture du chargement : assez frequente pour que la jauge avance, sans solliciter la scene a chaque image. */
+const LOAD_POLL_MS = 150
+
 const started = ref(false)
+const loaded = ref(0)
+const ready = ref(false)
 const drawn = ref(false)
+let poll = 0
 
 function navigator() {
   const universes = useThreeStage().read()?.runtime.output.getActiveUniverses() ?? []
@@ -20,13 +27,23 @@ function navigator() {
 function onReady() {
   started.value = true
   if (drawn.value) return
-  const map = navigator()
-  map?.holdIntro()
-  map?.setIntroReady(true)
+  navigator()?.holdIntro()
+  poll = window.setInterval(readLoad, LOAD_POLL_MS)
+}
+
+function readLoad() {
+  const state = navigator()?.loadState()
+  if (!state) return
+  loaded.value = Math.max(loaded.value, state.progress)
+  if (!state.ready) return
+  loaded.value = 1
+  ready.value = true
+  navigator()?.setIntroReady(true)
+  clearInterval(poll)
 }
 
 function draw() {
-  if (drawn.value || !started.value) return
+  if (drawn.value || !ready.value) return
   drawn.value = true
   document.documentElement.dataset.mapIntro = 'drawn'
   // La carte attend deja sur la France sous la page (`holdIntro`) : rien a survoler en partant.
@@ -38,6 +55,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  clearInterval(poll)
   delete document.documentElement.dataset.mapIntro
 })
 </script>
@@ -47,7 +65,7 @@ onBeforeUnmount(() => {
     <ThreeStage @ready="onReady" />
     <MapChrome v-if="drawn" />
     <MapArchives v-if="drawn" />
-    <MapCursor :mode="drawn ? 'map' : started ? 'ready' : 'loading'" />
+    <MapCursor :mode="drawn ? 'map' : ready ? 'ready' : 'loading'" />
 
     <div v-if="!drawn" class="entry">
       <!-- Mise en page seulement : l'encre de ces textes est posee par le rendu, qui sait les effacer. -->
@@ -64,8 +82,8 @@ onBeforeUnmount(() => {
       </nav>
 
       <div class="entry__loading">
-        <div class="entry__gauge"><i :class="{ 'is-full': started }" /></div>
-        <span>{{ started ? 'Fonds prêt' : 'Fonds en chargement' }}</span>
+        <div class="entry__gauge"><i :style="{ width: `${Math.round(loaded * 100)}%` }" /></div>
+        <span>{{ ready ? 'Fonds prêt' : `Fonds en chargement · ${Math.round(loaded * 100)} %` }}</span>
       </div>
     </div>
   </main>
@@ -173,14 +191,10 @@ onBeforeUnmount(() => {
 
 .entry__gauge i {
   display: block;
-  width: 18%;
+  width: 0;
   height: 100%;
   background: rgb(var(--ui-ink) / 0.55);
-  transition: width 900ms ease;
-}
-
-.entry__gauge i.is-full {
-  width: 100%;
+  transition: width 300ms ease;
 }
 
 @media (prefers-reduced-motion: reduce) {

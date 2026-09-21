@@ -39,9 +39,17 @@ export class LandcoverHelper {
   private _previous: GeoBounds | null = null;
   private _shownAt = -Infinity;
   private _heights: GeoBounds | null = null;
+  /** L'image affichee est l'image complete de la derniere demande, et celle-ci couvre la vue voulue. */
+  private _complete = false;
+  private _upToDate = false;
 
   constructor() {
     this._worker.onmessage = ({ data }: MessageEvent<LandcoverImage | BuildingsTile>) => this._receive(data);
+  }
+
+  /** Vrai quand le plan de la vue demandee est arrive en entier et fini d'apparaitre. */
+  get complete(): boolean {
+    return this._complete && this._upToDate && terrainSettings.landcoverReveal.value >= 1;
   }
 
   /** Niveau ou le PLAN IGN a tout le bati, pour la vue `bounds` (celui de ses images). */
@@ -64,11 +72,15 @@ export class LandcoverHelper {
     const sunKey = heights ? sun.map((v) => v.toFixed(3)).join() : "";
     const close = !!r && (moving ? Math.abs(r.zoom - zoom) <= 1 : r.zoom === zoom);
     const done = r && close && r.heights === heights && r.sun === sunKey && containsBounds(r.focus, target);
+    // Sans cela, l'image complete d'une vue quittee (celle d'avant un saut) passerait pour celle de la vue.
+    this._upToDate = !!done;
     const now = performance.now();
     if (!done && now - this._requestedAt > (moving ? MOVING_REQUEST_MS : REQUEST_MS)) {
       const focus = expandBounds(target, FOCUS);
       this._requested = { focus, zoom, heights, sun: sunKey };
       this._requestedAt = now;
+      this._complete = false;
+      this._upToDate = true;
       const request: LandcoverRequest = { kind: "landcover", id: ++this._id, bounds: area, focus, width: SIZE, height: SIZE, heights, sun };
       this._worker.postMessage(request);
     }
@@ -119,7 +131,8 @@ export class LandcoverHelper {
     if (message.id < this._shown) return;
     this._shown = message.id;
     this.stats.renderMs = message.renderMs;
-    if (message.complete && message.id === this._id) this.stats.loadMs = performance.now() - this._requestedAt;
+    this._complete = message.complete && message.id === this._id;
+    if (this._complete) this.stats.loadMs = performance.now() - this._requestedAt;
     const s = terrainSettings;
     show(s.landcover, s.landcoverPrevious, message.areas);
     show(s.landcoverRoads, s.landcoverRoadsPrevious, message.roads);
