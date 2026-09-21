@@ -455,10 +455,9 @@ function seaLines(geo: Node, depth: Node, aa: Node): Node {
 
 /**
  * Le trait de l'eau en un point `p` (une cellule de bruit par unite, `waterLines` traits par unite), a la
- * profondeur `depth` ; `aa` vaut un pixel en unites de `p`. C'est celui de la mer de la carte (`seaLines`),
- * et celui des bords de la page d'entree, qui la dessine comme de l'eau.
+ * profondeur `depth` ; `aa` vaut un pixel en unites de `p`.
  */
-export function penWater(p: Node, depth: Node, aa: Node): Node {
+function penWater(p: Node, depth: Node, aa: Node): Node {
   // 1 au bord de l'eau, 0 au milieu : c'est la que la mer s'agite.
   const surf = depth.mul(0.5).oneMinus().clamp(0, 1).mul(s.waterSurf);
   const noise = (cells: number, shift: number) => read(s.mistNoise, p.mul(cells / NOISE_CELLS).add(shift)).sub(0.5);

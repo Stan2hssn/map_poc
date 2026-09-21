@@ -4,16 +4,15 @@ import {
   colorToDirection,
   dot,
   float,
-  fwidth,
   getViewPosition,
   length,
   luminance,
   max,
-  min,
   mix,
-  mx_noise_float,
   normalize,
   perspectiveDepthToViewZ,
+  screenCoordinate,
+  screenSize,
   smoothstep,
   step,
   uniform,
@@ -21,7 +20,7 @@ import {
   vec4,
 } from "three/tsl";
 import type { Node } from "three/webgpu";
-import { HOVER_BAND, penWater, terrainSettings } from "@graphics/materials/Terrain.material.ts";
+import { HOVER_BAND } from "@graphics/materials/Terrain.material.ts";
 import { mapUncovered } from "./PageTransition.ts";
 import type IEffect from "./Effect.interface.ts";
 import type { EffectContext } from "./Effect.interface.ts";
@@ -42,11 +41,55 @@ const SHEET_REACH = 1e4;
 /** Page d'avant la carte : le ton qu'on prete au papier pour qu'il porte quelques hachures (1 : papier nu). */
 const IDLE_TONE = 0.72;
 /**
- * Ses bords, dessines comme la mer : part de l'ecran gagnee depuis la gauche et la droite, tremble du rivage
- * (amplitude, et ondulations sur la hauteur), et cellules d'eau sur la hauteur de l'ecran — reglees pour que
- * les traits aient l'ecart de ceux de la mer en vue France (~11 px).
+ * Degrade radial facon CSS, en part de l'ecran : ellipse de rayons `radii` centree en `at`, et paliers
+ * d'opacite (position sur le rayon, alpha), interpoles lineairement comme `radial-gradient`.
  */
-const PAGE_SEA = { reach: 0.26, shoreJitter: 0.03, shoreCells: 3, cells: 2.8, ink: 0.55 } as const;
+interface CssRadial {
+  at: readonly [number, number];
+  radii: readonly [number, number];
+  stops: readonly (readonly [number, number])[];
+}
+
+/**
+ * Page d'entree, reprise de la maquette (`01-entree.html`) : une masse d'encre hors centre a gauche, fondue par
+ * un masque radial (opacite 0,66), et un lavis de papier sur la colonne de texte. Degrades ramenes a l'ecran
+ * (y vers le bas). La masse est ici la carte elle-meme : plus a droite que dans la maquette, sinon elle ne
+ * montrerait que la mer, et le lavis resserre sur le titre, sinon il l'effacerait.
+ */
+const PAGE = {
+  mass: {
+    at: [0.34, 0.56],
+    radii: [0.5, 0.62],
+    stops: [
+      [0, 1],
+      [0.46, 0.75],
+      [0.78, 0],
+    ],
+    opacity: 0.66,
+  },
+  wash: {
+    at: [0.5, 0.3],
+    radii: [0.36, 0.42],
+    stops: [
+      [0, 0.95],
+      [0.58, 0.9],
+      [0.88, 0.25],
+      [1, 0],
+    ],
+  },
+} as const;
+
+/** Opacite d'un degrade radial de la maquette au pixel courant, en part de l'ecran (y vers le bas, comme en CSS). */
+function cssRadial({ at, radii, stops }: CssRadial): Node {
+  const t = length(screenCoordinate.div(screenSize).sub(vec2(...at)).div(vec2(...radii)));
+  let alpha: Node = float(stops[stops.length - 1]![1]);
+  for (let i = stops.length - 2; i >= 0; i--) {
+    const [from, a] = stops[i]!;
+    const [to, b] = stops[i + 1]!;
+    alpha = mix(mix(float(a), float(b), t.sub(from).div(to - from).clamp(0, 1)), alpha, step(to, t));
+  }
+  return alpha;
+}
 const NEIGHBORS = [
   [1, 0],
   [-1, 0],
@@ -140,20 +183,14 @@ export class InkEffect implements IEffect {
     const paper = paperAt(screen).mul(newsprintAt(sheet, near));
     const marked = max(drawing, rim.mul(k.hoverRim));
     const map = inkOnPaper(marked, screen, paper, hovered);
-    // Page d'entree, posee sur la carte deja dessinee : la meme feuille, ses nuages portant quelques hachures,
-    // et ses bords dessines comme la mer de la carte, qui l'annoncent (`penWater`) : traits a 45 degres serres
-    // au rivage, qui s'espacent vers le bord de l'ecran. Le masque de composition la retire pour decouvrir la
+    // Page d'entree, posee sur la carte deja dessinee, composee comme la maquette : la meme feuille, ses nuages
+    // portant quelques hachures ; une masse d'encre a gauche, qui est la carte elle-meme fondue par un masque
+    // radial ; un lavis de papier sur la colonne de texte. Le masque de composition la retire pour decouvrir la
     // carte (`mapUncovered`) ; le masque de la carte, lui, ne bouge pas.
-    const fromEdge = min(uv.x, uv.x.oneMinus());
-    const shore = mx_noise_float(vec2(uv.y.mul(PAGE_SEA.shoreCells), uv.x)).mul(PAGE_SEA.shoreJitter).add(PAGE_SEA.reach);
-    const pixelUv = float(1).div(resolution.x);
-    const wet = smoothstep(shore.sub(pixelUv), shore.add(pixelUv), fromEdge).oneMinus();
-    const depth = shore.sub(fromEdge).div(PAGE_SEA.reach).mul(2).clamp(0, 2);
-    const sea = uv.mul(vec2(resolution.x.div(resolution.y), 1)).mul(PAGE_SEA.cells);
-    const waves = penWater(sea, depth, fwidth(sea.x)).mul(wet).mul(terrainSettings.waterInk).mul(PAGE_SEA.ink);
     const idle = luminance(paper).max(0).pow(1 / 2.2).mul(IDLE_TONE);
-    const pagePaper = mix(paper, paper.mul(terrainSettings.seaTone), wet);
-    const page = inkOnPaper(max(inkCoverage(idle, screen, { far: float(1) }), waves), screen, pagePaper);
+    let page: Node = inkOnPaper(inkCoverage(idle, screen, { far: float(1) }), screen, paper);
+    page = mix(page, map, cssRadial(PAGE.mass).mul(PAGE.mass.opacity));
+    page = mix(page, k.paper, cssRadial(PAGE.wash));
     return vec4(mix(input.rgb, mix(page, map, mapUncovered()), k.amount), input.a);
   }
 
