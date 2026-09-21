@@ -580,7 +580,8 @@ export class Labels3DNode extends Object3DNodeBase {
     this._aiming = this._aim(hovered);
     const changed = hovered !== this._hovered;
     this._hovered = hovered;
-    this._canvas.style.cursor = hovered ? "pointer" : "";
+    // La main dit que la carte se saisit ; sous la page d'entree, les gestes sont fermes : curseur ordinaire.
+    this._canvas.style.cursor = hovered ? "pointer" : this._intro < 1 ? "" : this._pressed ? "grabbing" : "grab";
     // L'accent vient du nom survole, sinon du sol sous le pointeur — sauf pres d'un nom, ou il attend le nom.
     this._designate(hovered ?? (this._aiming || this._pressed || this._intro < 1 ? null : this._groundPlace(camera)));
     // Tant qu'une valeur avance, l'univers doit redessiner : sinon la zone de survol continuerait de bouger
