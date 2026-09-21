@@ -240,16 +240,29 @@ defineExpose({ place })
 /*
  * Pas de fond ni de bordure ici : la feuille est un plan WebGL cale sur ce rectangle (`PanelNode`), qui s'ecrit
  * par taches avec un bord d'encre et se consume a la fermeture. Il pose `--fonds-reveal` sur cet element ;
- * chaque bloc s'ecrit quand le front atteint son seuil (`--at`), et s'efface de meme. `--swap` fait reecrire
- * le texte quand on change de territoire sans refermer.
+ * chaque bloc bascule quand le front atteint son seuil (`--at`) — `--in` vaut alors 0 ou 1 — et c'est la
+ * transition qui l'anime, en 300 ms : suivre le front directement le faisait passer en 150 ms. `--swap` fait
+ * reecrire le texte quand on change de territoire sans refermer.
  */
 .fonds__list li,
 .fonds__head,
 .fonds__tabs,
 .fonds__foot {
-  --in: clamp(0, calc((min(var(--fonds-reveal, 0), var(--swap, 1)) - var(--at, 0)) * 6), 1);
+  --in: clamp(0, calc((min(var(--fonds-reveal, 0), var(--swap, 1)) - var(--at, 0)) * 1000), 1);
   opacity: var(--in);
   translate: 0 calc((1 - var(--in)) * 10px);
+  transition:
+    opacity 300ms ease,
+    translate 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fonds__list li,
+  .fonds__head,
+  .fonds__tabs,
+  .fonds__foot {
+    transition: none;
+  }
 }
 
 .fonds__head {
