@@ -1,6 +1,6 @@
 import { attribute, color, mix, positionGeometry, smoothstep, texture, uniform, vec2, vec3 } from "three/tsl";
 import { Color, DoubleSide, LinearSRGBColorSpace } from "three";
-import { MeshBasicNodeMaterial, type Texture } from "three/webgpu";
+import { MeshBasicNodeMaterial, type Node, type Texture } from "three/webgpu";
 
 /**
  * Encre des etiquettes et encre du survol, prises telles quelles (`LinearSRGBColorSpace` : pas de conversion) :
@@ -24,16 +24,23 @@ export const labelSettings = {
  * noms inattrapables.
  *
  * Attributs par instance : `glyph` (uv du caractere dans l'atlas), `screen` (coin et taille en pixels dans le
- * repere de l'etiquette) et `tint` (part de survol, le texte passe a l'accent). `reveal` dit la part dessinee :
- * l'intro a la sienne, sinon son mot suivrait l'apparition des noms de la carte.
+ * repere de l'etiquette), `tint` (part de survol, le texte passe a l'accent) et `fade` (part apparue du
+ * quadrilatere : chaque etiquette entre et sort a son rythme). `reveal` dit la part dessinee de tout le
+ * materiau : l'intro a la sienne, sinon ses textes suivraient l'apparition des noms de la carte. `erase`, s'il
+ * est donne, retire le texte par endroits (l'intro, que le masque de la carte efface).
  */
-export function createLabelMaterial(atlas: Texture, reveal: ReturnType<typeof uniform<number>> = labelSettings.reveal): MeshBasicNodeMaterial {
+export function createLabelMaterial(
+  atlas: Texture,
+  reveal: ReturnType<typeof uniform<number>> = labelSettings.reveal,
+  erase?: Node,
+): MeshBasicNodeMaterial {
   // Deux faces : l'axe y de l'ecran descend, celui du repere monte, et cette inversion retourne le sens des
   // triangles du quadrilatere. En une seule face, toutes les etiquettes sont dos a la camera et disparaissent.
   const material = new MeshBasicNodeMaterial({ transparent: true, depthTest: false, depthWrite: false, side: DoubleSide });
   const glyph = attribute("glyph", "vec4");
   const screen = attribute("screen", "vec4");
   const tint = attribute("tint", "float");
+  const fade = attribute("fade", "float");
 
   // Repere de l'etiquette : x vers la droite, y vers le haut. Les pixels de l'ecran descendent, d'ou le signe.
   const corner = positionGeometry.xy.add(0.5);
@@ -43,7 +50,8 @@ export function createLabelMaterial(atlas: Texture, reveal: ReturnType<typeof un
   const uv = vec2(glyph.x.add(corner.x.mul(glyph.z)), glyph.y.add(corner.y.mul(glyph.w)));
   const distance = texture(atlas, uv).r;
   material.colorNode = mix(color(INK), color(HOVER), tint);
-  material.opacityNode = smoothstep(EDGE.level - EDGE.soft, EDGE.level + EDGE.soft, distance).mul(reveal);
+  const drawn = smoothstep(EDGE.level - EDGE.soft, EDGE.level + EDGE.soft, distance).mul(reveal).mul(fade);
+  material.opacityNode = erase ? drawn.mul(erase.oneMinus()) : drawn;
   return material;
 }
 

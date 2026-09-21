@@ -187,6 +187,12 @@ export class TerrainNode extends Object3DNodeBase {
     return { x: this._projection.x(lon) / k, z: this._projection.z(lat) / k };
   }
 
+  /** Point geographique d'une position de la scene : l'inverse de `sceneOf`. */
+  geoOf(x: number, z: number): { lon: number; lat: number } {
+    const k = this.kmPerUnit;
+    return { lon: this._projection.lon(x * k), lat: this._projection.lat(z * k) };
+  }
+
   /** Place les uv de la zone de detail (0..1) dans la scene. */
   get block(): Object3D {
     return this._blockSpace;

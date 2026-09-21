@@ -77,6 +77,11 @@ const FLAT_INK = 0.42;
  * de la part dessinee.
  */
 export const HOVER_BAND = 2;
+/**
+ * Territoires accentues a la fois : celui qu'on survole et deux qu'on vient de quitter, qui refluent chacun a
+ * leur rythme. Chaque place coute une lecture de texture au sol.
+ */
+export const HOVER_SLOTS = 3;
 /** Demi-largeur du trait de perimetre du lieu survole, en pixels d'ecran. */
 const RIM_PX = 1.1;
 /** Teinte d'un batiment a plat sur le sol : un volume qui commence a monter la prend, et se confond avec lui. */
@@ -196,13 +201,15 @@ export const terrainSettings = {
    */
   screenRect: uniform(new Vector4(0, 0, 1, 1)),
   /**
-   * Lieu survole : son contour rasterise (`AreaMaskHelper`) et le cadre en degres ou il se pose
-   * (ouest, nord, etendue en longitude, etendue en latitude, negative). Etendue nulle : rien n'est survole.
+   * Territoires accentues, un par place (`HOVER_SLOTS`) : celui qu'on survole et ceux qu'on vient de quitter,
+   * pour que chacun reflue a son rythme au lieu d'etre coupe par le suivant. Pour chacun, son contour rasterise
+   * (`AreaMaskHelper`), le cadre en degres ou il se pose (ouest, nord, etendue en longitude, etendue en
+   * latitude, negative ; etendue nulle : place vide) et la part gagnee par le rouge, qui monte et reflue par
+   * taches, pas d'un bloc.
    */
-  hoverArea: texture(new DataTexture(new Uint8Array(4), 1, 1, RGBAFormat, UnsignedByteType)),
-  hoverBounds: uniform(new Vector4(0, 0, 0, 0)),
-  /** Part gagnee par le rouge sur le territoire survole : il monte et reflue par taches, pas d'un bloc. */
-  hoverReveal: uniform(0),
+  hoverAreas: Array.from({ length: HOVER_SLOTS }, () => texture(new DataTexture(new Uint8Array(4), 1, 1, RGBAFormat, UnsignedByteType))),
+  hoverBounds: Array.from({ length: HOVER_SLOTS }, () => uniform(new Vector4(0, 0, 0, 0))),
+  hoverReveals: Array.from({ length: HOVER_SLOTS }, () => uniform(0)),
   /** Taille des taches par lesquelles le rouge gagne, en unites de `geo`. */
   hoverGrain: uniform(0.35),
   /** Textures de donnees (R bati, G vegetation, B eau ; routes en R) et leur cadrage en uv du bloc. */
@@ -828,20 +835,24 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
   material.outputNode = vec4(mix(vec3(s.pen), printed, shown), output.a);
   // Pour l'effet plein ecran : part dessinee du pixel (le reste s'efface dans le papier et le journal), et le
   // lieu survole marque en plus (`HOVER_BAND`), pour que l'encre le colorie sans autre tampon.
-  const areaUv = lonLat.sub(s.hoverBounds.xy).div(s.hoverBounds.zw);
-  // Champ de distance du contour : 0,5 sur la limite, plus haut dedans (`AreaMaskHelper`).
-  const field = read(s.hoverArea, areaUv);
-  const onMap = step(0.0001, abs(s.hoverBounds.z)).mul(inside(areaUv));
-  // Le rouge monte par taches : un bruit accroche a la carte dit dans quel ordre les pixels basculent, et
-  // `hoverReveal` monte de 0 a 1. Un seuil sur ce bruit, jamais un fondu : le trait reste franc.
-  const grain = read(s.mistNoise, geo.div(s.hoverGrain.max(0.01)));
-  const arrived = step(grain.mul(0.85).add(0.075), s.hoverReveal);
-  const insideArea = onMap.mul(step(0.5, field)).mul(arrived);
-  // Trait de perimetre d'une largeur constante a l'ecran : la derivee du champ dit ce que vaut un pixel.
-  // Il s'arrete a la cote, ou le trait de rivage dit deja la limite ; efface un peu au large, sinon il en
-  // resterait la moitie a terre.
+  // Le rouge monte par taches : un bruit accroche a la carte dit dans quel ordre les pixels basculent, et la
+  // part gagnee monte de 0 a 1. Un seuil sur ce bruit, jamais un fondu : le trait reste franc.
+  const grain = read(s.mistNoise, geo.div(s.hoverGrain.max(0.01))).mul(0.85).add(0.075);
+  // Le trait de perimetre s'arrete a la cote, ou le trait de rivage dit deja la limite ; efface un peu au
+  // large, sinon il en resterait la moitie a terre.
   const dry = smoothstep(0.35, 0.05, max(cover.fill.b, water.wet));
-  const rim = onMap.mul(step(abs(field.sub(0.5)), fwidth(field).mul(RIM_PX))).mul(dry).mul(arrived);
+  let insideArea: Node = float(0);
+  let rim: Node = float(0);
+  for (let i = 0; i < HOVER_SLOTS; i++) {
+    const bounds = s.hoverBounds[i]!;
+    const areaUv = lonLat.sub(bounds.xy).div(bounds.zw);
+    // Champ de distance du contour : 0,5 sur la limite, plus haut dedans (`AreaMaskHelper`).
+    const field = read(s.hoverAreas[i]!, areaUv);
+    const arrived = step(0.0001, abs(bounds.z)).mul(inside(areaUv)).mul(step(grain, s.hoverReveals[i]!));
+    insideArea = max(insideArea, step(0.5, field).mul(arrived));
+    // Largeur constante a l'ecran : la derivee du champ dit ce que vaut un pixel.
+    rim = max(rim, step(abs(field.sub(0.5)), fwidth(field).mul(RIM_PX)).mul(dry).mul(arrived));
+  }
   material.mrtNode = mrt({ normal: vec4(directionToColor(normalView), shown.add(insideArea.add(rim).mul(HOVER_BAND))) });
 
   return material;

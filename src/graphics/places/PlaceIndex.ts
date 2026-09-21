@@ -1,3 +1,4 @@
+import { ringsBounds, ringsContain } from "./Rings.ts";
 import type { GeoBounds } from "@graphics/terrain/GeoProjection.ts";
 
 export interface Place {
@@ -24,6 +25,9 @@ const keyOf = (name: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z]/gi, "")
     .toLowerCase();
+
+/** Cadre de chaque contour, calcule au premier besoin. */
+const boxes = new WeakMap<Place, ReturnType<typeof ringsBounds>>();
 
 /** Lieux tries du plus peuple au moins peuple. */
 export class PlaceIndex {
@@ -68,6 +72,23 @@ export class PlaceIndex {
     const starts = this._places.filter((p) => keyOf(p.name).startsWith(key));
     const inside = this._places.filter((p) => !starts.includes(p) && keyOf(p.name).includes(key));
     return [...starts, ...inside].slice(0, limit);
+  }
+
+  /** Lieu dont le contour contient le point, s'il est connu (departements, regions, communes deja survolees). */
+  containing(lon: number, lat: number): Place | null {
+    for (const p of this._places) {
+      if (!p.rings) continue;
+      let box = boxes.get(p);
+      if (!box) boxes.set(p, (box = ringsBounds(p.rings)));
+      if (lon < box.west || lon > box.east || lat < box.south || lat > box.north) continue;
+      if (ringsContain(p.rings, lon, lat)) return p;
+    }
+    return null;
+  }
+
+  /** Commune connue sous ce code INSEE : la meme que son etiquette, pour que les deux partagent un accent. */
+  withCode(code: string): Place | null {
+    return this._places.find((p) => p.code === code) ?? null;
   }
 
   /**
