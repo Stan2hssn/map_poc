@@ -61,12 +61,12 @@ onMounted(async () => {
     return
   }
 
+  // Publie avant d'annoncer : qui reagit a `ready` doit deja pouvoir lire la scene (l'intro y pose la carte).
+  useThreeStage().publish(device)
   ready.value = true
   emit('ready')
   observer = new ResizeObserver(resize)
   observer.observe(canvas)
-
-  useThreeStage().publish(device)
 
   // Sonde de developpement : donne acces a la scene depuis la console du
   // navigateur. `import.meta.dev` est statique, la branche disparait du build.
