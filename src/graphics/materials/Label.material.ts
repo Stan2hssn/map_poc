@@ -1,4 +1,4 @@
-import { attribute, color, mix, positionGeometry, smoothstep, texture, uniform, vec2, vec3 } from "three/tsl";
+import { attribute, color, fwidth, mix, positionGeometry, smoothstep, texture, uniform, vec2, vec3 } from "three/tsl";
 import { Color, DoubleSide, LinearSRGBColorSpace } from "three";
 import { MeshBasicNodeMaterial, type Node, type Texture } from "three/webgpu";
 
@@ -8,8 +8,11 @@ import { MeshBasicNodeMaterial, type Node, type Texture } from "three/webgpu";
  */
 const INK = new Color().setHex(0x1d2a4d, LinearSRGBColorSpace);
 const HOVER = new Color().setHex(0xb3452f, LinearSRGBColorSpace);
-/** Le champ de distance vaut 0,5 sur le trait ; le bord s'adoucit sur cette part de part et d'autre. */
-const EDGE = { level: 0.5, soft: 0.08 };
+/**
+ * Le champ de distance vaut 0,5 sur le trait. Le bord s'adoucit sur a peine plus d'un demi-pixel de part et
+ * d'autre, mesure a l'ecran : une bande fixe en unites du champ floutait les grands corps et crenelait les petits.
+ */
+const EDGE = { level: 0.5, px: 0.7 };
 
 /**
  * Etiquettes des villes : un quadrilatere par caractere (et par trait), pose dans le repere de son etiquette,
@@ -43,7 +46,8 @@ export function createLabelMaterial(
   const uv = vec2(glyph.x.add(corner.x.mul(glyph.z)), glyph.y.add(corner.y.mul(glyph.w)));
   const distance = texture(atlas, uv).r;
   material.colorNode = mix(color(INK), color(HOVER), tint);
-  let drawn: Node = smoothstep(EDGE.level - EDGE.soft, EDGE.level + EDGE.soft, distance).mul(fade);
+  const soft = fwidth(distance).mul(EDGE.px).max(1e-4);
+  let drawn: Node = smoothstep(soft.negate().add(EDGE.level), soft.add(EDGE.level), distance).mul(fade);
   if (reveal) drawn = drawn.mul(reveal);
   material.opacityNode = erase ? drawn.mul(erase.oneMinus()) : drawn;
   return material;
