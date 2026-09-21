@@ -1,7 +1,7 @@
 import type IPass from "@_core/pipeline/Pass.interface.ts";
 import type { PassContext } from "@_core/pipeline/Pass.interface.ts";
 import type { FrameTiming } from "@_core/types/Frame.type.ts";
-import { ColorManagement, type Material, type RenderTarget } from "three";
+import { ColorManagement, type Camera, type Material, type RenderTarget, type Scene } from "three";
 import { QuadMesh, type WebGPURenderer } from "three/webgpu";
 
 /** Passe de `EffectComposer`. Voir `EffectComposer` pour l'ordre et les buffers. */
@@ -28,6 +28,14 @@ export abstract class PassBase implements IPass {
   onUnmounted(): void {}
 
   render(_frame: FrameTiming, _ctx: PassContext): void {}
+
+  /**
+   * Prepare les pipelines de ce que la passe dessine, sans rien dessiner. WebGPU les compile sinon au premier
+   * rendu : un gros shader (le sol) y bloque l'image, ou manque, le temps de sa compilation.
+   */
+  compile(_renderer: WebGPURenderer, _scene: Scene, _camera: Camera, _input: RenderTarget): Promise<void> {
+    return Promise.resolve();
+  }
 
   /** Taille du canvas en pixels reels, appelee par `EffectComposer` quand elle change. */
   setSize(_width: number, _height: number): void {}

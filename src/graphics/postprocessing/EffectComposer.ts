@@ -1,7 +1,7 @@
 import type { PassContext } from "@_core/pipeline/Pass.interface.ts";
 import { PipelineBase } from "@_core/pipeline/Pipeline.base.ts";
 import type { FrameTiming } from "@_core/types/Frame.type.ts";
-import { DepthTexture, HalfFloatType, RenderTarget, Vector2, type TextureDataType } from "three";
+import { DepthTexture, HalfFloatType, RenderTarget, Vector2, type Camera, type Scene, type TextureDataType } from "three";
 import type { WebGPURenderer } from "three/webgpu";
 import type { PassBase } from "./passes/Pass.base.ts";
 
@@ -64,6 +64,15 @@ export class EffectComposer extends PipelineBase {
       for (const pass of this._chain) pass.setSize(x, y);
     }
     super.prepare(frame, ctx);
+  }
+
+  /**
+   * Prepare les pipelines de toute la chaine sans rien dessiner (voir `PassBase.compile`). Les passes posent
+   * leur etat l'une apres l'autre, puis toutes les compilations sont attendues ensemble.
+   */
+  compile(renderer: WebGPURenderer, scene: Scene, camera: Camera): Promise<void> {
+    const pending = this._chain.filter((pass) => pass.enabled).map((pass) => pass.compile(renderer, scene, camera, this.inputBuffer));
+    return Promise.all(pending).then(() => undefined);
   }
 
   override render(frame: FrameTiming, ctx: PassContext): void {

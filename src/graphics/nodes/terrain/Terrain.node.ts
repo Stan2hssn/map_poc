@@ -243,7 +243,7 @@ export class TerrainNode extends Object3DNodeBase {
    */
   get loadState(): { progress: number; ready: boolean } {
     const pending = this._heights.pendingCount;
-    const heights = this._heights.ready ? 1 - pending / Math.max(1, this._peakPending) : 0;
+    const heights = this._heights.ready ? 1 - pending / Math.max(1, this._peakPending, pending) : 0;
     const plan = this.landcover.complete ? 1 : 0;
     return {
       progress: heights * LOAD_SHARE.heights + plan * LOAD_SHARE.plan,

@@ -564,6 +564,16 @@ export class Labels3DNode extends Object3DNodeBase {
       this._rigs[i]!.group.visible = false;
       this._rigs[i]!.place = null;
     }
+    // Sous la page d'entree, un quadrilatere transparent reste dessine : le pipeline des noms est ainsi pret
+    // quand ils entrent, au lieu de se compiler a la fin du passage et d'y faire un a-coup.
+    const warm = this._rigs[0];
+    if (this._intro < 1 && index === 0 && warm) {
+      warm.group.visible = true;
+      warm.quads = 0;
+      this._quad(warm, font.solid, 0, 0, 1, 1, 0, 0);
+      warm.geometry.instanceCount = 1;
+      for (const attribute of [warm.glyphs, warm.screen, warm.tints, warm.fades]) attribute.needsUpdate = true;
+    }
 
     // Un geste en cours deplace la carte : il ne designe rien. Sous la page d'entree non plus.
     const hovered = this._pressed || this._intro < 1 ? null : this._pick(camera);

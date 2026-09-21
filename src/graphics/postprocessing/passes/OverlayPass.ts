@@ -19,10 +19,21 @@ export class OverlayPass extends PassBase {
     this._scene = scene;
   }
 
+  override compile(renderer: WebGPURenderer, _scene: Scene, camera: Camera): Promise<void> {
+    const scene = this._scene();
+    if (!scene) return Promise.resolve();
+    return this._inCanvasState(renderer, () => renderer.compileAsync(scene, camera));
+  }
+
   override postRender(_frame: FrameTiming, ctx: PassContext): void {
     const scene = this._scene();
     if (!scene) return;
     const renderer = ctx.renderer as WebGPURenderer;
+    this._inCanvasState(renderer, () => renderer.render(scene, ctx.camera as Camera));
+  }
+
+  /** Le reglage du rendu sur le canvas, le temps de `draw`, puis celui d'avant. */
+  private _inCanvasState<T>(renderer: WebGPURenderer, draw: () => T): T {
     // Sans couper les sorties multiples, le pipeline serait construit pour les deux textures de la scene alors
     // que ce materiau n'en ecrit qu'une, et rien ne s'afficherait.
     const mrt = renderer.getMRT();
@@ -34,9 +45,10 @@ export class OverlayPass extends PassBase {
     renderer.autoClear = false;
     renderer.outputColorSpace = ColorManagement.workingColorSpace;
     renderer.setRenderTarget(null);
-    renderer.render(scene, ctx.camera as Camera);
+    const result = draw();
     renderer.outputColorSpace = colorSpace;
     renderer.autoClear = clear;
     renderer.setMRT(mrt);
+    return result;
   }
 }

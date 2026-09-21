@@ -148,6 +148,12 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   private readonly _introTheatre: Theatre;
   private _introStarted = false;
   private readonly _gestures: { open: boolean };
+  /**
+   * Pipelines prepares pendant l'attente, et prets : lances une fois la vue chargee, car ses textures changent
+   * le shader du sol. Sans cela il se compilait au premier passage — la carte y manquait, ou saccadait.
+   */
+  private _compiling: Promise<void> | null = null;
+  private _compiled = false;
   /** La timeline a ecrit dans la scene depuis la derniere image (lecture, ou reglage dans SONDE). */
   private _introMoved = false;
   private readonly _selectionListeners = new Set<(place: SelectedPlace) => void>();
@@ -314,13 +320,18 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   }
 
   /**
-   * Chargement de la vue qui attend sous la page : relief et plan, puis les lieux a nommer. Tant qu'elle n'est
-   * pas prete, on n'entre pas — des tuiles arrivees en plein passage le font saccader.
+   * Chargement de la page d'entree et de la vue qui attend dessous : relief et plan, lieux a nommer, textes
+   * graves. Tant qu'elle n'est pas prete, la page reste sous son voile et l'on n'entre pas — des tuiles arrivees
+   * en plein passage le font saccader.
    */
   loadState(): { progress: number; ready: boolean } {
     const map = this._terrain.loadState;
-    const places = this._labels.loaded;
-    return { progress: map.progress * (places ? 1 : 0.95), ready: map.ready && places };
+    const rest = (this._labels.loaded ? 0.5 : 0) + (this._intro3d.built ? 0.5 : 0);
+    const compiled = this._compiled ? 1 : 0;
+    return {
+      progress: Math.max(0, map.progress) * 0.8 + rest * 0.1 + compiled * 0.1,
+      ready: map.ready && rest === 1 && this._compiled,
+    };
   }
 
   /** Theatres offerts a la timeline de SONDE. */
@@ -400,6 +411,14 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     this._inkPass.enabled = inkSettings.amount.value > 0.5;
     // Intro : la timeline avance au temps reel ecoule, sans borne — une image lourde ne la fait pas patiner.
     this._introTheatre.advance(dt / 1000);
+    if (!this._compiling && !this._introStarted && this._terrain.loadState.ready) {
+      this._compiling = this._composer
+        .compile(this._renderer, this.scene as Scene, this.camera as Camera)
+        .catch((error: unknown) => console.warn("[Main] preparation des pipelines incomplete", error))
+        .then(() => {
+          this._compiled = true;
+        });
+    }
     this._lights.relief(terrainSettings.relief.value);
     this._renderStats.update(dt);
 

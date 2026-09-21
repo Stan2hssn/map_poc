@@ -5,19 +5,27 @@
  * que leur donne le HTML ci-dessous — qui garde la mise en page et la lecture d'ecran, mais pas l'encre. Au
  * depart, le masque de composition decouvre la carte et efface tout sur son passage : un seul geste.
  *
- * On n'entre qu'une fois la vue chargee : des tuiles arrivees en plein passage le font saccader. La jauge dit
- * la part reellement arrivee. Le cercle du curseur, lui, reste pour toute l'experience (`MapCursor`).
+ * Tant que la page n'est pas complete (vue chargee, textes graves), une feuille la couvre et dit la part
+ * arrivee : ses elements ne paraissent pas un par un, ils se decouvrent ensemble. On n'entre qu'ensuite — des
+ * tuiles arrivees en plein passage le feraient saccader. Le cercle du curseur, lui, reste pour toute
+ * l'experience (`MapCursor`).
  */
 import { isMapNavigator } from '@graphics/universes/MapNavigator.interface.ts'
 
 /** Lecture du chargement : assez frequente pour que la jauge avance, sans solliciter la scene a chaque image. */
 const LOAD_POLL_MS = 150
+/** Delai apres « pret » avant de lever la feuille : le temps qu'une image de la page complete soit dessinee. */
+const UNVEIL_DELAY_MS = 150
 
 const started = ref(false)
 const loaded = ref(0)
 const ready = ref(false)
+/** La feuille de chargement se leve, puis s'en va une fois son fondu fini. */
+const unveiled = ref(false)
+const veilGone = ref(false)
 const drawn = ref(false)
 let poll = 0
+let unveil = 0
 
 function navigator() {
   const universes = useThreeStage().read()?.runtime.output.getActiveUniverses() ?? []
@@ -40,6 +48,7 @@ function readLoad() {
   ready.value = true
   navigator()?.setIntroReady(true)
   clearInterval(poll)
+  unveil = window.setTimeout(() => (unveiled.value = true), UNVEIL_DELAY_MS)
 }
 
 function draw() {
@@ -56,6 +65,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   clearInterval(poll)
+  clearTimeout(unveil)
   delete document.documentElement.dataset.mapIntro
 })
 </script>
@@ -66,6 +76,21 @@ onBeforeUnmount(() => {
     <MapChrome v-if="drawn" />
     <MapArchives v-if="drawn" />
     <MapCursor :mode="drawn ? 'map' : ready ? 'ready' : 'loading'" />
+
+    <!-- Feuille de chargement : la page se decouvre entiere, pas element par element. -->
+    <div
+      v-if="!veilGone"
+      class="loader"
+      :class="{ 'is-done': unveiled }"
+      role="status"
+      aria-live="polite"
+      @transitionend.self="veilGone = unveiled"
+    >
+      <div class="loader__inner">
+        <div class="loader__gauge"><i :style="{ width: `${Math.round(loaded * 100)}%` }" /></div>
+        <span class="loader__label">Fonds en chargement · {{ Math.round(loaded * 100) }} %</span>
+      </div>
+    </div>
 
     <div v-if="!drawn" class="entry">
       <!-- Mise en page seulement : l'encre de ces textes est posee par le rendu, qui sait les effacer. -->
@@ -94,6 +119,61 @@ onBeforeUnmount(() => {
   position: fixed;
   inset: 0;
   background: #f4f0e6;
+}
+
+/* Au-dessus de la page et de son pied, sous le cercle du curseur. Meme papier que la maquette d'entree. */
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: #f4f0e6;
+  transition: opacity 700ms ease;
+}
+
+.loader::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('/assets/Images/Paper/newspaper.webp') 22% 14% / 1200px auto;
+  opacity: 0.42;
+  mix-blend-mode: multiply;
+}
+
+.loader.is-done {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loader__inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.loader__gauge {
+  width: 120px;
+  height: 1px;
+  background: rgb(var(--ui-ink) / 0.16);
+}
+
+.loader__gauge i {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: rgb(var(--ui-ink) / 0.62);
+  transition: width 300ms ease;
+}
+
+.loader__label {
+  padding-left: 0.3em;
+  font: 500 0.625rem/1 var(--font-map);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgb(var(--ui-ink) / 0.62);
 }
 
 .entry {
@@ -198,7 +278,9 @@ onBeforeUnmount(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .entry__gauge i {
+  .entry__gauge i,
+  .loader,
+  .loader__gauge i {
     transition: none;
   }
 }

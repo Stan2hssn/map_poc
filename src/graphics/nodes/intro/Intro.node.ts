@@ -63,6 +63,7 @@ export class IntroNode extends Object3DNodeBase {
   private readonly _lastRing = new Vector2(-1, -1);
   private _ready = false;
   private _settled = false;
+  private _built = false;
 
   constructor(canvas: HTMLElement, camera: () => Camera) {
     super(NODE_ID.INTRO, "Intro", new Group());
@@ -78,6 +79,11 @@ export class IntroNode extends Object3DNodeBase {
   /** Vrai quand plus rien ne bouge : la carte ouverte, ou le cercle et le mot immobiles. */
   get settled(): boolean {
     return this._settled;
+  }
+
+  /** Les textes sont graves (polices chargees, atlas construits) : la page d'entree est complete. */
+  get built(): boolean {
+    return this._built;
   }
 
   /** L'experience peut partir : le mot prend toute son encre. */
@@ -172,6 +178,7 @@ export class IntroNode extends Object3DNodeBase {
     const font = createSdfFont(WORD.font, WORD.weight);
     this._word = { element: null, mesh: this._mesh(font, WORD.text, WORD.size, WORD.size * WORD.spacing, 1, this._wordAlpha), at: new Vector2(-1e4, -1e4) };
     for (const line of [...this._lines, this._word]) this._scene.add(line.mesh);
+    this._built = true;
   }
 
   /**

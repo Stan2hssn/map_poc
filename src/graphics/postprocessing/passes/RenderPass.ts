@@ -13,6 +13,17 @@ import { PassBase } from "./Pass.base.ts";
 export class RenderPass extends PassBase {
   private readonly _normals = mrt({ output, normal: vec4(directionToColor(normalView), 1) });
 
+  /** Meme cible et memes sorties que le rendu : un pipeline compile pour une autre cible ne resservirait pas. */
+  override compile(renderer: WebGPURenderer, scene: Scene, camera: Camera, input: RenderTarget): Promise<void> {
+    const target = this.renderToScreen ? null : input;
+    renderer.setRenderTarget(target);
+    renderer.setMRT(target && target.textures.length > 1 ? this._normals : null);
+    // La cible et les sorties sont lues avant le premier `await` de `compileAsync` : on peut les rendre aussitot.
+    const done = renderer.compileAsync(scene, camera);
+    renderer.setMRT(null);
+    return done;
+  }
+
   override render(_frame: FrameTiming, ctx: PassContext): void {
     const renderer = ctx.renderer as WebGPURenderer;
     const target = this.renderToScreen ? null : (ctx.inputBuffer as RenderTarget);
