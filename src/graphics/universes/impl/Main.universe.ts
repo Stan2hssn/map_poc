@@ -9,6 +9,7 @@ import { FOLDER_ID, TAB_ID } from "@graphics/debug/Debug.id.ts";
 import { RenderStatsHelper } from "@graphics/debug/RenderStats.helper.ts";
 import { DynamicQualityHelper } from "@graphics/device/DynamicQuality.helper.ts";
 import { inkAnchorAt, terrainSettings } from "@graphics/materials/Terrain.material.ts";
+import { noiseMap } from "@graphics/materials/NoiseMap.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import { BuildingsNode } from "@graphics/nodes/buildings/Buildings.node.ts";
 import { MapCameraNode } from "@graphics/nodes/cameras/MapCamera.node.ts";
@@ -399,6 +400,8 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     await Promise.resolve(super.beforeMount());
     const newsprint = this._assets.get<Texture>(ASSET_KEYS.paper.newsprint);
     if (newsprint) newsprintMap.value = newsprint;
+    const noise = this._assets.get<Texture>(ASSET_KEYS.noise.paint);
+    if (noise) noiseMap.value = noise;
   }
 
   protected override getAssetPreloadGroups(): string[] {

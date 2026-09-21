@@ -2,7 +2,8 @@ import { Object3DNodeBase } from "@_core/nodes/object3d/Object3DNode.base.ts";
 import { pixelScale } from "@graphics/materials/Label.material.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import { Color, Group, LinearSRGBColorSpace, Mesh, PlaneGeometry, Scene, Vector2, Vector3, type Camera, type PerspectiveCamera } from "three";
-import { clamp, float, fwidth, mix, mx_fractal_noise_float, positionGeometry, smoothstep, step, uniform, vec3 } from "three/tsl";
+import { clamp, float, fwidth, mix, positionGeometry, smoothstep, step, uniform, vec3 } from "three/tsl";
+import { noise01 } from "@graphics/materials/NoiseMap.ts";
 import { MeshBasicNodeMaterial } from "three/webgpu";
 
 /** Element que la feuille suit : c'est le panneau lui-meme qui donne son cadre, et son etat (`data-state`). */
@@ -20,6 +21,8 @@ const WRITE_MS = 900;
 const ERASE_MS = 620;
 /** Taille des taches par lesquelles la feuille s'ecrit (px), et part du haut vers le bas dans leur ordre. */
 const CELL_PX = 150;
+/** Repetitions de la texture de bruit par cellule : ses taches ont la taille de celles de l'ancien bruit calcule. */
+const NOISE_SCALE = 0.35;
 const DOWNWARD = 0.35;
 /**
  * Bord d'encre du front : un trait franc d'une largeur fixe a l'ecran (px), puis un lavis leger qui se retire
@@ -133,7 +136,8 @@ export class PanelNode extends Object3DNodeBase {
     const material = new MeshBasicNodeMaterial({ transparent: true, depthTest: false, depthWrite: false });
     const uv = positionGeometry.xy.add(0.5);
     const px = uv.mul(this._size);
-    const noise = mx_fractal_noise_float(px.div(CELL_PX), 3, 2, 0.5).mul(0.5).add(0.5);
+    // Bruit peint, deja fractal : trois octaves de Perlin par pixel du panneau coutaient cher.
+    const noise = noise01(px.div(CELL_PX).mul(NOISE_SCALE));
     const order = clamp(mix(noise, uv.y.oneMinus(), DOWNWARD), 0, 1);
     // Le front part d'avant le premier point et finit apres le dernier, bord d'encre compris.
     const front = mix(float(-EDGE.wash), float(1 + EDGE.wash), this._front);

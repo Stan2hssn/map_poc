@@ -1,5 +1,5 @@
 import { createAssetKeys, defineAssets } from "@_core/assets/index.ts";
-import { RepeatWrapping, SRGBColorSpace, type Texture } from "three";
+import { NoColorSpace, RepeatWrapping, SRGBColorSpace, type Texture } from "three";
 
 export const ASSET_MANIFEST = defineAssets({
   // `group: "boot"` -> loaded before first universe mount.
@@ -11,6 +11,19 @@ export const ASSET_MANIFEST = defineAssets({
       type: "texture",
       group: "ui",
       lazy: true,
+    },
+  },
+  noise: {
+    /** Bruit peint, lu par le masque de l'intro et la feuille du panneau (`noiseMap`). */
+    paint: {
+      src: "/assets/Images/Diffuse/noise.webp",
+      type: "texture",
+      group: "universe:main",
+      postProcess: (resource: unknown) => {
+        const texture = resource as Texture;
+        texture.wrapS = texture.wrapT = RepeatWrapping;
+        texture.colorSpace = NoColorSpace;
+      },
     },
   },
   paper: {

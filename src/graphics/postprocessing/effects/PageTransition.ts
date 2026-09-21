@@ -1,5 +1,6 @@
-import { atan, fract, fwidth, length, max, min, mix, mx_noise_float, screenCoordinate, screenSize, smoothstep, uniform, vec2 } from "three/tsl";
+import { atan, fract, fwidth, length, max, min, mix, screenCoordinate, screenSize, smoothstep, uniform, vec2 } from "three/tsl";
 import type { Node } from "three/webgpu";
+import { noiseAt } from "@graphics/materials/NoiseMap.ts";
 
 /**
  * Passage de la page d'entree a la carte : un masque de composition pose a l'ecran, qui decouvre la carte deja
@@ -29,6 +30,8 @@ export const pageTransition = {
   blotScale: uniform(3.2),
 };
 
+/** Repetitions de la texture de bruit par unite : ses taches ont la taille de celles du Perlin qu'elle remplace. */
+const NOISE_SCALE = 0.35;
 /** Marge du front avant le premier pixel et apres le dernier : aucun ne bascule au depart, tous a l'arrivee. */
 const FRONT_MARGIN = 0.02;
 /** Au-dela, la derivee de l'ordre saute (bord d'un bras) : le lissage reste celui d'un pixel ordinaire. */
@@ -41,8 +44,9 @@ export function mapUncovered(): Node {
   const t = pageTransition;
   const turn = atan(p.y, p.x).div(Math.PI * 2).add(0.5).add(t.rotation);
   const arm = fract(turn.mul(t.arms).add(radius.mul(t.twist)));
-  const fibres = mx_noise_float(vec2(arm.mul(t.fibres), radius.mul(4)));
-  const blots = mx_noise_float(p.mul(t.blotScale));
+  // Bruit peint plutot que Perlin calcule : ce masque est evalue sur chaque pixel de l'ecran.
+  const fibres = noiseAt(vec2(arm.mul(t.fibres), radius.mul(4)).mul(NOISE_SCALE));
+  const blots = noiseAt(p.mul(t.blotScale).mul(NOISE_SCALE));
   const order = radius.mul(t.radius).add(arm.mul(t.armDelay)).add(fibres.mul(t.fibre)).add(blots.mul(t.blot));
   // Bornes de l'ordre pour tous les reglages (un retard negatif, de grosses taches) : le bruit tient dans
   // [-1, 1], le bras dans [0, 1]. Une borne fixe laissait des pixels sous la page a l'arrivee.

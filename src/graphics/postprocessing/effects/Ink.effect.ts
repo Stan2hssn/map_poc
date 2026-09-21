@@ -4,7 +4,9 @@ import {
   colorToDirection,
   dot,
   float,
+  Fn,
   getViewPosition,
+  If,
   length,
   luminance,
   max,
@@ -21,7 +23,7 @@ import {
 } from "three/tsl";
 import type { Node } from "three/webgpu";
 import { HOVER_BAND } from "@graphics/materials/Terrain.material.ts";
-import { mapUncovered } from "./PageTransition.ts";
+import { mapUncovered, pageTransition } from "./PageTransition.ts";
 import type IEffect from "./Effect.interface.ts";
 import type { EffectContext } from "./Effect.interface.ts";
 import {
@@ -187,11 +189,20 @@ export class InkEffect implements IEffect {
     // portant quelques hachures ; une masse d'encre a gauche, qui est la carte elle-meme fondue par un masque
     // radial ; un lavis de papier sur la colonne de texte. Le masque de composition la retire pour decouvrir la
     // carte (`mapUncovered`) ; le masque de la carte, lui, ne bouge pas.
-    const idle = luminance(paper).max(0).pow(1 / 2.2).mul(IDLE_TONE);
-    let page: Node = inkOnPaper(inkCoverage(idle, screen, { far: float(1) }), screen, paper);
-    page = mix(page, map, cssRadial(PAGE.mass).mul(PAGE.mass.opacity));
-    page = mix(page, k.paper, cssRadial(PAGE.wash));
-    return vec4(mix(input.rgb, mix(page, map, mapUncovered()), k.amount), input.a);
+    // Une fois la carte decouverte, la page n'existe plus : la branche porte sur un uniforme, tous les pixels la
+    // sautent ensemble, et ni la page ni le masque ne coutent plus rien.
+    const composed = Fn(() => {
+      const color = map.toVar();
+      If(pageTransition.progress.lessThan(1), () => {
+        const idle = luminance(paper).max(0).pow(1 / 2.2).mul(IDLE_TONE);
+        let page: Node = inkOnPaper(inkCoverage(idle, screen, { far: float(1) }), screen, paper);
+        page = mix(page, map, cssRadial(PAGE.mass).mul(PAGE.mass.opacity));
+        page = mix(page, k.paper, cssRadial(PAGE.wash));
+        color.assign(mix(page, map, mapUncovered()));
+      });
+      return color;
+    })();
+    return vec4(mix(input.rgb, composed, k.amount), input.a);
   }
 
   /** Rayon du pixel `at` depuis la camera, et le point du sol (y = 0) qu'il vise, replie au-dessus de l'horizon. */
