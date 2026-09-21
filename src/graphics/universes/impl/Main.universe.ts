@@ -171,10 +171,9 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     const ink = new InkEffect({ anchorAt: inkAnchorAt });
     const inkPass = new EffectPass([ink]);
     // L'interface se dessine apres l'encre : sinon la passe la prendrait pour un relief et la hachurerait.
-    // Le rideau du panneau vient par-dessus les noms, puisqu'il les recouvre a l'ouverture.
+    // La feuille du panneau vient par-dessus les noms, puisqu'elle les recouvre.
     const labelsPass = new OverlayPass(() => this._labels.scene);
     const panelPass = new OverlayPass(() => this._panel.scene);
-    // L'intro est au-dessus de tout : elle couvre la page jusqu'au depart de l'experience.
     const introPass = new OverlayPass(() => this._intro3d.scene);
     const composer = new EffectComposer([new RenderPass(), inkPass, labelsPass, panelPass, introPass], {
       normalDepth: true,
@@ -279,7 +278,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     return { extentKm: this._terrain.extentKm, lon: (west + east) / 2, lat: (south + north) / 2 };
   }
 
-  /** L'experience peut partir : le cercle de l'intro s'ouvre pour le dire. */
+  /** L'experience peut partir : le mot de l'intro prend toute son encre. */
   setIntroReady(ready: boolean): void {
     this._intro3d.ready = ready;
   }
@@ -336,8 +335,6 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     inkSettings.reveal.value = eased;
     // Les noms arrivent apres le trait, une fois la carte bien ouverte.
     this._labels.intro = Math.max(0, eased * 2 - 1);
-    // Le rideau de l'intro se retire des le depart, un peu avant que la carte ne finisse de s'ouvrir.
-    this._intro3d.target = Math.min(1, intro.target);
     // Ce qui vole au-dessus de la carte n'apparait qu'avec elle.
     for (const node of [this._clouds, this._planes, this._survey]) node.getObject3D().visible = eased > 0.02;
     this._lights.relief(terrainSettings.relief.value);

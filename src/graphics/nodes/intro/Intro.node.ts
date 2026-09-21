@@ -1,101 +1,85 @@
 import { Object3DNodeBase } from "@_core/nodes/object3d/Object3DNode.base.ts";
 import { createLabelMaterial, pixelScale } from "@graphics/materials/Label.material.ts";
+import { pageErased, terrainSettings } from "@graphics/materials/Terrain.material.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
-import { createSdfFont, textWidth, type SdfFont } from "@graphics/text/SdfFont.ts";
+import { createSdfFont, type SdfFont } from "@graphics/text/SdfFont.ts";
 import {
   BufferAttribute,
-  Color,
   Group,
   InstancedBufferAttribute,
   InstancedBufferGeometry,
-  LinearSRGBColorSpace,
   Mesh,
-  PlaneGeometry,
   Scene,
   Vector2,
   Vector3,
   type Camera,
   type PerspectiveCamera,
 } from "three";
-import { float, length, max, min, mix, mx_fractal_noise_float, positionGeometry, smoothstep, step, uniform, vec2, vec3 } from "three/tsl";
-import { MeshBasicNodeMaterial } from "three/webgpu";
+import { cameraPosition, positionWorld, uniform } from "three/tsl";
+import type { MeshBasicNodeMaterial } from "three/webgpu";
 
 /** Distance des plans devant la camera (unites de scene) : quelconque, l'echelle la compense. */
 const DEPTH = 40;
-/** Mot pose au-dessus du curseur, et son corps en pixels. */
-const WORD = "ENTRER";
-const WORD_PX = 13;
-/** Rayon du cercle (px) au repos, puis quand l'experience peut commencer. */
-const RADIUS = { idle: 34, ready: 52 };
-/** Vitesses : le cercle suit la souris, le rayon s'ajuste. */
-const FOLLOW_PER_S = 9;
-const RADIUS_PER_S = 5;
+/** Textes de l'intro poses en HTML (mise en page, lecture d'ecran), et le cercle du curseur (`MapCursor`). */
+const TEXTS = "[data-intro-text]";
+const RING = "[data-cursor-ring]";
+/** Mot pose au-dessus du cercle : son corps (px), son interlettrage (em) et son ecart au cercle ouvert (px). */
+const WORD = { text: "ENTRER", size: 11, spacing: 0.34, gap: 16, font: '"Manrope", system-ui, sans-serif', weight: 600 };
+/** Rayon du cercle ouvert (px) : le mot s'y pose, et ne bouge plus quand le cercle se referme au depart. */
+const READY_RADIUS = 44;
+/** Le mot est la avant que l'experience puisse partir, mais a peine. */
+const WORD_ALPHA = { waiting: 0.4, ready: 1 };
+const ALPHA_PER_S = 4;
 const MAX_STEP_MS = 40;
-/**
- * Duree du retrait du rideau (ms), comptee a l'horloge et non en pas cumules : les premieres images de la
- * carte sont lourdes, et un pas borne y ferait patiner la transition pendant plusieurs secondes.
- */
-const REVEAL_MS = 2200;
-/** Hachures du fond : leur pas en pixels, et la part de l'ecran qu'elles gagnent depuis les bords. */
-const HATCH_PX = 9;
-const HATCH_REACH = 0.34;
-/** Papier et encre, pris tels quels : le calque ecrit directement sur le canvas (voir `OverlayPass`). */
-const PAPER = new Color().setHex(0xf4f0e6, LinearSRGBColorSpace);
-const INK = new Color().setHex(0x1d2a4d, LinearSRGBColorSpace);
-const FONT = '"Manrope", system-ui, sans-serif';
+/** Au-dela (unites de scene), un rayon qui rase l'horizon s'arrete : pas d'infini dans les coordonnees. */
+const SHEET_REACH = 1e4;
+const QUAD = new Float32Array([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0]);
+
+/** Un texte de l'intro : son maillage, et le point d'ecriture a l'ecran (px), garde quand son HTML s'en va. */
+interface Line {
+  element: HTMLElement | null;
+  mesh: Mesh;
+  at: Vector2;
+}
 
 /**
- * Intro dessinee dans le rendu : un fond de papier hachure sur les cotes, un cercle trace autour du curseur
- * et le mot a poser au-dessus. Au depart de l'experience, tout se retire en une seule fois, par taches, depuis
- * le centre — c'est pour cela que rien de tout cela n'est en HTML : le calque DOM ne saurait pas disparaitre
- * comme de l'encre qui se resorbe.
+ * Part effacee du texte au fragment : le point du sol qu'il couvre, lu par le masque de la carte. Le titre et
+ * le mot partent la ou la carte s'ouvre, dans le meme geste qu'elle.
+ */
+function erasedByMap() {
+  const ray = positionWorld.sub(cameraPosition);
+  const reach = cameraPosition.y.div(ray.y.negate().max(1e-4)).min(SHEET_REACH);
+  return pageErased(cameraPosition.xz.add(ray.xz.mul(reach)));
+}
+
+/**
+ * Textes de l'intro dessines dans le rendu : le titre, et le mot pose au-dessus du cercle du curseur. Leur
+ * mise en page reste en HTML (alignement DOM vers WebGL, comme dans les projets de reference) ; le rendu les
+ * ecrit a la meme place, avec la meme police, pour que le depart de l'experience puisse les effacer comme la
+ * carte s'ouvre — par le masque de la carte lui-meme (`pageErased`), pas par un rideau a part.
  *
- * Le fondu reprend la revelation radiale bruitee des projets de reference : la distance au centre pese 0,65,
- * le bruit 0,35, et le balayage depasse 1 pour que les coins finissent aussi.
+ * Le fond de l'intro n'est pas ici : c'est la feuille de la passe d'encre avant la carte, hachuree sur les
+ * bords avec les hachures memes de la carte.
  */
 export class IntroNode extends Object3DNodeBase {
   private readonly _canvas: HTMLElement;
   private readonly _camera: () => Camera;
   private readonly _scene = new Scene();
-  private readonly _veil: Mesh;
-  private readonly _ring: Mesh;
-  private readonly _word: Mesh;
-  private readonly _cursor = new Group();
-  private readonly _reveal = uniform(0);
+  private readonly _lines: Line[] = [];
+  private _word: Line | null = null;
   /** Part dessinee du mot : la sienne, pas celle des noms de la carte. */
-  private readonly _inked = uniform(0);
-  private readonly _aspect = uniform(1);
-  /** Taille de l'ecran en pixels : les hachures sont un pas d'ecran, pas une fraction du plan. */
-  private readonly _size = uniform(new Vector2(1, 1));
+  private readonly _wordAlpha = uniform(WORD_ALPHA.waiting);
   private readonly _forward = new Vector3();
   private readonly _right = new Vector3();
   private readonly _up = new Vector3();
-  private readonly _pointer = new Vector2(-1, -1);
-  private readonly _at = new Vector2(-1, -1);
-  /** Part retiree du rideau, sa cible, et le rayon voulu du cercle. */
-  private _value = 0;
-  private _target = 0;
-  /** Depart du retrait en cours : d'ou il part, et quand. */
-  private _from = 0;
-  private _since = 0;
-  private _radius = RADIUS.idle;
+  private readonly _lastRing = new Vector2(-1, -1);
   private _ready = false;
-  private _font: SdfFont | null = null;
+  private _settled = false;
 
   constructor(canvas: HTMLElement, camera: () => Camera) {
     super(NODE_ID.INTRO, "Intro", new Group());
     this._canvas = canvas;
     this._camera = camera;
-    this._veil = new Mesh(new PlaneGeometry(1, 1), this._veilMaterial());
-    this._ring = new Mesh(new PlaneGeometry(1, 1), this._ringMaterial());
-    this._word = new Mesh(new InstancedBufferGeometry(), undefined);
-    for (const mesh of [this._veil, this._ring, this._word]) mesh.frustumCulled = false;
-    // Meme profondeur, profondeur desactivee : sans ordre explicite, le curseur peut passer sous le rideau.
-    this._veil.renderOrder = 0;
-    this._ring.renderOrder = 1;
-    this._word.renderOrder = 2;
-    this._cursor.add(this._ring, this._word);
-    this._scene.add(this._veil, this._cursor);
   }
 
   /** La scene de l'intro, posee sur l'image finie (`OverlayPass`). */
@@ -103,52 +87,31 @@ export class IntroNode extends Object3DNodeBase {
     return this._scene;
   }
 
-  /** Vrai quand plus rien ne bouge : ni le rideau, ni le cercle qui suit la souris. */
+  /** Vrai quand plus rien ne bouge : la carte ouverte, ou le cercle et le mot immobiles. */
   get settled(): boolean {
-    // Une fois retiree, l'intro ne bouge plus rien : sans cela le cercle, qui n'est plus mis a jour, tiendrait
-    // l'univers eveille pour toujours.
-    if (this._value >= 1) return true;
-    return Math.abs(this._target - this._value) < 0.005 && this._at.distanceTo(this._pointer) < 0.5;
+    return this._settled;
   }
 
-
-  /** L'experience peut partir : le cercle s'ouvre pour le dire. */
+  /** L'experience peut partir : le mot prend toute son encre. */
   set ready(value: boolean) {
     this._ready = value;
   }
 
-  /** 0 : l'intro couvre la page. 1 : elle s'est retiree et la carte est nue. */
-  set target(value: number) {
-    if (value === this._target) return;
-    this._target = value;
-    this._from = this._value;
-    this._since = performance.now();
-  }
-
   override onMounted(): void {
     super.onMounted();
-    this._font = createSdfFont(FONT, 600);
-    this._word.material = createLabelMaterial(this._font.texture, this._inked);
-    this._writeWord(this._font);
-    this._canvas.addEventListener("pointermove", this._onMove);
-  }
-
-  override onUnmounted(): void {
-    this._canvas.removeEventListener("pointermove", this._onMove);
-    super.onUnmounted();
+    void this._build();
   }
 
   override update(_time: number, dt: number): void {
-    const ease = (value: number, target: number, perSecond: number) =>
-      value + (target - value) * Math.min(1, (Math.min(dt, MAX_STEP_MS) / 1000) * perSecond);
-    const elapsed = Math.min(1, (performance.now() - this._since) / REVEAL_MS);
-    // Sortie cubique, comme la revelation des projets de reference : vive au depart, posee a l'arrivee.
-    this._value = this._from + (this._target - this._from) * (1 - (1 - elapsed) ** 3);
-    this._reveal.value = this._value;
-    // Le mot s'efface avant le rideau : la page se vide du centre, il ne doit pas rester seul.
-    this._inked.value = Math.max(0, 1 - this._value * 2.4);
-    this._scene.visible = this._value < 1;
-    if (!this._scene.visible) return;
+    const opened = terrainSettings.drawnReveal.value;
+    this._scene.visible = opened < 1;
+    if (!this._scene.visible) {
+      this._settled = true;
+      return;
+    }
+    const alpha = this._ready ? WORD_ALPHA.ready : WORD_ALPHA.waiting;
+    const k = Math.min(1, (Math.min(dt, MAX_STEP_MS) / 1000) * ALPHA_PER_S);
+    this._wordAlpha.value = Math.abs(alpha - this._wordAlpha.value) < 0.005 ? alpha : this._wordAlpha.value + (alpha - this._wordAlpha.value) * k;
 
     const camera = this._camera() as PerspectiveCamera;
     const { clientWidth: width, clientHeight: height } = this._canvas;
@@ -156,99 +119,111 @@ export class IntroNode extends Object3DNodeBase {
     this._right.set(1, 0, 0).applyQuaternion(camera.quaternion);
     this._up.set(0, 1, 0).applyQuaternion(camera.quaternion);
     const unit = pixelScale(height, camera.fov ?? 50) * DEPTH;
-    this._size.value.set(width, height);
-    this._aspect.value = width / Math.max(1, height);
+    const place = (line: Line) => {
+      line.mesh.position
+        .copy(camera.position)
+        .addScaledVector(this._forward, DEPTH)
+        .addScaledVector(this._right, (line.at.x - width / 2) * unit)
+        .addScaledVector(this._up, -(line.at.y - height / 2) * unit);
+      line.mesh.quaternion.copy(camera.quaternion);
+      line.mesh.scale.setScalar(unit);
+    };
 
-    // Le rideau couvre l'ecran entier, pose a plat devant la camera.
-    this._veil.position.copy(camera.position).addScaledVector(this._forward, DEPTH);
-    this._veil.quaternion.copy(camera.quaternion);
-    this._veil.scale.set(width * unit, height * unit, 1);
+    for (const line of this._lines) {
+      // Le HTML de l'intro s'en va au depart : le texte garde sa derniere place, le masque l'efface la.
+      if (line.element?.isConnected) this._anchor(line);
+      place(line);
+    }
 
-    // Le cercle suit la souris sans y coller : il la rattrape.
-    if (this._pointer.x < 0) this._pointer.set(width / 2, height / 2);
-    this._at.lerp(this._pointer, Math.min(1, (Math.min(dt, MAX_STEP_MS) / 1000) * FOLLOW_PER_S));
-    this._radius = ease(this._radius, this._ready ? RADIUS.ready : RADIUS.idle, RADIUS_PER_S);
-    this._cursor.position
-      .copy(camera.position)
-      .addScaledVector(this._forward, DEPTH - 1)
-      .addScaledVector(this._right, (this._at.x - width / 2) * unit)
-      .addScaledVector(this._up, -(this._at.y - height / 2) * unit);
-    this._cursor.quaternion.copy(camera.quaternion);
-    this._cursor.scale.setScalar(pixelScale(height, camera.fov ?? 50) * (DEPTH - 1));
-    this._ring.scale.setScalar(this._radius * 2.6);
+    const word = this._word;
+    const ring = document.querySelector<HTMLElement>(RING)?.getBoundingClientRect();
+    let moved = false;
+    if (word && ring && opened === 0) {
+      const x = ring.left + ring.width / 2;
+      const y = ring.top + ring.height / 2;
+      moved = this._lastRing.x !== x || this._lastRing.y !== y;
+      this._lastRing.set(x, y);
+      // Le mot se pose sur le cercle ouvert, centre : il ne suit pas le cercle qui se referme au depart.
+      word.at.set(x - word.mesh.userData.width / 2, y - READY_RADIUS - WORD.gap);
+    }
+    if (word) {
+      word.mesh.visible = !!ring;
+      place(word);
+    }
+    this._settled = opened === 0 && !moved && Math.abs(alpha - this._wordAlpha.value) < 0.005;
   }
 
   override dispose(): void {
-    for (const mesh of [this._veil, this._ring, this._word]) {
-      mesh.geometry.dispose();
-      (mesh.material as { dispose?: () => void } | undefined)?.dispose?.();
+    for (const line of [...this._lines, this._word]) {
+      line?.mesh.geometry.dispose();
+      (line?.mesh.material as MeshBasicNodeMaterial | undefined)?.dispose();
     }
     super.dispose();
   }
 
-  private readonly _onMove = (event: PointerEvent): void => {
-    const rect = this._canvas.getBoundingClientRect();
-    this._pointer.set(event.clientX - rect.left, event.clientY - rect.top);
-  };
+  /** Construit les textes une fois leurs polices chargees : sinon l'atlas serait grave dans la police de repli. */
+  private async _build(): Promise<void> {
+    const elements = [...document.querySelectorAll<HTMLElement>(TEXTS)];
+    const styles = elements.map((element) => getComputedStyle(element));
+    await Promise.all([...styles.map((style) => `${style.fontWeight} 48px ${style.fontFamily}`), `${WORD.weight} 48px ${WORD.font}`].map((font) => document.fonts.load(font)));
+
+    elements.forEach((element, i) => {
+      const style = styles[i]!;
+      const size = parseFloat(style.fontSize);
+      const spacing = parseFloat(style.letterSpacing) || 0;
+      const raw = element.textContent?.trim() ?? "";
+      const text = style.textTransform === "uppercase" ? raw.toUpperCase() : raw;
+      // L'encre du texte vient de sa couleur CSS : seule son opacite compte, l'encre est celle des noms.
+      const alpha = Number(style.color.match(/rgba?\(([^)]+)\)/)?.[1]?.split(",")[3] ?? 1);
+      const font = createSdfFont(style.fontFamily, parseInt(style.fontWeight, 10) || 400);
+      const line: Line = { element, mesh: this._mesh(font, text, size, spacing, 0, uniform(alpha)), at: new Vector2() };
+      this._anchor(line);
+      this._lines.push(line);
+    });
+
+    const font = createSdfFont(WORD.font, WORD.weight);
+    this._word = { element: null, mesh: this._mesh(font, WORD.text, WORD.size, WORD.size * WORD.spacing, 1, this._wordAlpha), at: new Vector2(-1e4, -1e4) };
+    for (const line of [...this._lines, this._word]) this._scene.add(line.mesh);
+  }
 
   /**
-   * Fond de l'intro : du papier, hachure sur les deux bords pour repondre a la carte, qui se retire par
-   * taches depuis le centre.
+   * Point d'ecriture d'un texte d'apres son element : bord gauche de son contenu, ligne de base posee pour que
+   * les capitales soient centrees dans sa boite (le texte est en capitales, sa boite a une hauteur de ligne de 1).
    */
-  private _veilMaterial(): MeshBasicNodeMaterial {
-    const material = new MeshBasicNodeMaterial({ transparent: true, depthTest: false, depthWrite: false });
-    const uv = positionGeometry.xy.add(0.5);
-    // Hachures a 45 degres au pas de l'ecran, qui gagnent depuis les bords gauche et droit.
-    const px = uv.mul(this._size);
-    const lines = step(0.55, px.x.add(px.y).div(HATCH_PX).fract());
-    // Croissant, jamais decroissant : un `smoothstep` aux bornes inversees n'est pas defini en WGSL.
-    const edge = smoothstep(0, HATCH_REACH, min(uv.x, float(1).sub(uv.x))).oneMinus();
-    material.colorNode = mix(vec3(PAPER.r, PAPER.g, PAPER.b), vec3(INK.r, INK.g, INK.b), lines.mul(edge).mul(0.22));
-
-    // Revelation radiale bruitee : le centre part en premier, le bruit deforme le front.
-    const centered = uv.sub(0.5).mul(vec2(this._aspect, 1));
-    const radial = length(centered).div(length(vec2(this._aspect, 1).mul(0.5)));
-    const noise = mx_fractal_noise_float(uv.mul(6), 3, 2, 0.5).mul(0.5).add(0.5);
-    const noisy = radial.mul(0.65).add(noise.mul(0.35));
-    material.opacityNode = step(this._reveal.mul(1.35), noisy);
-    return material;
+  private _anchor(line: Line): void {
+    const element = line.element!;
+    const rect = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    const size = parseFloat(style.fontSize);
+    const cap = (line.mesh.userData.cap as number) * size;
+    const canvas = this._canvas.getBoundingClientRect();
+    line.at.set(rect.left + parseFloat(style.paddingLeft) - canvas.left, rect.top + rect.height / 2 + cap / 2 - canvas.top);
   }
 
-  /** Cercle trace autour du curseur : un trait, pas un aplat, avec un bord legerement irregulier. */
-  private _ringMaterial(): MeshBasicNodeMaterial {
-    const material = new MeshBasicNodeMaterial({ transparent: true, depthTest: false, depthWrite: false });
-    const uv = positionGeometry.xy;
-    const wobble = mx_fractal_noise_float(uv.mul(7), 2, 2, 0.5).mul(0.012);
-    const d = length(uv).add(wobble);
-    const band = float(0.014);
-    material.colorNode = vec3(INK.r, INK.g, INK.b);
-    // Le trait s'efface avec le rideau, un peu avant lui : la page se vide du centre.
-    material.opacityNode = smoothstep(0, band, d.sub(0.38).abs()).oneMinus().mul(max(float(0), float(1).sub(this._reveal.mul(2.4))));
-    return material;
-  }
-
-  /** Le mot au-dessus du cercle, en quadrilateres de l'atlas, dans le repere en pixels du curseur. */
-  private _writeWord(font: SdfFont): void {
-    const geometry = this._word.geometry as InstancedBufferGeometry;
-    geometry.setAttribute("position", new BufferAttribute(new Float32Array([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0]), 3));
-    geometry.setIndex([0, 1, 2, 0, 2, 3]);
-    const letters = [...WORD].filter((char) => font.glyphs.has(char));
+  /** Un texte en quadrilateres de l'atlas, dans le repere en pixels de son point d'ecriture. */
+  private _mesh(font: SdfFont, text: string, size: number, spacing: number, tint: number, alpha: ReturnType<typeof uniform<number>>): Mesh {
+    const letters = [...text].filter((char) => font.glyphs.has(char));
     const glyphs = new Float32Array(letters.length * 4);
     const screen = new Float32Array(letters.length * 4);
-    const tints = new Float32Array(letters.length);
-    let pen = (-textWidth(font, WORD) * WORD_PX) / 2;
+    let pen = 0;
     letters.forEach((char, i) => {
       const glyph = font.glyphs.get(char)!;
       glyphs.set([glyph.u, glyph.v, glyph.du, glyph.dv], i * 4);
-      screen.set(
-        [pen + glyph.left * WORD_PX, -RADIUS.ready - 18 + glyph.top * WORD_PX, glyph.width * WORD_PX, glyph.height * WORD_PX],
-        i * 4,
-      );
-      pen += glyph.advance * WORD_PX;
+      screen.set([pen + glyph.left * size, glyph.top * size, glyph.width * size, glyph.height * size], i * 4);
+      pen += glyph.advance * size + spacing;
     });
+    const geometry = new InstancedBufferGeometry();
+    geometry.setAttribute("position", new BufferAttribute(QUAD, 3));
+    geometry.setIndex([0, 1, 2, 0, 2, 3]);
     geometry.setAttribute("glyph", new InstancedBufferAttribute(glyphs, 4));
     geometry.setAttribute("screen", new InstancedBufferAttribute(screen, 4));
-    geometry.setAttribute("tint", new InstancedBufferAttribute(tints, 1));
+    geometry.setAttribute("tint", new InstancedBufferAttribute(new Float32Array(letters.length).fill(tint), 1));
+    geometry.setAttribute("fade", new InstancedBufferAttribute(new Float32Array(letters.length).fill(1), 1));
     geometry.instanceCount = letters.length;
+    const mesh = new Mesh(geometry, createLabelMaterial(font.texture, alpha, erasedByMap()));
+    mesh.frustumCulled = false;
+    // Largeur sans l'interlettrage final, comme la boite que le navigateur centre ; hauteur des capitales.
+    mesh.userData = { width: pen - spacing, cap: font.cap };
+    return mesh;
   }
 }

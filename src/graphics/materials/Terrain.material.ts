@@ -331,6 +331,19 @@ export function drawnMask(xz: Node): Node {
   return smoothstep(s.maskSoftness.oneMinus(), 1, edge).oneMinus();
 }
 
+/** Au-dela de cette part de l'ouverture, ce que le masque n'atteindra pas s'efface par les memes taches. */
+const PAGE_LATE = 0.6;
+
+/**
+ * Part effacee de la page d'avant la carte (hachures, titre, mot du curseur) au point `xz` du sol : c'est le
+ * masque de la carte qui s'ouvre, le meme geste — pas un second rideau. Ce qu'il ne gagne jamais (les bords,
+ * le haut de l'ecran) part en fin d'ouverture, par les taches de `pencilReveal`.
+ */
+export function pageErased(xz: Node): Node {
+  const late = smoothstep(PAGE_LATE, 1, s.drawnReveal);
+  return max(drawnMask(xz), pencilReveal(geoAt(xz), late));
+}
+
 // L'apercu est tres agrandi : une B-spline en 4 lectures bilineaires evite les facettes.
 function smoothRead(map: TextureNode, uv: Node, size: Node): Node {
   const p = uv.mul(size).sub(0.5);

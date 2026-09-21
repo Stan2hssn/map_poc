@@ -8,6 +8,7 @@ import {
   length,
   luminance,
   max,
+  min,
   mix,
   normalize,
   perspectiveDepthToViewZ,
@@ -18,7 +19,7 @@ import {
   vec4,
 } from "three/tsl";
 import type { Node } from "three/webgpu";
-import { HOVER_BAND } from "@graphics/materials/Terrain.material.ts";
+import { HOVER_BAND, pageErased } from "@graphics/materials/Terrain.material.ts";
 import type IEffect from "./Effect.interface.ts";
 import type { EffectContext } from "./Effect.interface.ts";
 import {
@@ -37,6 +38,8 @@ import {
 const SHEET_REACH = 1e4;
 /** Page d'avant la carte : le ton qu'on prete au papier pour qu'il porte quelques hachures (1 : papier nu). */
 const IDLE_TONE = 0.72;
+/** Ses bords : la part de l'ecran que gagnent les hachures depuis la gauche et la droite, et leur ton. */
+const INTRO_SIDES = { reach: 0.28, tone: 0.52 } as const;
 const NEIGHBORS = [
   [1, 0],
   [-1, 0],
@@ -128,9 +131,13 @@ export class InkEffect implements IEffect {
     const sheet = mix(sheetGround, this._worldAt(at, ctx).xz, shown);
     const near = smoothstep(this.newsprintReach.x, this.newsprintReach.y, length(sheet)).oneMinus();
     const paper = paperAt(screen).mul(newsprintAt(sheet, near));
-    // Avant que la carte ne soit dessinee, la feuille n'est pas vierge : ses nuages portent quelques hachures.
-    const idle = luminance(paper).max(0).pow(1 / 2.2).mul(IDLE_TONE);
-    const sketch = inkCoverage(idle, screen, { far: float(1) }).mul(k.reveal.oneMinus());
+    // Avant que la carte ne soit dessinee, la feuille n'est pas vierge : ses nuages portent quelques hachures,
+    // et ses bords les hachures memes de la carte, qui l'annoncent. Le masque de la carte, en s'ouvrant, les
+    // efface : un seul geste, pas un rideau retire puis une carte qui s'ouvre (`pageErased`).
+    const sides = smoothstep(0, INTRO_SIDES.reach, min(uv.x, uv.x.oneMinus())).oneMinus();
+    const idle = luminance(paper).max(0).pow(1 / 2.2).mul(mix(float(IDLE_TONE), float(INTRO_SIDES.tone), sides));
+    const erased = max(shown, pageErased(sheetGround));
+    const sketch = inkCoverage(idle, screen, { far: sides.oneMinus() }).mul(erased.oneMinus());
     const marked = max(max(drawing, sketch), rim.mul(k.hoverRim));
     return vec4(mix(input.rgb, inkOnPaper(marked, screen, paper, hovered), k.amount), input.a);
   }

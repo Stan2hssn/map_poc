@@ -33,9 +33,9 @@ export interface SdfFont {
 /** Taille de rendu d'un caractere (px) et marge autour, ou le champ de distance s'etale. */
 const SIZE = 48;
 const PAD = 8;
-/** Caracteres graves : de quoi ecrire les noms de lieux et leurs numeros. */
+/** Caracteres graves : de quoi ecrire les noms de lieux, leurs numeros et les dates du titre. */
 export const CHARSET =
-  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÂÄÇÈÉÊËÎÏÔÖÙÛÜàâäçèéêëîïôöùûüñÑ .,'-()°/&";
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÂÄÇÈÉÊËÎÏÔÖÙÛÜàâäçèéêëîïôöùûüñÑ .,'-()°/&·";
 
 /**
  * Atlas de champs de distance signes d'une police deja chargee par la page. Chaque caractere est rendu une

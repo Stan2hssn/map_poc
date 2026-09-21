@@ -1,10 +1,11 @@
 <script setup lang="ts">
 /**
- * Entree : une page presque vide. Tout ce qu'elle montre — le papier hachure, le cercle autour du curseur et
- * le mot a poser — est dessine dans le rendu (`IntroNode`), pour que le depart de l'experience puisse tout
- * retirer d'un seul geste, par taches depuis le centre. Un calque HTML ne saurait pas disparaitre ainsi.
+ * Entree : une page presque vide. La feuille hachuree est la passe d'encre avant la carte ; le titre et le mot
+ * pose sur le cercle du curseur sont dessines dans le rendu (`IntroNode`), a la place que leur donne le HTML
+ * ci-dessous — qui garde la mise en page et la lecture d'ecran, mais pas l'encre. Au depart, le masque de la
+ * carte s'ouvre depuis le centre et efface tout sur son passage : un seul geste.
  *
- * Ne restent ici que les mentions de pied de page, qui ne participent pas a ce geste.
+ * Le cercle du curseur, lui, reste pour toute l'experience (`MapCursor`).
  */
 import { MAP_VIEWS } from '@graphics/config/views.config.ts'
 import { isMapNavigator } from '@graphics/universes/MapNavigator.interface.ts'
@@ -46,8 +47,16 @@ onBeforeUnmount(() => {
     <ThreeStage @ready="onReady" />
     <MapChrome v-if="drawn" />
     <MapArchives v-if="drawn" />
+    <MapCursor :mode="drawn ? 'map' : started ? 'ready' : 'loading'" />
 
     <div v-if="!drawn" class="entry">
+      <!-- Mise en page seulement : l'encre de ces textes est posee par le rendu, qui sait les effacer. -->
+      <div class="entry__title">
+        <p data-intro-text class="entry__over">Fonds médiatique et politique</p>
+        <h1 data-intro-text class="entry__wordmark">ARCHIVES</h1>
+        <p data-intro-text class="entry__dates">France · 1958 à 2027</p>
+      </div>
+
       <nav class="entry__links" aria-label="Pied de page">
         <span class="entry__langs"><b>FR</b><i>EN</i></span>
         <span>Méthode</span>
@@ -69,17 +78,53 @@ onBeforeUnmount(() => {
   background: #f4f0e6;
 }
 
-/* Le curseur est remplace par le cercle dessine dans le rendu. */
-:global(html[data-map-intro='hold']) {
-  cursor: none;
-}
-
 .entry {
   position: fixed;
   inset: 0;
   z-index: 4;
   color: rgb(var(--ui-ink));
   pointer-events: none;
+}
+
+.entry__title {
+  position: absolute;
+  top: 18vh;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 13px;
+  translate: -50% 0;
+  text-align: center;
+}
+
+/* Le texte garde sa couleur (le rendu y lit son opacite) mais ne la peint pas. */
+.entry__title > * {
+  margin: 0;
+  -webkit-text-fill-color: transparent;
+}
+
+.entry__over {
+  padding-left: 0.52em;
+  font: 500 0.6875rem/1 var(--font-map);
+  letter-spacing: 0.52em;
+  text-transform: uppercase;
+  color: rgb(var(--ui-ink) / 0.62);
+}
+
+.entry__wordmark {
+  padding-left: 0.3em;
+  font: 500 clamp(1.75rem, 3vw, 2.5rem)/1 var(--font-voice);
+  letter-spacing: 0.3em;
+  color: rgb(var(--ui-ink));
+}
+
+.entry__dates {
+  padding-left: 0.3em;
+  font: 400 0.75rem/1 var(--font-map);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgb(var(--ui-ink) / 0.64);
 }
 
 .entry__links,
