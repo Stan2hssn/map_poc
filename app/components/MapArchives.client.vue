@@ -263,10 +263,7 @@ defineExpose({ place })
 .fonds__foot {
   --in: clamp(0, calc((min(var(--fonds-reveal, 0), var(--swap, 1)) - var(--at, 0)) * 1000), 1);
   opacity: var(--in);
-  translate: 0 calc((1 - var(--in)) * 10px);
-  transition:
-    opacity 300ms ease,
-    translate 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 300ms ease;
 }
 
 /* Fermeture : tout le texte part ensemble, vite, avant que la feuille ne se consume. */
@@ -275,7 +272,6 @@ defineExpose({ place })
 .fonds.is-closing .fonds__tabs,
 .fonds.is-closing .fonds__foot {
   opacity: 0;
-  translate: 0 6px;
   transition-duration: 200ms;
 }
 
