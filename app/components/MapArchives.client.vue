@@ -60,6 +60,11 @@ const COUNT_MS = 900
  * son texte disparaitrait d'un coup sous une feuille qui se consume encore.
  */
 const LEAVE_MS = 700
+/**
+ * Le texte s'efface d'abord, en cette duree, et la feuille ne se consume qu'ensuite : la transition de chaque
+ * bloc (300 ms) laissait sinon le texte flotter sur la carte, la feuille deja partie sous lui.
+ */
+const TEXT_OUT_MS = 200
 /** Changement de territoire, panneau ouvert : la feuille reste, le texte se reecrit en cette duree. */
 const SWAP_MS = 700
 /** Seuil d'ecriture de chaque bloc : il apparait quand la feuille en est la (`--fonds-reveal`). */
@@ -68,6 +73,8 @@ const AT = { head: 0.22, tabs: 0.34, list: 0.42, step: 0.07, foot: 0.72 }
 const place = ref<SelectedPlace | null>(null)
 const tab = ref(TABS[0])
 const leaving = ref(false)
+/** Fermeture demandee : le texte part, la feuille attend. */
+const closing = ref(false)
 const archives = ref(0)
 const panel = ref<HTMLElement | null>(null)
 let unsubscribe: (() => void) | null = null
@@ -109,8 +116,9 @@ function swap() {
 }
 
 function open(next: SelectedPlace) {
-  const wasOpen = !!place.value && !leaving.value
+  const wasOpen = !!place.value && !leaving.value && !closing.value
   clearTimeout(unmount)
+  closing.value = false
   leaving.value = false
   place.value = next
   tab.value = TABS[0]
@@ -119,15 +127,19 @@ function open(next: SelectedPlace) {
   if (wasOpen) swap()
 }
 
-/** La feuille se consume, puis le panneau s'en va : jusque-la il reste monte, son texte s'efface avec elle. */
+/** Le texte s'efface, puis la feuille se consume, puis le panneau s'en va : jusque-la il reste monte. */
 function close() {
-  if (!place.value || leaving.value) return
-  leaving.value = true
+  if (!place.value || closing.value || leaving.value) return
+  closing.value = true
   clearTimeout(unmount)
   unmount = window.setTimeout(() => {
-    place.value = null
-    leaving.value = false
-  }, LEAVE_MS)
+    leaving.value = true
+    unmount = window.setTimeout(() => {
+      place.value = null
+      closing.value = false
+      leaving.value = false
+    }, LEAVE_MS)
+  }, TEXT_OUT_MS)
 }
 
 /** Le territoire est-il encore sous les yeux ? Sinon, le panneau se range tout seul. */
@@ -168,6 +180,7 @@ defineExpose({ place })
     data-fonds
     :data-state="leaving ? 'leave' : 'enter'"
     class="fonds"
+    :class="{ 'is-closing': closing }"
     aria-label="Fonds du territoire"
   >
     <header class="fonds__head" :style="{ '--at': AT.head }">
@@ -254,6 +267,16 @@ defineExpose({ place })
   transition:
     opacity 300ms ease,
     translate 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Fermeture : tout le texte part ensemble, vite, avant que la feuille ne se consume. */
+.fonds.is-closing .fonds__list li,
+.fonds.is-closing .fonds__head,
+.fonds.is-closing .fonds__tabs,
+.fonds.is-closing .fonds__foot {
+  opacity: 0;
+  translate: 0 6px;
+  transition-duration: 200ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
