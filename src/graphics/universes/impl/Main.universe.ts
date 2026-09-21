@@ -337,6 +337,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
         progres: scalar(t.progress),
         bras: scalar(t.arms),
         torsion: scalar(t.twist),
+        rotation: scalar(t.rotation),
         rayon: scalar(t.radius),
         decalage: scalar(t.armDelay),
         fibres: scalar(t.fibres),
