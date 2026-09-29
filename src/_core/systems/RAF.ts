@@ -14,8 +14,18 @@ export default class RAF {
     private _rafId: number | null = null;
     private _time = 0;
     private _lastTime = 0;
-    private _startTime = 0;
     private _initialized = false;
+    /**
+     * Cadence du temps de scene. 1 = temps reel.
+     *
+     * Ici et nulle part ailleurs : c'est le seul endroit ou le temps nait, donc
+     * le seul ou le ralentir garde la scene coherente. Ralentir une seule
+     * animation — la timeline par exemple — la ferait avancer au ralenti pendant
+     * que le uTime des shaders, le bruit et la physique garderaient leur
+     * cadence, et on reglerait cette animation sur une image que personne ne
+     * verra jamais a vitesse normale.
+     */
+    private _rate = 1;
     private _stats: StatsManager | null = null;
 
     constructor(input: InputBase, output: Output) {
@@ -64,10 +74,21 @@ export default class RAF {
             return;
         }
         this._isRunning = true;
-        this._startTime = performance.now();
-        this._lastTime = this._startTime;
+        this._lastTime = performance.now();
         this._time = 0;
         this._tick();
+    }
+
+    /**
+     * Regle la cadence du temps de scene. Zero fige sans arreter la boucle : le
+     * rendu continue, donc l'outillage et les interactions repondent encore.
+     */
+    setRate(rate: number): void {
+        this._rate = Number.isFinite(rate) && rate >= 0 ? rate : 1;
+    }
+
+    rate(): number {
+        return this._rate;
     }
 
     stop(): void {
@@ -83,9 +104,12 @@ export default class RAF {
         if (!this._isRunning) return;
 
         const currentTime = performance.now();
-        const dt = currentTime - this._lastTime;
+        const dt = (currentTime - this._lastTime) * this._rate;
         this._lastTime = currentTime;
-        this._time = currentTime - this._startTime;
+        // Accumule et non lu sur l'horloge murale : sinon `time` et `dt`
+        // divergeraient des que la cadence n'est plus 1, et tout ce qui se cale
+        // sur `time` plutot que sur `dt` garderait le temps reel.
+        this._time += dt;
 
         this._input.update(this._time, dt);
         this._stats?.begin();
