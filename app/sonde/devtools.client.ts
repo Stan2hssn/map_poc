@@ -140,6 +140,11 @@ export default defineNuxtPlugin(() => {
         loadTheatre,
         easeNames: EASE_NAMES,
         sampleEase,
+        // Cadence de la SCENE, pas du seul theatre : le ralenti doit emporter le
+        // uTime des shaders, le bruit et la physique, sinon on reglerait
+        // l'animation sur une image que personne ne verra a vitesse normale.
+        // RAF est le seul endroit ou le temps nait, donc le seul ou le regler.
+        setRate: (rate) => stage.read()?.runtime.raf.setRate(rate),
         save: saveTimeline,
       }),
       consolePanel(),
