@@ -30,6 +30,9 @@ importers:
         specifier: ^3.5.34
         version: 3.5.42(typescript@5.9.3)
     devDependencies:
+      '@sonde/core':
+        specifier: github:SONDE-DEVTOOLS/sonde
+        version: git+https://git@github.com:SONDE-DEVTOOLS/sonde.git#99a25a5eee5f049d95f3775517818d1c556a2826
       '@tweakpane/core':
         specifier: ^2.0.5
         version: 2.0.5
@@ -1064,6 +1067,12 @@ packages:
   '@sindresorhus/merge-streams@4.0.0':
     resolution: {integrity: sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ==}
     engines: {node: '>=18'}
+
+  '@sonde/core@git+https://git@github.com:SONDE-DEVTOOLS/sonde.git#99a25a5eee5f049d95f3775517818d1c556a2826':
+    resolution: {commit: 99a25a5eee5f049d95f3775517818d1c556a2826, repo: git@github.com:SONDE-DEVTOOLS/sonde.git, type: git}
+    version: 0.1.0
+    engines: {node: '>=22.18'}
+    hasBin: true
 
   '@speed-highlight/core@1.2.24':
     resolution: {integrity: sha512-qeW2e1l78afw8VhRPfPQ1Gjj+KU5XFQ/OFV5ti6eTa9bruO7mJyZtA4vw0ofqmA3tKCkROE9xLk3VZoeRc98nw==}
@@ -4557,6 +4566,8 @@ snapshots:
   '@sindresorhus/is@7.2.0': {}
 
   '@sindresorhus/merge-streams@4.0.0': {}
+
+  '@sonde/core@git+https://git@github.com:SONDE-DEVTOOLS/sonde.git#99a25a5eee5f049d95f3775517818d1c556a2826': {}
 
   '@speed-highlight/core@1.2.24': {}
 

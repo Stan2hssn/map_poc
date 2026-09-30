@@ -1,22 +1,25 @@
-import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import glsl from 'vite-plugin-glsl'
 
 const engine = (path: string) => fileURLToPath(new URL(path, import.meta.url))
 
-/**
- * Les devtools « spices » vivent HORS du depot, partages entre projets.
- *
- * Le chemin est surchargeable par `SPICES_DEVTOOLS`, et surtout FACULTATIF —
- * absent, la sonde ne se monte pas et tout le reste tourne. Sans quoi un clone
- * du depot ne se construirait sur aucune autre machine : l'alias ne resoudrait
- * rien.
- */
-const SPICES = process.env.SPICES_DEVTOOLS ?? '/Users/stan_husson/Dev/PV/_lib/devtools'
-const AVEC_SONDE = existsSync(SPICES)
-
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-31',
+
+  // SONDE est une DEPENDANCE : plus de chemin absolu a tenir a jour, plus
+  // d'alias conditionnel, et un clone du depot se construit sur n'importe
+  // quelle machine. Le module ne fait rien hors developpement.
+  modules: ['@sonde/core/nuxt'],
+
+  sonde: {
+    panels: '~/sonde.config',
+    // Routes d'ecriture du serveur de dev : la sonde y poste, le plugin Vite de
+    // SONDE ecrit dans le fichier. Chemins relatifs a la racine du projet.
+    routes: {
+      timeline: 'src/graphics/config/timeline.tracks.json',
+      debug: 'src/graphics/config/debug.values.json',
+    },
+  },
 
   ssr: true,
 
@@ -33,13 +36,6 @@ export default defineNuxtConfig({
 
     // Enregistres SEULEMENT si la bibliotheque est la. Un alias qui pointe
     // dans le vide ne derange personne tant que rien ne l'importe, mais il
-    // laisse croire a une dependance satisfaite.
-    ...(AVEC_SONDE
-      ? {
-          '@spices/devtools/vite': `${SPICES}/vite/index.ts`,
-          '@spices/devtools': SPICES,
-        }
-      : {}),
   },
 
   // Sans cet ajout, `src/` reste hors du tsconfig genere : ni le moteur ni ses
@@ -50,8 +46,6 @@ export default defineNuxtConfig({
       include: ['../src/**/*'],
       // Le pont vers la sonde importe la spice en statique. Sans elle, il ne
       // peut pas etre type — et il n'est de toute facon jamais monte, le
-      // module `sonde` rendant la main avant de l'enregistrer.
-      ...(AVEC_SONDE ? {} : { exclude: ['../app/sonde/**'] }),
       compilerOptions: {
         // Nuxt ajoute ces deux flags, que le contrat du boilerplate ne pose
         // pas. Les laisser actifs ferait echouer `typecheck` sur les nodes de
@@ -71,8 +65,6 @@ export default defineNuxtConfig({
   vite: {
     // Le plugin Vite de la sonde s'enregistre depuis `modules/sonde`, qui ne
     // fait rien hors developpement. Ne reste ici que l'autorisation de servir
-    // `_lib`, une chaine que le build ne resout jamais.
-    server: { fs: { allow: AVEC_SONDE ? ['..', SPICES] : ['..'] } },
 
     // Obligatoire et non cosmetique : les shaders du moteur utilisent
     // `#include`, que seul ce plugin resout. Un import `?raw` livrerait la
