@@ -35,3 +35,6 @@ assets-source/*
 
 # Copies de secours ecrites par le pont dev de la sonde
 *.json.bak
+
+# References visuelles de DA (locales, non versionnees)
+refs/
