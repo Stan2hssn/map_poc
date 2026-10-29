@@ -1,16 +1,10 @@
-import { createRequire } from 'node:module'
+import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const engine = (path: string) => fileURLToPath(new URL(path, import.meta.url))
 
-const hasPackage = (name: string) => {
-  try {
-    createRequire(import.meta.url).resolve(`${name}/package.json`)
-    return true
-  } catch {
-    return false
-  }
-}
+// Pas de require.resolve : @sonde/core n'exporte pas son package.json.
+const hasPackage = (name: string) => existsSync(engine(`./node_modules/${name}/package.json`))
 
 export default defineNuxtConfig({
   compatibilityDate: '2026-08-31',
@@ -52,10 +46,6 @@ export default defineNuxtConfig({
   },
 
   css: ['~/assets/css/main.css', '~/assets/css/labels.css', '~/assets/css/chrome.css'],
-
-  build: {
-    transpile: ['gsap'],
-  },
 
   app: {
     head: {
