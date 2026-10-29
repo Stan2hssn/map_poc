@@ -20,7 +20,6 @@
     "postbuild": "node scripts/prune-dist-assets-source.mjs"
   },
   "dependencies": {
-    "gsap": "^3.13.0",
     "nuxt": "^4.5.2",
     "stats-gl": "^3.8.0",
     "three": "^0.181.2",

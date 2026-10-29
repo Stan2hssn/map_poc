@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      gsap:
-        specifier: ^3.13.0
-        version: 3.14.2
       nuxt:
         specifier: ^4.5.2
         version: 4.5.2(@babel/plugin-syntax-jsx@7.29.7(@babel/core@7.29.7))(@babel/plugin-syntax-typescript@7.29.7(@babel/core@7.29.7))(@oxc-project/types@0.147.0)(@parcel/watcher@2.5.6)(@types/node@26.4.0)(@vue/compiler-sfc@3.5.42)(db0@0.3.4)(esbuild@0.28.2)(ioredis@5.11.1)(lightningcss@1.33.0)(magicast@0.5.4)(rolldown@1.2.6)(rollup-plugin-visualizer@7.1.1(rolldown@1.2.6)(rollup@4.63.1))(rollup@4.63.1)(sass@1.97.3)(srvx@0.11.22)(terser@5.51.2)(typescript@5.9.3)(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.3)(terser@5.51.2))(vue-tsc@3.3.11(typescript@5.9.3))
@@ -1909,9 +1906,6 @@ packages:
 
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
-
-  gsap@3.14.2:
-    resolution: {integrity: sha512-P8/mMxVLU7o4+55+1TCnQrPmgjPKnwkzkXOK1asnR9Jg2lna4tEY5qBJjMmAaOBDDZWtlRjBXjLa0w53G/uBLA==}
 
   gzip-size@7.0.0:
     resolution: {integrity: sha512-O1Ld7Dr+nqPnmGpdhzLmMTQ4vAsD+rHwMm1NLUmoUFFymBOMKxCCrtDxqdBRYXdeEPEi3SyoR4TizJLQrnKBNA==}
@@ -5422,8 +5416,6 @@ snapshots:
       unicorn-magic: 0.4.0
 
   graceful-fs@4.2.11: {}
-
-  gsap@3.14.2: {}
 
   gzip-size@7.0.0:
     dependencies:

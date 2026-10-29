@@ -106,9 +106,8 @@ interface Tile {
 }
 
 /**
- * Bati en relief sous `maxExtentKm` de largeur de vue. En parallaxe, il ne fait que regler le shader du sol ;
- * en extrusion, il place les volumes des tuiles visibles (construits par le worker du PLAN IGN) par uniformes,
- * sans jamais les reconstruire au mouvement.
+ * Bati en relief sous `maxExtentKm` de largeur de vue. En extrusion, il place les volumes des tuiles visibles
+ * (construits par le worker du PLAN IGN) par uniformes, sans jamais les reconstruire au mouvement.
  */
 export class BuildingsNode extends Object3DNodeBase {
   readonly settings: { technique: BuildingTechnique; height: number; trees: number; cars: number; boats: number } = {
