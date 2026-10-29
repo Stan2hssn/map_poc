@@ -30,9 +30,6 @@ importers:
         specifier: ^3.5.34
         version: 3.5.42(typescript@5.9.3)
     devDependencies:
-      '@sonde/core':
-        specifier: github:SONDE-DEVTOOLS/sonde
-        version: git+https://git@github.com:SONDE-DEVTOOLS/sonde.git#99a25a5eee5f049d95f3775517818d1c556a2826
       '@tweakpane/core':
         specifier: ^2.0.5
         version: 2.0.5
@@ -48,12 +45,13 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
-      vite-plugin-glsl:
-        specifier: ^1.6.1
-        version: 1.6.1(@rollup/pluginutils@5.4.0(rollup@4.63.1))(esbuild@0.28.2)(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.3)(terser@5.51.2))
       vue-tsc:
         specifier: ^3.1.3
         version: 3.3.11(typescript@5.9.3)
+    optionalDependencies:
+      '@sonde/core':
+        specifier: github:SONDE-DEVTOOLS/sonde#99a25a5eee5f049d95f3775517818d1c556a2826
+        version: git+https://git@github.com:SONDE-DEVTOOLS/sonde.git#99a25a5eee5f049d95f3775517818d1c556a2826
 
 packages:
 
@@ -3316,19 +3314,6 @@ packages:
       vue-tsc:
         optional: true
 
-  vite-plugin-glsl@1.6.1:
-    resolution: {integrity: sha512-0Ro2lUmDdwWkoAc+dhJ7fXO/2n6JthkzbCqW0/bvlU4R6kXjbpSqNJYfbIilFu9L/HApiXOZ8IExmlz59qzH8Q==}
-    engines: {node: '>= 20.17.0', npm: '>= 10.8.3'}
-    peerDependencies:
-      '@rollup/pluginutils': ^5.x
-      esbuild: '>= 0.25'
-      vite: '>= 3.x'
-    peerDependenciesMeta:
-      '@rollup/pluginutils':
-        optional: true
-      esbuild:
-        optional: true
-
   vite-plugin-inspect@11.4.1:
     resolution: {integrity: sha512-ShOFe2PURXGvRS5OrgmOLZOCwDTD7dEBVt0tMpFPKb9AsvqXKCRGM8QgKrUbRbJYFXScHvDPpGRd28rYidC0tA==}
     engines: {node: '>=14'}
@@ -4567,7 +4552,8 @@ snapshots:
 
   '@sindresorhus/merge-streams@4.0.0': {}
 
-  '@sonde/core@git+https://git@github.com:SONDE-DEVTOOLS/sonde.git#99a25a5eee5f049d95f3775517818d1c556a2826': {}
+  '@sonde/core@git+https://git@github.com:SONDE-DEVTOOLS/sonde.git#99a25a5eee5f049d95f3775517818d1c556a2826':
+    optional: true
 
   '@speed-highlight/core@1.2.24': {}
 
@@ -6993,13 +6979,6 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
       vue-tsc: 3.3.11(typescript@5.9.3)
-
-  vite-plugin-glsl@1.6.1(@rollup/pluginutils@5.4.0(rollup@4.63.1))(esbuild@0.28.2)(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.3)(terser@5.51.2)):
-    dependencies:
-      vite: 8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.3)(terser@5.51.2)
-    optionalDependencies:
-      '@rollup/pluginutils': 5.4.0(rollup@4.63.1)
-      esbuild: 0.28.2
 
   vite-plugin-inspect@11.4.1(@nuxt/kit@4.5.2(magic-string@1.2.3)(magicast@0.5.4)(rolldown@1.2.6)(unplugin@3.3.0(esbuild@0.28.2)(rolldown@1.2.6)(rollup@4.63.1)(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.3)(terser@5.51.2))))(vite@8.2.2(@types/node@26.4.0)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.3)(terser@5.51.2)):
     dependencies:
