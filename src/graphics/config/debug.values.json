@@ -24,8 +24,7 @@
       "softness": 0.6,
       "jitter": 0.12,
       "radiusX": 70,
-      "radiusY": 95,
-      "shift": 0
+      "radiusY": 95
     },
     "ink": {
       "newsprint": 0.5,
@@ -46,10 +45,7 @@
       "detail": 1,
       "hatching": 1,
       "cross": 0.55,
-      "waves": 1,
-      "newsprintScale": 3.8000000000000003,
-      "clouds": 0.19999999999999996,
-      "cloudRadius": 153
+      "newsprintScale": 3.8000000000000003
     },
     "camera": {
       "tiltNear": 70,

@@ -3,14 +3,13 @@ import { test } from "node:test";
 import {
   clampCenter,
   containsBounds,
-  containsPoint,
   expandBounds,
   GeoProjection,
   intersectsBounds,
   tileBounds,
   tilesCovering,
+  KM_PER_DEGREE,
   WORLD_HEIGHT_KM,
-  WORLD_WIDTH_KM,
 } from "./GeoProjection.ts";
 
 const GARD = { west: 3.2624, south: 43.4603, east: 4.8456, north: 44.4597 };
@@ -33,18 +32,13 @@ test("aller-retour lon/lat", () => {
   close(p.lat(p.z(44.2)), 44.2, 1e-9);
 });
 
-test("rect : nord en haut (minZ)", () => {
-  const r = new GeoProjection(4, 44).rect({ west: 3, south: 43, east: 5, north: 45 });
-  assert.ok(r.minX < 0 && r.maxX > 0 && r.minZ < 0 && r.maxZ > 0);
-});
-
 test("carre centre sur l'origine de la projection", () => {
   const p = new GeoProjection(4.054, 43.96);
-  const r = p.rect(p.bounds(100));
-  close(r.minX, -50);
-  close(r.maxX, 50);
-  close(r.minZ, -50);
-  close(r.maxZ, 50);
+  const b = p.bounds(100);
+  close(p.x(b.west), -50);
+  close(p.x(b.east), 50);
+  close(p.z(b.north), -50);
+  close(p.z(b.south), 50);
 });
 
 test("elargir, contenir", () => {
@@ -52,8 +46,6 @@ test("elargir, contenir", () => {
   assert.deepEqual(expandBounds(b, 0.5), { west: 1, east: 5, south: 39, north: 43 });
   assert.equal(containsBounds(expandBounds(b, 0.1), b), true);
   assert.equal(containsBounds(b, expandBounds(b, 0.1)), false);
-  assert.equal(containsPoint(b, 3, 41), true);
-  assert.equal(containsPoint(b, 5, 41), false);
   assert.equal(intersectsBounds(b, { west: 3.5, east: 9, south: 41.5, north: 50 }), true);
   assert.equal(intersectsBounds(b, { west: 4, east: 9, south: 41, north: 42 }), false);
 });
@@ -73,10 +65,11 @@ test("le Gard tient dans 20 tuiles de niveau 9", () => {
 });
 
 test("le monde entier : centre ramene a (0, 0), emprise bornee", () => {
+  const worldWidthKm = 360 * KM_PER_DEGREE;
   const limits = { west: -179, east: 179, south: -56, north: 60 };
-  const center = clampCenter(2.35, 48.86, WORLD_WIDTH_KM, WORLD_HEIGHT_KM, limits);
+  const center = clampCenter(2.35, 48.86, worldWidthKm, WORLD_HEIGHT_KM, limits);
   assert.deepEqual(center, { lon: 0, lat: 0 });
-  const b = new GeoProjection(center.lon, center.lat).bounds(WORLD_WIDTH_KM, WORLD_HEIGHT_KM);
+  const b = new GeoProjection(center.lon, center.lat).bounds(worldWidthKm, WORLD_HEIGHT_KM);
   assert.deepEqual(b, { west: -180, east: 180, north: 90, south: -90 });
   assert.equal(tilesCovering(1, expandBounds(b, 0.5)).length, 8);
 });

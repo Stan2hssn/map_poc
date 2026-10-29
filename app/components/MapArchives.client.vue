@@ -1,12 +1,6 @@
 <script setup lang="ts">
-/**
- * Fonds d'un territoire, en panneau lateral : il s'ouvre au clic sur un nom de la carte, qui reste le sujet.
- *
- * Les entrees sont celles de la maquette, en attendant un vrai fonds : rien n'est branche sur une source.
- * Les trois statuts (donnee, interpretation, opinion) et l'archive vivante viennent de l'engagement du projet,
- * separer ce qui se mesure de ce qui se discute.
- */
-import { isMapNavigator, type SelectedPlace } from '@graphics/universes/MapNavigator.interface.ts'
+/** Les statuts separent ce qui se mesure de ce qui se discute : c'est l'engagement du projet. */
+import type { SelectedPlace } from '@graphics/universes/MapNavigator.interface.ts'
 
 type Status = 'donnee' | 'interpretation' | 'opinion' | 'vivante'
 
@@ -53,17 +47,10 @@ const SAMPLE: Entry[] = [
 
 /** Le panneau se range quand le territoire quitte la vue : on ne lit pas Lyon en regardant Marseille. */
 const AWAY = 1.2
-/** Duree du comptage des chiffres. */
 const COUNT_MS = 900
-/**
- * Duree de l'effacement de la feuille (`PanelNode`, `ERASE_MS`) : le panneau reste monte jusqu'au bout, sinon
- * son texte disparaitrait d'un coup sous une feuille qui se consume encore.
- */
+/** Egal a `ERASE_MS` de `PanelNode` : le panneau reste monte tant que la feuille se consume. */
 const LEAVE_MS = 700
-/**
- * Le texte s'efface d'abord, en cette duree, et la feuille ne se consume qu'ensuite : la transition de chaque
- * bloc (300 ms) laissait sinon le texte flotter sur la carte, la feuille deja partie sous lui.
- */
+/** Le texte part avant la feuille, sinon il flotterait sur la carte une fois la feuille consumee. */
 const TEXT_OUT_MS = 200
 /** Changement de territoire, panneau ouvert : la feuille reste, le texte se reecrit en cette duree. */
 const SWAP_MS = 700
@@ -73,7 +60,6 @@ const AT = { head: 0.22, tabs: 0.34, list: 0.42, step: 0.07, foot: 0.72 }
 const place = ref<SelectedPlace | null>(null)
 const tab = ref(TABS[0])
 const leaving = ref(false)
-/** Fermeture demandee : le texte part, la feuille attend. */
 const closing = ref(false)
 const archives = ref(0)
 const panel = ref<HTMLElement | null>(null)
@@ -86,12 +72,6 @@ let unmount = 0
 /** Le panneau est un aperçu : le fonds complet n'existe pas encore, ces chiffres sont ceux de la maquette. */
 const counts = { archives: 318, period: '1961 · 2026', media: '14' }
 
-function navigator() {
-  const universes = useThreeStage().read()?.runtime.output.getActiveUniverses() ?? []
-  return universes.find(isMapNavigator) ?? null
-}
-
-/** Les chiffres se remplissent plutot que d'apparaitre : le fonds se compte sous les yeux. */
 function count() {
   const start = performance.now()
   cancelAnimationFrame(counting)
@@ -127,7 +107,6 @@ function open(next: SelectedPlace) {
   if (wasOpen) swap()
 }
 
-/** Le texte s'efface, puis la feuille se consume, puis le panneau s'en va : jusque-la il reste monte. */
 function close() {
   if (!place.value || closing.value || leaving.value) return
   closing.value = true
@@ -142,9 +121,8 @@ function close() {
   }, TEXT_OUT_MS)
 }
 
-/** Le territoire est-il encore sous les yeux ? Sinon, le panneau se range tout seul. */
 function watch() {
-  const at = navigator()?.readout()
+  const at = useMapNavigator()?.readout()
   const here = place.value
   // En vol, la vue se resserre avant d'arriver : le lieu vise parait loin alors qu'on y va.
   if (!at || !here || at.flying) return
@@ -157,7 +135,7 @@ function watch() {
 watchEffect(() => document.documentElement.toggleAttribute('data-fonds-open', !!place.value))
 
 onMounted(() => {
-  unsubscribe = navigator()?.onPlaceSelected(open) ?? null
+  unsubscribe = useMapNavigator()?.onPlaceSelected(open) ?? null
   watcher = window.setInterval(watch, 400)
 })
 
@@ -169,8 +147,6 @@ onBeforeUnmount(() => {
   cancelAnimationFrame(counting)
   cancelAnimationFrame(swapping)
 })
-
-defineExpose({ place })
 </script>
 
 <template>

@@ -39,7 +39,6 @@ interface Layer {
  * l'un a l'autre selon le masque du detail : ce qui manque est approche, jamais plat.
  */
 export class TerrainHeightsHelper {
-  /** Incremente a chaque recomposition. */
   version = 0;
   private readonly _cache: TileCache;
   private readonly _fills = new Map<string, Uint16Array>();
@@ -139,7 +138,7 @@ export class TerrainHeightsHelper {
   }
 
   private _request(groups: TileGroup[]): void {
-    const key = groups.map(({ z, tiles }) => `${z}:${tiles[0]!.x},${tiles[0]!.y}:${tiles.at(-1)!.x},${tiles.at(-1)!.y}`).join("|");
+    const key = groupsKey(groups);
     if (key === this._requested) return;
     this._requested = key;
     this._cache.request(groups.flatMap(({ z, tiles }) => tiles.map(({ x, y }) => ({ z, x, y }))));
@@ -169,6 +168,15 @@ const coarseLevel = (level: number) => Math.max(1, level - C.coarse.levels);
 interface TileGroup {
   z: number;
   tiles: { x: number; y: number }[];
+}
+
+function groupsKey(groups: TileGroup[]): string {
+  return groups
+    .map(({ z, tiles }) => {
+      const [first, last] = [tiles[0]!, tiles.at(-1)!];
+      return `${z}:${first.x},${first.y}:${last.x},${last.y}`;
+    })
+    .join("|");
 }
 
 /**

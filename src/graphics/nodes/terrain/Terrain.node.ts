@@ -35,7 +35,7 @@ const MIST_DRIFT = { x: 0.004, y: 0.0025 };
 // Pseudo-pixels d'encre par cellule de brume : 3 a 6 cellules sur la largeur de la vue.
 const INK_CELL_PX = 600;
 /** Ordre de dessin du sol : apres le bati (voir `BuildingsNode`), qui le cache en partie. */
-export const GROUND_RENDER_ORDER = 1e6;
+const GROUND_RENDER_ORDER = 1e6;
 const EDGE = new Vector3();
 /** Contour de la zone dessinee projete a l'ecran : points par tour, et marge autour (fraction de l'ecran). */
 const GRID_FIT = { points: 48, margin: 0.03 };
@@ -69,7 +69,6 @@ export class TerrainNode extends Object3DNodeBase {
   extentKm: number = C.extentKm;
   /** Vitesse du centre de la vue affichee (unites de scene par seconde, x a l'est, z au sud) : la camera y penche. */
   readonly velocity = { x: 0, z: 0 };
-  /** Incremente a chaque changement de vue. */
   viewVersion = 0;
   /** Camera depuis laquelle la grille de l'ecran est projetee sur le sol. */
   projectFrom: (() => Camera) | null = null;
@@ -124,8 +123,7 @@ export class TerrainNode extends Object3DNodeBase {
     this._blockSpace.position.set(-half, 0, -half);
     this._blockSpace.scale.set(C.blockSize, 1, C.blockSize);
     mesh.receiveShadow = true;
-    // Ombres portees par une grille plus grossiere, rendue seulement dans leur passe : le relief y est lisse, et la
-    // grille de l'image (512 et plus) y coutait autant que dans l'image.
+    // Ombres portees par une grille plus grossiere, rendue seulement dans leur passe : le relief y est lisse.
     this._caster.frustumCulled = false;
     this._caster.castShadow = true;
     this._caster.layers.set(SHADOW_CASTERS_LAYER);
@@ -137,7 +135,6 @@ export class TerrainNode extends Object3DNodeBase {
     this._syncGoal();
   }
 
-  /** km par unite de scene. */
   get kmPerUnit(): number {
     return this.extentKm / C.blockSize;
   }
@@ -155,14 +152,9 @@ export class TerrainNode extends Object3DNodeBase {
     return this._bounds;
   }
 
-  /** Zone de detail dans la scene. */
   get detailRect(): SceneRect {
     const half = C.blockSize / 2;
     return { minX: -half, maxX: half, minZ: -half * this._depth, maxZ: half * this._depth };
-  }
-
-  get pendingCount(): number {
-    return this._heights.pendingCount;
   }
 
   get flying(): boolean {
@@ -300,7 +292,7 @@ export class TerrainNode extends Object3DNodeBase {
   }
 
   applySettings(): void {
-    // La mesure coute 300 lectures d'altitude : seulement quand la vue ou le relief a change.
+    // La mesure lit plus de mille altitudes : seulement quand la vue ou le relief a change.
     const version = `${this.viewVersion}/${this._heights.version}/${this.settings.segments}/${this.settings.adaptive}`;
     if (version !== this._segmentsVersion) {
       this._segmentsVersion = version;
@@ -354,6 +346,7 @@ export class TerrainNode extends Object3DNodeBase {
     this.landcover.dispose();
     terrainSettings.mistNoise.value.dispose();
     this._mesh.geometry.dispose();
+    this._caster.geometry.dispose();
     (this._mesh.material as { dispose(): void }).dispose();
     super.dispose();
   }

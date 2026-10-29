@@ -1,25 +1,12 @@
 <script setup lang="ts">
-/**
- * Cercle trace autour du pointeur, pour toute l'experience ; le pointeur du systeme reste visible en son
- * centre. En HTML et au-dessus de tout : dessine dans le rendu, il passerait sous le panneau et l'interface.
- *
- * A l'intro il est ouvert, davantage quand l'experience peut partir (le mot `Entrer` s'y pose, dessine par
- * `IntroNode` d'apres ce cercle). Sur la carte il se resserre, un peu plus quand on la saisit, et s'ouvre
- * legerement sur ce qui se clique — bouton de l'interface ou nom de la carte.
- *
- * Trace comme a la main, pour rester dans le dessin : un cercle ferme dont le rayon ondule a peine.
- */
+/** En HTML : dessine dans le rendu, il passerait sous le panneau et l'interface. `IntroNode` lit sa position. */
 const props = defineProps<{ mode: 'loading' | 'ready' | 'map' }>()
 
-/** Rayons (px) selon l'etat. */
 const RADIUS = { loading: 30, ready: 44, map: 12, hover: 17, grab: 8 }
 /** Temps de reponse du cercle au pointeur (ms) : il le rattrape sans y coller. */
 const FOLLOW_MS = 55
 const CLICKABLE = 'a, button, input, select, textarea, label, [role="button"]'
-/**
- * Cercle ferme de rayon 1, dont le rayon ondule d'un peu plus d'un pour cent : des harmoniques entieres, pour
- * que le trait se referme exactement sur son depart.
- */
+/** Harmoniques entieres : le trait se referme exactement sur son depart. */
 const WOBBLE = [
   { k: 3, amp: 0.009, phase: 0.4 },
   { k: 5, amp: 0.006, phase: 2.1 },

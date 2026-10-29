@@ -46,7 +46,6 @@ export class EffectComposer extends PipelineBase {
       this.inputBuffer.textures[1]!.name = "normal";
       this.inputBuffer.depthTexture = new DepthTexture(1, 1);
     }
-
   }
 
   override prepare(frame: FrameTiming, ctx: PassContext): void {

@@ -20,18 +20,11 @@ export interface TheatreOpts {
   duration: number;
   bindings: TheatreBindings;
   tracks?: Record<string, Record<string, TimelineTrack>>;
-  markers?: Record<string, number>;
 }
 
 /**
- * Moteur de keyframes minimal, juste ce que le panneau Timeline de SONDE
- * attend : il pilote les quelques scalaires de
- * l'intro, et c'est precisement ce qui rend l'intro reglable a la main plutot
- * qu'ecrite en dur dans le code.
- *
- * Les pistes vivent ici, pas dans les noeuds : un noeud expose un scalaire, la
- * timeline decide de sa valeur dans le temps. L'inverse — un noeud qui
- * connaitrait sa propre courbe — rendrait l'edition impossible.
+ * Moteur de keyframes minimal pour le panneau Timeline de SONDE. Les pistes vivent ici, pas dans les noeuds :
+ * un noeud qui connaitrait sa propre courbe ne serait plus editable.
  */
 export class Theatre implements TimelineTheatre {
   readonly id: string;
@@ -39,7 +32,6 @@ export class Theatre implements TimelineTheatre {
 
   private readonly _bindings: TheatreBindings;
   private readonly _tracks: Record<string, Record<string, TimelineTrack>>;
-  private readonly _markers: Record<string, number>;
   private readonly _listeners = new Set<() => void>();
 
   private _playhead = 0;
@@ -50,7 +42,6 @@ export class Theatre implements TimelineTheatre {
     this.duration = opts.duration;
     this._bindings = opts.bindings;
     this._tracks = opts.tracks ?? {};
-    this._markers = opts.markers ?? {};
 
     this._seedEmptyTracks();
     this.apply();
@@ -65,8 +56,7 @@ export class Theatre implements TimelineTheatre {
   }
 
   play(): void {
-    // Rejouer depuis la fin releve du debut : sans ca, appuyer sur Lecture une
-    // fois l'intro terminee ne ferait rien du tout.
+    // Lecture une fois la fin atteinte : on repart du debut plutot que de ne rien faire.
     if (this._playhead >= this.duration) this._playhead = 0;
     this._playing = true;
     this._notify();
@@ -108,30 +98,12 @@ export class Theatre implements TimelineTheatre {
     }
   }
 
-  /**
-   * Valeur que la scene tient DEJA pour une propriete.
-   *
-   * Le panneau s'en sert pour poser une cle sans faire sauter la valeur — et
-   * surtout pour la PREMIERE cle d'une piste vide, ou l'echantillonnage n'a rien
-   * a lire. Sans cette methode il retombait sur zero.
-   */
+  /** Valeur que la scene tient deja : la premiere cle d'une piste vide nait sur elle plutot que sur zero. */
   currentValue(objectId: string, prop: string): number {
-    // Zero pour une propriete inconnue : le contrat du panneau exige un nombre,
-    // et une liaison absente n'a de toute facon rien a poser.
     return this._bindings[objectId]?.[prop]?.get() ?? 0;
   }
 
-  /**
-   * Tout ce que le theatre SAIT animer, keyframe ou non.
-   *
-   * `tracksOf` ne rend que les pistes deja creees : sans ce rappel, une
-   * propriete n'apparait dans le panneau qu'une fois animee — et on ne peut
-   * donc jamais y poser sa PREMIERE cle. C'est ce qui donnait une timeline
-   * vide malgre des bindings declares.
-   *
-   * Le panneau de SONDE le fusionne avec les pistes existantes
-   * (`mergeRows`) pour composer sa liste deroulante.
-   */
+  /** Tout ce que le theatre sait animer : sans cela une propriete non animee n'apparait pas au panneau. */
   registeredProps(): Record<string, string[]> {
     const sortie: Record<string, string[]> = {};
     for (const [objectId, props] of Object.entries(this._bindings)) {
@@ -149,7 +121,7 @@ export class Theatre implements TimelineTheatre {
   }
 
   markersMap(): Record<string, number> {
-    return this._markers;
+    return {};
   }
 
   putKeyframe(id: string, prop: string, kf: TimelineKeyframe): void {
@@ -191,18 +163,10 @@ export class Theatre implements TimelineTheatre {
   }
 
   snapshot(): unknown {
-    return { id: this.id, duration: this.duration, markers: this._markers, tracks: this._tracks };
+    return { id: this.id, duration: this.duration, markers: {}, tracks: this._tracks };
   }
 
-  /**
-   * Symetrique de `snapshot()` : c'est ce qui rend l'annulation possible cote
-   * panneau. Seules les PISTES reviennent — l'id et la duree sont poses a la
-   * construction, et un etat qui pretendrait les changer decrirait un autre
-   * theatre que celui qu'on edite.
-   *
-   * Les keyframes sont recopiees : l'appelant garde son etat pour le refaire,
-   * et le partager le ferait muter par la premiere edition qui suit.
-   */
+  /** Annulation du panneau : seules les pistes reviennent, recopiees pour que l'etat garde par l'appelant ne mute pas. */
   restore(state: unknown): void {
     const tracks = readTracks(state);
     if (!tracks) return;
@@ -227,11 +191,7 @@ export class Theatre implements TimelineTheatre {
     };
   }
 
-  /**
-   * Une piste VIDE pour chaque scalaire pilotable, meme sans keyframe : le
-   * panneau liste ce que le theatre declare, et une propriete absente de
-   * `tracksOf` ne peut jamais recevoir sa premiere clé.
-   */
+  /** Une propriete absente de `tracksOf` ne pourrait jamais recevoir sa premiere cle. */
   private _seedEmptyTracks(): void {
     for (const [objectId, props] of Object.entries(this._bindings)) {
       const target = (this._tracks[objectId] ??= {});
@@ -249,11 +209,7 @@ export class Theatre implements TimelineTheatre {
   }
 }
 
-/**
- * Lecture defensive de l'etat rendu par `snapshot()`. Il transite par `unknown`
- * — c'est le type du contrat cote panneau — et un etat mal forme doit laisser
- * le theatre intact plutot que de vider ses pistes.
- */
+/** Un etat mal forme laisse le theatre intact plutot que de vider ses pistes. */
 function readTracks(state: unknown): Record<string, Record<string, TimelineTrack>> | null {
   if (typeof state !== "object" || state === null) return null;
   const tracks = (state as { tracks?: unknown }).tracks;
@@ -261,11 +217,7 @@ function readTracks(state: unknown): Record<string, Record<string, TimelineTrack
   return tracks as Record<string, Record<string, TimelineTrack>>;
 }
 
-/**
- * Maintien avant la premiere et apres la derniere keyframe : une piste ne
- * s'annule pas hors de son intervalle, elle tient sa valeur de bord. Sans ca,
- * scrubber avant le premier keyframe remettrait la propriete a zero.
- */
+/** Hors de son intervalle, une piste tient sa valeur de bord. */
 export function sampleTrack(track: TimelineTrack, t: number): number {
   if (track.length === 0) return 0;
   const first = track[0] as TimelineKeyframe;
@@ -278,15 +230,9 @@ export function sampleTrack(track: TimelineTrack, t: number): number {
     const b = track[i + 1] as TimelineKeyframe;
     if (t < a.t || t > b.t) continue;
     const span = b.t - a.t;
-    // Deux keyframes au meme temps : pas d'intervalle a interpoler, la seconde
-    // gagne. C'est le cas d'une coupure franche, volontaire.
+    // Deux keyframes au meme temps : coupure franche, la seconde gagne.
     if (span <= 1e-6) return b.v;
-    // Ease SORTANT : c'est le keyframe de depart qui gouverne le segment qui le
-    // suit. C'est la convention du panneau — il etiquette le segment `a -> b`
-    // avec `a.e` et desactive l'editeur sur le dernier keyframe, qui n'ouvre
-    // aucun segment. Lire `b.e` decalait tout d'un cran : regler un ease
-    // agissait sur le segment PRECEDENT, et le seul keyframe pilotant le
-    // segment final etait justement celui qu'on ne pouvait pas editer.
+    // Ease sortant (`a.e`) : convention du panneau, qui etiquette le segment `a -> b` avec `a.e`.
     return a.v + (b.v - a.v) * sampleEase(a.e, (t - a.t) / span, a.cp);
   }
   return last.v;

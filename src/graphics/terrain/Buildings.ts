@@ -18,7 +18,7 @@ const DECK_M = { base: 4.5, top: 7 } as const;
 const FOOTBRIDGE_M = 4;
 
 /** Tablier d'un pont : quadrilatere (coordonnees de la tuile), dessous et dessus (m). */
-export interface Deck {
+interface Deck {
   ring: number[];
   base: number;
   top: number;
@@ -31,7 +31,7 @@ export interface Deck {
 export function bridgeDecks(layers: Map<string, VectorLayer>, z: number, tile: TileXY): Deck[] {
   const decks: Deck[] = [];
   for (const [name, width] of [
-    ["routier_route_sup", (f: VectorFeature) => roadWidth(f, 6)],
+    ["routier_route_sup", roadWidth],
     ["routier_chemin_sup", () => FOOTBRIDGE_M],
   ] as const) {
     const layer = layers.get(name);
@@ -73,7 +73,7 @@ export interface BuildingMesh {
   buildings: number;
 }
 
-export function buildingHeight(feature: VectorFeature): number {
+function buildingHeight(feature: VectorFeature): number {
   const h = Number(feature.properties.hauteur);
   return Number.isFinite(h) && h > 0 ? Math.min(h, HEIGHT_RANGE_M) : DEFAULT_HEIGHT_M;
 }
@@ -236,15 +236,6 @@ export function drawBuildingHeights(pen: Pen, layers: Map<string, VectorLayer>, 
     pen.fill("nonzero");
   }
   return max;
-}
-
-/**
- * Sommets : plus grande hauteur par cellule de `cell` texels, etendue a `reach` cellules alentour.
- * Un rayon qui avance d'une cellule a la fois n'en saute ainsi aucune ; la parallaxe ne descend
- * finement que la ou un batiment peut l'arreter.
- */
-export function peakMap(heights: Uint8Array, width: number, height: number, cell = PEAK_CELL, reach = 1): Uint8Array {
-  return spreadPeaks(cellMaxima(heights, width, height, cell), Math.ceil(width / cell), Math.ceil(height / cell), reach);
 }
 
 /** Plus grande valeur par cellule de `cell` texels : les maximums d'une grille servent de texels a la suivante. */

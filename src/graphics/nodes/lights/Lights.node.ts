@@ -19,7 +19,7 @@ const FLAT_RELIEF_M: readonly [number, number] = [40, 120];
 export class LightsNode extends Object3DNodeBase {
   readonly settings = { azimuth: 117, elevation: 22, intensity: 4, ambient: 0.2, bounce: 0.35 };
   private readonly _sun = new DirectionalLight(0xffffff);
-  private readonly _sky = new HemisphereLight(0xffffff, 0x000000, 0.6);
+  private readonly _sky = new HemisphereLight(0xffffff, 0x000000);
 
   constructor() {
     const group = new Group();

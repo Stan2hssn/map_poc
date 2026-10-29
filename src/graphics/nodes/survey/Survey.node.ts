@@ -234,9 +234,9 @@ export class SurveyNode extends Object3DNodeBase {
     const terrain = this._terrain;
     const b = terrain.bounds;
     const ground = expandBounds(b, (SPAN - 1) / 2);
-    const step = graticuleStep(b, MAX_LINES);
-    const lons = graticuleValues(ground.west, ground.east, step);
-    const lats = graticuleValues(ground.south, ground.north, step);
+    const stepDeg = graticuleStep(b, MAX_LINES);
+    const lons = graticuleValues(ground.west, ground.east, stepDeg);
+    const lats = graticuleValues(ground.south, ground.north, stepDeg);
     const u = (lon: number) => (lon - b.west) / (b.east - b.west);
     const v = (lat: number) => (b.north - lat) / (b.north - b.south);
     const across = (t: number) => GROUND_MIN + t * SPAN;
@@ -270,10 +270,10 @@ export class SurveyNode extends Object3DNodeBase {
     this._rebuildTexts([
       ...lons
         .filter((lon) => inside(u(lon)))
-        .map((lon) => ({ text: formatDegrees(lon, step, "E", "W"), u: u(lon), v: 0, side: "north" as const })),
+        .map((lon) => ({ text: formatDegrees(lon, stepDeg, "E", "W"), u: u(lon), v: 0, side: "north" as const })),
       ...lats
         .filter((lat) => inside(v(lat)))
-        .map((lat) => ({ text: formatDegrees(lat, step, "N", "S"), u: 0, v: v(lat), side: "west" as const })),
+        .map((lat) => ({ text: formatDegrees(lat, stepDeg, "N", "S"), u: 0, v: v(lat), side: "west" as const })),
     ]);
   }
 

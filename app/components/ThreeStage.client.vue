@@ -2,26 +2,19 @@
 import { isDebugRequested, isStatsRequested } from '@_core/debug/DebugFlags.ts'
 import type ThreeDevice from '@_core/systems/ThreeDevice.ts'
 
-const emit = defineEmits<{ ready: []; failed: [] }>()
+const emit = defineEmits<{ ready: [] }>()
 
 const surface = useTemplateRef<HTMLCanvasElement>('surface')
 
-/** WebGL peut manquer : contexte refuse, GPU bloque, navigateur sans support. */
 const failed = ref(false)
-/** Le canvas reste transparent tant qu'aucune image n'a ete rendue. */
 const ready = ref(false)
 
 let device: ThreeDevice | null = null
 let observer: ResizeObserver | null = null
 
 /**
- * Le canvas est observe, et pas seulement la fenetre. ThreeDevice ecoute deja
- * `resize` sur window, mais cet evenement ne part pas quand le canvas passe
- * d'une boite nulle a une boite reelle — le cas exact d'un composant `.client`
- * monte avant que la mise en page ne soit posee.
- *
- * Une boite degeneree est ignoree : un aspect 0/0 donne NaN, et la camera n'en
- * revient pas toute seule au retour sur l'onglet.
+ * `resize` sur window ne part pas quand le canvas passe d'une boite nulle a une boite reelle ; une boite
+ * nulle est ignoree, son aspect NaN resterait dans la camera.
  */
 function resize() {
   const canvas = surface.value
@@ -31,32 +24,24 @@ function resize() {
   device.resize(clientWidth, clientHeight)
 }
 
-/**
- * Un tick d'attente avant de lire la ref : dans un composant `.client` de Nuxt,
- * le DOM n'est pas encore attache au `onMounted` du composant lui-meme, et la
- * ref y vaut null.
- */
+// Dans un composant `.client`, la ref vaut encore null au `onMounted`.
 onMounted(async () => {
   await nextTick()
   const canvas = surface.value
   if (!canvas) return
 
   try {
-    // Import dynamique : three et tweakpane pesent lourd, et
-    // rien de tout cela n'a de raison d'entrer dans le chunk d'entree.
+    // Import dynamique : three et tweakpane restent hors du chunk d'entree.
     const { default: Device } = await import('@_core/systems/ThreeDevice.ts')
     device = await Device.create(canvas, {
       // L'antialiasing se regle sur l'EffectComposer : la derniere passe est un triangle plein ecran.
       antialias: false,
       alpha: false,
       powerPreference: 'high-performance',
-      // Temps GPU par image, pour le panneau : seulement quand on le demande.
       trackTimestamp: isDebugRequested() || isStatsRequested(),
     })
   } catch (error) {
-    // Sans contexte, la page reste entiere : seul le canvas manque.
     failed.value = true
-    emit('failed')
     console.error('[ThreeStage] initialisation impossible', error)
     return
   }
@@ -68,8 +53,6 @@ onMounted(async () => {
   observer = new ResizeObserver(resize)
   observer.observe(canvas)
 
-  // Sonde de developpement : donne acces a la scene depuis la console du
-  // navigateur. `import.meta.dev` est statique, la branche disparait du build.
   if (import.meta.dev) {
     ;(window as unknown as { __stage?: unknown }).__stage = device
   }
@@ -116,9 +99,7 @@ onBeforeUnmount(() => {
   opacity: 0;
   transition: opacity 220ms ease;
 
-  /* Le geste appartient a la scene. Sans cela le navigateur mobile se sert le
-     premier — defilement elastique, zoom au double-tap, tire-pour-rafraichir —
-     et le glissement qui pilote la scene n'arrive jamais jusqu'a nous. */
+  /* Sans cela le navigateur mobile capte le glissement (defilement, zoom, rafraichir). */
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
 }

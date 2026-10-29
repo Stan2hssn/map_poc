@@ -7,7 +7,7 @@ import { createTreeMaterial } from "@graphics/materials/Trees.material.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import type { TerrainNode } from "@graphics/nodes/terrain/Terrain.node.ts";
 import { expandBounds, type GeoBounds } from "@graphics/terrain/GeoProjection.ts";
-import { mercatorTiles, tilePointToLonLat } from "@graphics/terrain/Landcover.ts";
+import { mercatorTiles, tileBounds, tileKey } from "@graphics/terrain/Landcover.ts";
 import type { BuildingsTile } from "@graphics/terrain/Landcover.worker.ts";
 import { Traffic } from "@graphics/terrain/Traffic.ts";
 import { TREE_STRIDE } from "@graphics/terrain/Trees.ts";
@@ -181,7 +181,7 @@ export class BuildingsNode extends Object3DNodeBase {
 
     const tilesOf = (bounds: GeoBounds) => {
       const z = t.landcover.fineZoomOf(bounds);
-      return mercatorTiles(z, expandBounds(bounds, C.margin)).map((tile) => ({ z, ...tile, key: `${z}/${tile.x}/${tile.y}` }));
+      return mercatorTiles(z, expandBounds(bounds, C.margin)).map((tile) => ({ z, ...tile, key: tileKey(z, tile) }));
     };
     const wanted = tilesOf(arrival ?? t.bounds);
     const signature = wanted.map((tile) => tile.key).join();
@@ -260,10 +260,8 @@ export class BuildingsNode extends Object3DNodeBase {
   }
 
   private _receive(message: BuildingsTile): void {
-    const key = `${message.z}/${message.x}/${message.y}`;
+    const key = tileKey(message.z, message);
     if (this._tiles.has(key)) return;
-    const [west, north] = tilePointToLonLat(message.z, message, 0, 0, 1);
-    const [east, south] = tilePointToLonLat(message.z, message, 1, 1, 1);
     const meshes: Mesh[] = [];
     const walls = message.wallEdges.length / 4;
 
@@ -306,7 +304,7 @@ export class BuildingsNode extends Object3DNodeBase {
     ].reduce((sum, array) => sum + array.byteLength, 0);
     this._tiles.set(key, {
       meshes,
-      geo: { west, east, north, south },
+      geo: tileBounds(message.z, message),
       buildings: message.buildings,
       vertices: message.roofPoints.length / 2 + walls * 4,
       bytes,
@@ -323,8 +321,7 @@ export class BuildingsNode extends Object3DNodeBase {
 
   /**
    * Un exemplaire vide (sans surface) de chaque materiau, rendu les premieres images, bati montre ou non : leurs
-   * shaders se compilent au demarrage plutot qu'a l'arrivee sur une ville, ou ils figeaient l'image (5 d'un coup,
-   * 0,2 a 1,4 s).
+   * shaders se compilent au demarrage plutot qu'a l'arrivee sur une ville, ou ils figeraient l'image.
    */
   private _warmUp(): Group {
     const group = new Group();

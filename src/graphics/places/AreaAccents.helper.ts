@@ -1,5 +1,5 @@
 import { HOVER_SLOTS, terrainSettings } from "@graphics/materials/Terrain.material.ts";
-import type { Ring } from "./AdminAreas.ts";
+import type { Ring } from "./Rings.ts";
 import { AreaMaskHelper } from "./AreaMask.helper.ts";
 
 /** Vitesse a laquelle le rouge gagne un territoire, et le quitte (part par seconde). */
@@ -18,7 +18,7 @@ interface Slot {
 /**
  * Accents des territoires sur le sol. Chaque territoire accentue prend une place (`HOVER_SLOTS`) : son contour,
  * sa part de rouge. Quitte, il la garde le temps de refluer, et le suivant en prend une autre : les transitions
- * ne se coupent plus l'une l'autre. Revenir sur un territoire qui reflue le fait remonter d'ou il en est.
+ * ne se coupent pas l'une l'autre. Revenir sur un territoire qui reflue le fait remonter d'ou il en est.
  */
 export class AreaAccentsHelper {
   private readonly _slots: Slot[];

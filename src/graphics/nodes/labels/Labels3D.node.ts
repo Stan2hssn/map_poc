@@ -10,7 +10,7 @@ import { createSdfFont, textWidth, type Glyph, type SdfFont } from "@graphics/te
 import { MAP_FOCUS, type MapFocusId } from "@graphics/config/focus.config.ts";
 import { fetchAreas } from "@graphics/places/AdminAreas.ts";
 import { AreaAccentsHelper } from "@graphics/places/AreaAccents.helper.ts";
-import { distanceToRingsKm, ringsBounds, ringsContain } from "@graphics/places/Rings.ts";
+import { distanceToRingsKm, KM_PER_DEGREE, ringsBounds, ringsContain } from "@graphics/places/Rings.ts";
 import { FrenchCommunesHelper } from "./FrenchCommunes.helper.ts";
 import { fetchCommuneAt, fetchCommuneRings, fetchWorldCities } from "@graphics/places/PlaceSources.ts";
 import {
@@ -74,17 +74,13 @@ const REACH = GROUND_FADE.near;
 /** Les noms restent sous l'en-tete de l'interface (`MapChrome`), qui occupe le haut de la page. */
 const TOP_MARGIN_PX = 104;
 const RESELECT_MS = 250;
-/**
- * Mise en page (px) : corps du nom, filet sous le nom, epaisseur de la hampe et diametre du point.
- * Nom seul, sans numero de classement : celui-ci vit desormais dans le rail des regards de l'interface.
- */
+/** Mise en page (px) : corps du nom, filet sous le nom, epaisseur de la hampe et diametre du point. */
 const TYPE = { name: 15, rule: 7, line: 1, dot: 9 };
 /** Quadrilateres reserves par etiquette : son trait, son point, son filet et une trentaine de caracteres. */
 const MAX_QUADS = 40;
 /** Police des etiquettes : celle de la page (voir `--font-map`), et sa graisse. */
 const FONT = '"Manrope", system-ui, sans-serif';
 const WEIGHT = 600;
-
 
 /** Attelage d'une etiquette : tout ce qui la dessine et la rend attrapable. */
 interface Rig {
@@ -112,7 +108,7 @@ interface NameBox {
 
 const overlaps = (a: NameBox, b: NameBox) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
 
-/** Boite en pixels, en decalage depuis le point ancre de l'etiquette. */
+/** Boite en pixels : en decalage depuis le point ancre (`_text`), ou a l'ecran (`Label.box`). */
 interface Box {
   left: number;
   top: number;
@@ -126,7 +122,7 @@ interface Label {
   /** Longueur de la ligne a l'ecran, lissee. */
   length: number | null;
   /** Boite du texte a l'ecran (px), pour le survol. */
-  box: { x: number; y: number; width: number; height: number } | null;
+  box: Box | null;
   /** Part apparue, lineaire (0 a 1), sa cible, et l'attente avant de s'y mettre (ms). */
   shown: number;
   wanted: 0 | 1;
@@ -140,7 +136,7 @@ const easeOut = (t: number) => 1 - (1 - t) ** 3;
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
 
 /**
- * Villes les plus peuplees de la vue : point au sol, ligne verticale, numero et nom, dessines a l'ecran autour
+ * Villes les plus peuplees de la vue : point au sol, ligne verticale et nom, dessines a l'ecran autour
  * d'un point ancre dans le terrain (`createLabelMaterial`). La ville survolee passe au rouge, un clic vole
  * jusqu'a elle.
  *
@@ -168,6 +164,7 @@ export class Labels3DNode extends Object3DNodeBase {
   private readonly _ndc = new Vector2();
   private readonly _anchor = new Vector3();
   private readonly _forward = new Vector3();
+  private readonly _toAnchor = new Vector3();
   /** Souris a l'ecran (px), et lieu survole. */
   private readonly _pointer = { x: -1, y: -1 };
   private _hovered: Place | null = null;
@@ -195,6 +192,10 @@ export class Labels3DNode extends Object3DNodeBase {
   private _hoverStep = 0.2;
   /** Niveau demande pendant que les etiquettes sortent ; applique une fois qu'elles sont toutes parties. */
   private _wanted: MapFocusId | null = null;
+  /** Communes trouvees sous le pointeur sans etiquette : gardees, pour qu'un retour reprenne le meme accent. */
+  private readonly _strays = new Map<string, Place>();
+  /** Part decouverte de la carte sous la page d'entree : les noms attendent qu'elle le soit entierement. */
+  private _intro = 0;
 
   constructor(canvas: HTMLElement, terrain: TerrainNode, camera: () => Camera, onSelect: (place: Place) => void) {
     // L'objet du noeud reste vide : les etiquettes vivent dans leur propre scene, posee sur l'image finie.
@@ -230,7 +231,6 @@ export class Labels3DNode extends Object3DNodeBase {
   private _applyFocus(focus: MapFocusId): void {
     this._focus = focus;
     this._hovered = null;
-    this._order = [];
     this._labels.clear();
     this._places.clear();
     this._target = null;
@@ -238,10 +238,6 @@ export class Labels3DNode extends Object3DNodeBase {
     this._accents.hold(null);
     this._abort?.abort();
     this._load();
-  }
-
-  get focus(): MapFocusId {
-    return this._focus;
   }
 
   override onMounted(): void {
@@ -483,7 +479,6 @@ export class Labels3DNode extends Object3DNodeBase {
       label.delay = 0;
       label.tier = tier;
     }
-    this._order = shown.map(({ place }) => place);
   }
 
   /** Boite du nom d'un lieu a l'ecran (px) s'il montait a cet etage, avec une marge de lecture. */
@@ -493,9 +488,6 @@ export class Labels3DNode extends Object3DNodeBase {
     const top = Math.max(TOP_MARGIN_PX + tier * TIER_PX, y - (LINE_PX + tier * TIER_PX));
     return { left: x - NAME_PAD, right: x + width + NAME_PAD, top: top - font.cap * TYPE.name - NAME_PAD, bottom: top + TYPE.rule + NAME_PAD };
   }
-
-  /** Lieux retenus, dans l'ordre du plus peuple : ceux qui sortent sont dessines apres eux. */
-  private _order: Place[] = [];
 
   private _layout(): void {
     const font = this._font!;
@@ -530,7 +522,7 @@ export class Labels3DNode extends Object3DNodeBase {
       // Le groupe porte le point ancre, l'orientation de la camera et l'echelle pixel vers scene : dans son
       // repere, une unite vaut un pixel d'ecran. La profondeur de vue, pas la distance : c'est par elle que
       // la perspective divise.
-      const depth = Math.abs(this._anchor.clone().sub(camera.position).dot(this._forward));
+      const depth = Math.abs(this._toAnchor.subVectors(this._anchor, camera.position).dot(this._forward));
       rig.group.position.copy(this._anchor);
       rig.group.quaternion.copy(camera.quaternion);
       rig.group.scale.setScalar(perspective * Math.max(depth, 1e-4));
@@ -555,7 +547,7 @@ export class Labels3DNode extends Object3DNodeBase {
       const boxHeight = font.cap * TYPE.name + TYPE.rule;
       rig.proxy.position.set(drawn.left + drawn.width / 2, -(boxTop + boxHeight / 2), 0);
       rig.proxy.scale.set(Math.max(drawn.width, 1), boxHeight, 1);
-      label.box = rig.place ? { x: ground.x + drawn.left, y: ground.y + boxTop, width: drawn.width, height: boxHeight } : null;
+      label.box = rig.place ? { left: ground.x + drawn.left, top: ground.y + boxTop, width: drawn.width, height: boxHeight } : null;
 
       for (const attribute of [rig.glyphs, rig.screen, rig.tints, rig.fades]) attribute.needsUpdate = true;
       rig.geometry.instanceCount = rig.quads;
@@ -619,10 +611,10 @@ export class Labels3DNode extends Object3DNodeBase {
       const box = rig.place ? this._labels.get(rig.place)?.box : null;
       if (!box) continue;
       if (
-        this._pointer.x >= box.x - AIM_PX &&
-        this._pointer.x <= box.x + box.width + AIM_PX &&
-        this._pointer.y >= box.y - AIM_PX &&
-        this._pointer.y <= box.y + box.height + AIM_PX
+        this._pointer.x >= box.left - AIM_PX &&
+        this._pointer.x <= box.left + box.width + AIM_PX &&
+        this._pointer.y >= box.top - AIM_PX &&
+        this._pointer.y <= box.top + box.height + AIM_PX
       )
         return true;
     }
@@ -698,7 +690,7 @@ export class Labels3DNode extends Object3DNodeBase {
     if (!rings?.length) return false;
     const { lon, lat } = this._terrain.center;
     const b = ringsBounds(rings);
-    const spanKm = Math.max((b.east - b.west) * 111.32 * Math.cos((lat * Math.PI) / 180), (b.north - b.south) * 111.32);
+    const spanKm = Math.max((b.east - b.west) * KM_PER_DEGREE * Math.cos((lat * Math.PI) / 180), (b.north - b.south) * KM_PER_DEGREE);
     if (this._terrain.extentKm > spanKm * HERE_SPAN) return false;
     return ringsContain(rings, lon, lat) || distanceToRingsKm(rings, lon, lat) < this._terrain.extentKm * NEAR_SHARE;
   }
@@ -756,12 +748,6 @@ export class Labels3DNode extends Object3DNodeBase {
     }, COMMUNE_LOOKUP_MS);
     return null;
   }
-
-  /** Communes trouvees sous le pointeur sans etiquette : gardees, pour qu'un retour reprenne le meme accent. */
-  private readonly _strays = new Map<string, Place>();
-
-  /** Part decouverte de la carte sous la page d'entree : les noms attendent qu'elle le soit entierement. */
-  private _intro = 0;
 
   /** Des lieux sont connus pour le niveau courant : il y a de quoi nommer la carte. */
   get loaded(): boolean {

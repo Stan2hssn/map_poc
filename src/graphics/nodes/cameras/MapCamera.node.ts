@@ -82,8 +82,7 @@ export class MapCameraNode extends NodeBase {
     gestures: TerrainGestureHandlers
   ) {
     super(NODE_ID.CAMERA_MAIN, "Map Camera", input);
-    const aspect =
-      globalThis.window && globalThis.window.innerHeight > 0 ? globalThis.window.innerWidth / globalThis.window.innerHeight : 16 / 9;
+    const aspect = window.innerHeight > 0 ? window.innerWidth / window.innerHeight : 16 / 9;
     this.camera = new PerspectiveCamera(FOV, aspect, 0.5, 2000);
     this._element = element;
     this._heightAt = heightAt;

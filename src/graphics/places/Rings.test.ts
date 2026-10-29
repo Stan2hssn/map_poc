@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { Ring } from "./AdminAreas.ts";
-import { distanceToRingsKm, ringsBounds, ringsContain } from "./Rings.ts";
+import { distanceToRingsKm, ringsBounds, ringsContain, type Ring } from "./Rings.ts";
 
 // Carre d'un degre, et un second anneau a l'ecart (une ile).
 const SQUARE: Ring = [

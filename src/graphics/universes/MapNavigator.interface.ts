@@ -33,8 +33,8 @@ export default interface IMapNavigator {
   loadState(): { progress: number; ready: boolean };
   /** La vue est chargee : le mot de l'intro prend toute son encre pour inviter au depart. */
   setIntroReady(ready: boolean): void;
-  /** La page se retire et decouvre la carte, puis la vue vole vers `view` si elle est donnee. */
-  drawMap(view?: MapView): void;
+  /** La page se retire et decouvre la carte. */
+  drawMap(): void;
 }
 
 export function isMapNavigator<T extends object>(value: T): value is T & IMapNavigator {

@@ -31,7 +31,6 @@ test("dessin : couleurs par couche, polygones remplis, routes a leur largeur", (
       beginPath: () => calls.push("begin"),
       moveTo: (x: number, y: number) => calls.push(`move ${x.toFixed(0)},${y.toFixed(0)}`),
       lineTo: (x: number, y: number) => calls.push(`line ${x.toFixed(0)},${y.toFixed(0)}`),
-      closePath: () => {},
       fill: () => calls.push("fill"),
       stroke: () => calls.push("stroke"),
       set fillStyle(v: string) {

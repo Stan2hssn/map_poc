@@ -68,7 +68,7 @@ export function surfaceContains({ rings, minX, minY, maxX, maxY }: Surface, x: n
   return inside;
 }
 
-/** Couche construite a partir d'entites ecrites a la main (tests). */
+/** Couche construite a partir d'entites donnees en clair. */
 export function vectorLayer(
   extent: number,
   features: { type: number; properties?: VectorFeature["properties"]; geometry: number[][] }[]

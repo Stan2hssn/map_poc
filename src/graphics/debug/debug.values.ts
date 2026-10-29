@@ -1,53 +1,30 @@
 import type { DebugPersistence, DebugValues } from "@_core/debug/DebugValues.ts";
-import fichier from "../config/debug.values.json";
+import file from "../config/debug.values.json";
 
-/**
- * Clé du panneau Tweakpane dans `debug.values.json`.
- *
- * Le fichier est PARTAGE avec la sonde, qui y ecrit son propre etat sous `gl`.
- * Le pont d'ecriture fusionne par identifiant : sauvegarder l'un n'efface donc
- * pas l'autre, a condition que chacun garde sa cle.
- */
-const CLE = "tweakpane";
+// Fichier partage avec la sonde (cle `gl`) : le pont fusionne par cle, chacun garde la sienne.
+const KEY = "tweakpane";
 
-/** Route du pont dev de `modules/sonde` — inexistante en production. */
 const ROUTE = "/__sonde/debug";
 
-/**
- * Reglages relus au demarrage.
- *
- * L'import est STATIQUE : Vite l'inline au build. Un `fetch` aurait rendu le
- * panneau dependant d'une requete qui n'aboutit pas en production, ou il n'y a
- * pas de pont.
- */
-export const DEBUG_VALUES: DebugValues =
-  ((fichier as Record<string, unknown>)[CLE] as DebugValues | undefined) ?? {};
+// Import statique, inline par Vite : en production il n'y a pas de pont a interroger.
+const values: DebugValues = ((file as Record<string, unknown>)[KEY] as DebugValues | undefined) ?? {};
 
-// Chaque ecriture du panneau modifie le JSON : sans cet arret, le HMR remonte
-// jusqu'a `ThreeStage` et recree toute la scene. Les valeurs sont deja en memoire.
+// Chaque ecriture du panneau touche le JSON : sans cet arret, le HMR recree toute la scene depuis `ThreeStage`.
 import.meta.hot?.accept("../config/debug.values.json", () => {});
 
-/**
- * Ecrit les reglages dans le fichier du depot, en developpement seulement.
- *
- * En production la route n'existe pas : on rend la main plutot que d'empiler
- * des 404 dans la console d'un site publie.
- */
-export function persistDebugValues(valeurs: DebugValues): void {
+function persist(next: DebugValues): void {
+  // La route n'existe qu'en dev : en production on n'empile pas de 404.
   if (!import.meta.dev) return;
 
   void fetch(ROUTE, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ id: CLE, tracks: valeurs }),
+    body: JSON.stringify({ id: KEY, tracks: next }),
   })
-    .then((reponse) => {
-      if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
     })
-    .catch((erreur) => console.warn("[debug] reglages non ecrits", erreur));
+    .catch((error) => console.warn("[debug] reglages non ecrits", error));
 }
 
-export const DEBUG_PERSISTENCE: DebugPersistence = {
-  values: DEBUG_VALUES,
-  persist: persistDebugValues,
-};
+export const DEBUG_PERSISTENCE: DebugPersistence = { values, persist };

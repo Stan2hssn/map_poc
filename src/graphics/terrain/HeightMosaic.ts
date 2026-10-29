@@ -1,5 +1,5 @@
 import { DataUtils } from "three";
-import { EARTH_RADIUS_KM, tileBounds, tilesCovering, type GeoBounds } from "./GeoProjection.ts";
+import { clamp, EARTH_RADIUS_KM, tileBounds, tilesCovering, type GeoBounds } from "./GeoProjection.ts";
 import { HALF_NAN, halfToFloat } from "./HalfFloat.ts";
 import type { CachedTile } from "./TileCache.ts";
 
@@ -24,11 +24,9 @@ export interface HeightMosaic {
   complete: boolean;
 }
 
-export interface TileSource {
+interface TileSource {
   get(z: number, x: number, y: number): CachedTile | undefined;
 }
-
-const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
 /** Niveau dont le texel est le plus proche de l'ecart entre sommets du bloc. */
 export function levelFor(extentKm: number, segments: number, maxZoom: number): number {

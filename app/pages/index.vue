@@ -1,52 +1,35 @@
 <script setup lang="ts">
 /**
- * Entree : une page presque vide, composee comme la maquette par la passe d'encre, sur la carte qui attend
- * dessous. Le titre et le mot pose sur le cercle du curseur sont dessines dans le rendu (`IntroNode`), a la place
- * que leur donne le HTML ci-dessous — qui garde la mise en page et la lecture d'ecran, mais pas l'encre. Au
- * depart, le masque de composition decouvre la carte et efface tout sur son passage : un seul geste.
- *
- * Tant que la page n'est pas complete (vue chargee, textes graves), une feuille la couvre et dit la part
- * arrivee : ses elements ne paraissent pas un par un, ils se decouvrent ensemble. On n'entre qu'ensuite — des
- * tuiles arrivees en plein passage le feraient saccader. Le cercle du curseur, lui, reste pour toute
- * l'experience (`MapCursor`).
+ * Les textes de l'entree sont dessines par `IntroNode` a la place que leur donne ce HTML, pour que le masque
+ * de composition les efface avec la page. On n'entre qu'une fois tout charge : des tuiles arrivees en plein
+ * passage le feraient saccader.
  */
-import { isMapNavigator } from '@graphics/universes/MapNavigator.interface.ts'
-
-/** Lecture du chargement : assez frequente pour que la jauge avance, sans solliciter la scene a chaque image. */
 const LOAD_POLL_MS = 150
 /** Delai apres « pret » avant de lever la feuille : le temps qu'une image de la page complete soit dessinee. */
 const UNVEIL_DELAY_MS = 150
 
-const started = ref(false)
 const loaded = ref(0)
 const ready = ref(false)
-/** La feuille de chargement se leve, puis s'en va une fois son fondu fini. */
 const unveiled = ref(false)
 const veilGone = ref(false)
 const drawn = ref(false)
 let poll = 0
 let unveil = 0
 
-function navigator() {
-  const universes = useThreeStage().read()?.runtime.output.getActiveUniverses() ?? []
-  return universes.find(isMapNavigator) ?? null
-}
-
 function onReady() {
-  started.value = true
   if (drawn.value) return
-  navigator()?.holdIntro()
+  useMapNavigator()?.holdIntro()
   poll = window.setInterval(readLoad, LOAD_POLL_MS)
 }
 
 function readLoad() {
-  const state = navigator()?.loadState()
+  const state = useMapNavigator()?.loadState()
   if (!state) return
   loaded.value = Math.max(loaded.value, state.progress)
   if (!state.ready) return
   loaded.value = 1
   ready.value = true
-  navigator()?.setIntroReady(true)
+  useMapNavigator()?.setIntroReady(true)
   clearInterval(poll)
   unveil = window.setTimeout(() => (unveiled.value = true), UNVEIL_DELAY_MS)
 }
@@ -55,8 +38,7 @@ function draw() {
   if (drawn.value || !ready.value) return
   drawn.value = true
   document.documentElement.dataset.mapIntro = 'drawn'
-  // La carte attend deja sur la France sous la page (`holdIntro`) : rien a survoler en partant.
-  navigator()?.drawMap()
+  useMapNavigator()?.drawMap()
 }
 
 onMounted(() => {
@@ -77,7 +59,6 @@ onBeforeUnmount(() => {
     <MapArchives v-if="drawn" />
     <MapCursor :mode="drawn ? 'map' : ready ? 'ready' : 'loading'" />
 
-    <!-- Feuille de chargement : la page se decouvre entiere, pas element par element. -->
     <div
       v-if="!veilGone"
       class="loader"

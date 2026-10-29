@@ -1,19 +1,10 @@
 <script setup lang="ts">
-/**
- * Chrome de la carte : voile de papier, en-tete, rail des niveaux, releves, frise et attribution.
- * Il se pose sur le rendu, il ne le touche pas.
- *
- * Le rail est le commutateur de niveau (ce que la carte nomme). Le fil d'Ariane, lui, ne commande rien : il
- * dit ou l'on se trouve et se remplit a mesure qu'on descend, donc regarder Marseille en ayant ouvert le
- * fonds de Lyon affiche bien Marseille.
- */
+/** Le fil d'Ariane ne commande rien : il dit ou l'on regarde, pas ce qu'on a ouvert. */
 import { MAP_VIEWS } from '@graphics/config/views.config.ts'
 import { MAP_FOCUS, type MapFocusId } from '@graphics/config/focus.config.ts'
-import { isMapNavigator, type SelectedPlace } from '@graphics/universes/MapNavigator.interface.ts'
+import type { SelectedPlace } from '@graphics/universes/MapNavigator.interface.ts'
 
-/** Longueur visee de la barre d'echelle, en pixels. */
 const SCALE_PX = 148
-/** Rafraichissement des releves. */
 const READ_MS = 200
 /** Au-dela de ces largeurs de vue (km), le niveau n'est pas atteint et n'entre pas dans le fil d'Ariane. */
 const CRUMB_KM = { region: 600, departement: 150, ville: 25 }
@@ -24,7 +15,6 @@ const LOOKUP_DEG = 0.02
 const BARS = [22, 31, 26, 44, 38, 57, 49, 68, 61, 83, 72, 94, 78, 100]
 const FIRST_YEAR = 1958
 const LAST_YEAR = 2027
-/** Niveaux, dans l'ordre du rail : c'est le commutateur de ce que la carte nomme. */
 const LEVELS: { rank: string; id: MapFocusId }[] = [
   { rank: '01', id: 'communes' },
   { rank: '02', id: 'departements' },
@@ -38,18 +28,11 @@ const where = ref({ region: '', departement: '', ville: '' })
 const extentKm = ref(0)
 const query = ref('')
 const hits = ref<SelectedPlace[]>([])
-/** Periode retenue sur la frise : deux bornes d'annees. */
 const period = ref<[number, number]>([FIRST_YEAR, LAST_YEAR])
 let timer = 0
 let lookup = 0
 let lastAt = { lon: 999, lat: 999 }
 
-function navigator() {
-  const universes = useThreeStage().read()?.runtime.output.getActiveUniverses() ?? []
-  return universes.find(isMapNavigator) ?? null
-}
-
-/** Fil d'Ariane : une entree par niveau atteint, la derniere a pleine encre. */
 const crumbs = computed(() => {
   const trail = [{ label: 'France', key: 'france' }]
   const at = where.value
@@ -61,9 +44,13 @@ const crumbs = computed(() => {
 
 const periodLabel = computed(() => (period.value[0] === period.value[1] ? `${period.value[0]}` : `${period.value[0]} – ${period.value[1]}`))
 
+function flyHome() {
+  useMapNavigator()?.flyTo(MAP_VIEWS.france)
+}
+
 function setFocus(id: MapFocusId) {
   focus.value = id
-  navigator()?.setFocus(id)
+  useMapNavigator()?.setFocus(id)
 }
 
 /** Distance ronde (1, 2 ou 5 fois une puissance de dix) la plus proche de `SCALE_PX` a l'ecran. */
@@ -76,7 +63,6 @@ function niceScale(km: number) {
   return { label, width: Math.min(SCALE_PX * 1.6, rounded * perKm) }
 }
 
-/** Degres et minutes, comme les coordonnees portees en marge de la carte. */
 function degrees(value: number, axis: 'lat' | 'lon') {
   const hemisphere = axis === 'lat' ? (value >= 0 ? 'N' : 'S') : value >= 0 ? 'E' : 'O'
   const total = Math.abs(value)
@@ -84,7 +70,6 @@ function degrees(value: number, axis: 'lat' | 'lon') {
   return `${whole}°${String(Math.round((total - whole) * 60)).padStart(2, '0')}'${hemisphere}`
 }
 
-/** Ou l'on se trouve : commune, departement et region du point vise, en un appel. */
 async function locate(lon: number, lat: number) {
   try {
     const url = `https://geo.api.gouv.fr/communes?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}&fields=nom,departement,region&format=json`
@@ -98,7 +83,7 @@ async function locate(lon: number, lat: number) {
 }
 
 function read() {
-  const at = navigator()?.readout()
+  const at = useMapNavigator()?.readout()
   if (!at) return
   extentKm.value = at.extentKm
   scale.value = niceScale(at.extentKm)
@@ -110,11 +95,11 @@ function read() {
 }
 
 function onSearch() {
-  hits.value = query.value.trim().length > 1 ? (navigator()?.searchPlaces(query.value, 6) ?? []) : []
+  hits.value = query.value.trim().length > 1 ? (useMapNavigator()?.searchPlaces(query.value, 6) ?? []) : []
 }
 
 function choose(place: SelectedPlace) {
-  navigator()?.goToPlace(place)
+  useMapNavigator()?.goToPlace(place)
   query.value = ''
   hits.value = []
 }
@@ -147,7 +132,7 @@ onBeforeUnmount(() => {
 
     <header class="chrome__head">
       <div class="chrome__brand">
-        <button type="button" class="chrome__wordmark" @click="navigator()?.flyTo(MAP_VIEWS.france)">ARCHIVES</button>
+        <button type="button" class="chrome__wordmark" @click="flyHome">ARCHIVES</button>
         <div class="chrome__rule" />
         <nav class="chrome__crumbs" aria-label="Position">
           <template v-for="(crumb, i) in crumbs" :key="crumb.key">

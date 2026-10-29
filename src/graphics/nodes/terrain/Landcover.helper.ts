@@ -11,8 +11,8 @@ const SIZE = 2048;
 const AREA = 0.75;
 /** Zone ou le bati est complet : la zone de detail et un peu plus. Nouvelle image des que la vue en sort. */
 const FOCUS = 0.35;
-// Une demande part au plus a ce rythme ; en mouvement, plus rarement : chaque image redessinee puis envoyee au
-// GPU (2 x 2048 px et leurs mipmaps) fait sauter des images, c'etait la cause des a-coups au zoom.
+// Une demande part au plus a ce rythme ; en mouvement, plus rarement : chaque image envoyee au GPU
+// (2 x 2048 px et leurs mipmaps) fait sauter des images.
 const REQUEST_MS = 200;
 const MOVING_REQUEST_MS = 600;
 /** Une nouvelle image se fond dans la precedente en ce temps (ms). */
@@ -28,8 +28,6 @@ export class LandcoverHelper {
   onBuildings: ((tile: BuildingsTile) => void) | null = null;
   /** Nouvelles hauteurs du bati : tuiles (`z/x/y`) qu'elles contiennent. */
   onHeights: ((tiles: ReadonlySet<string>) => void) | null = null;
-  /** Derniere image : temps de dessin dans le worker (ms), et delai depuis sa demande jusqu'a l'image complete (ms). */
-  readonly stats = { renderMs: 0, loadMs: 0 };
   private readonly _worker = new Worker(new URL("../../terrain/Landcover.worker.ts", import.meta.url), { type: "module" });
   private _requested: { focus: GeoBounds; zoom: number; heights: boolean; sun: string } | null = null;
   private _requestedAt = -Infinity;
@@ -130,9 +128,7 @@ export class LandcoverHelper {
     // Une image partielle d'une demande plus ancienne vaut mieux que rien, jamais l'inverse.
     if (message.id < this._shown) return;
     this._shown = message.id;
-    this.stats.renderMs = message.renderMs;
     this._complete = message.complete && message.id === this._id;
-    if (this._complete) this.stats.loadMs = performance.now() - this._requestedAt;
     const s = terrainSettings;
     show(s.landcover, s.landcoverPrevious, message.areas);
     show(s.landcoverRoads, s.landcoverRoadsPrevious, message.roads);

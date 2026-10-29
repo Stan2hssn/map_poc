@@ -1,4 +1,5 @@
 import type { Place } from "./PlaceIndex.ts";
+import { ringsOfGeometry, type Ring, type RingGeometry } from "./Rings.ts";
 
 /**
  * Departements et regions avec leur contour. `geo.api.gouv.fr` ne sert ni `centre` ni `contour` a ces deux
@@ -13,18 +14,9 @@ const FILES = {
 
 export type AreaLevel = keyof typeof FILES;
 
-/** Anneau de contour : une suite de points (longitude, latitude). */
-export type Ring = [number, number][];
-
 interface AreaFeature {
   properties: { code: string; nom: string };
-  geometry: { type: "Polygon" | "MultiPolygon"; coordinates: number[][][] | number[][][][] };
-}
-
-/** Anneaux exterieurs du contour : les trous sont ignores, un aplat de survol n'en a pas besoin. */
-function ringsOf({ geometry }: AreaFeature): Ring[] {
-  const polygons = geometry.type === "Polygon" ? [geometry.coordinates as number[][][]] : (geometry.coordinates as number[][][][]);
-  return polygons.flatMap((polygon) => (polygon[0] ? [polygon[0] as Ring] : []));
+  geometry: RingGeometry;
 }
 
 /** Aire du contour en degres carres, par la formule du lacet : elle classe les zones, faute de population. */
@@ -53,7 +45,7 @@ export async function fetchAreas(level: AreaLevel, signal: AbortSignal): Promise
   if (!response.ok) throw new Error(`${FILES[level]} : HTTP ${response.status}`);
   const { features } = (await response.json()) as { features: AreaFeature[] };
   return features.map((feature) => {
-    const rings = ringsOf(feature);
+    const rings = ringsOfGeometry(feature.geometry);
     const [lon, lat] = centerOf(rings);
     // `population` classe les lieux dans `PlaceIndex` : a ces niveaux c'est l'etendue qui fait l'importance.
     return { name: feature.properties.nom, lon, lat, population: Math.round(areaOf(rings) * 1e6), country: "FRA", rings };

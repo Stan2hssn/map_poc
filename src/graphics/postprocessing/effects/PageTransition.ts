@@ -1,6 +1,25 @@
-import { atan, fract, fwidth, length, max, min, mix, screenCoordinate, screenSize, smoothstep, uniform, vec2 } from "three/tsl";
+import {
+  atan,
+  float,
+  Fn,
+  fract,
+  fwidth,
+  If,
+  length,
+  luminance,
+  max,
+  min,
+  mix,
+  screenCoordinate,
+  screenSize,
+  smoothstep,
+  step,
+  uniform,
+  vec2,
+} from "three/tsl";
 import type { Node } from "three/webgpu";
 import { noiseAt } from "@graphics/materials/NoiseMap.ts";
+import { inkCoverage, inkOnPaper, inkSettings } from "./InkStyle.ts";
 
 /**
  * Passage de la page d'entree a la carte : un masque de composition pose a l'ecran, qui decouvre la carte deja
@@ -56,4 +75,77 @@ export function mapUncovered(): Node {
   const front = mix(first, last, t.progress);
   const aa = fwidth(order).min(MAX_AA);
   return smoothstep(front.sub(aa), front.add(aa), order).oneMinus();
+}
+
+/** Page d'avant la carte : le ton qu'on prete au papier pour qu'il porte quelques hachures (1 : papier nu). */
+const IDLE_TONE = 0.72;
+/**
+ * Degrade radial facon CSS, en part de l'ecran : ellipse de rayons `radii` centree en `at`, et paliers
+ * d'opacite (position sur le rayon, alpha), interpoles lineairement comme `radial-gradient`.
+ */
+interface CssRadial {
+  at: readonly [number, number];
+  radii: readonly [number, number];
+  stops: readonly (readonly [number, number])[];
+}
+
+/**
+ * Page d'entree, reprise de la maquette (`01-entree.html`) : une masse d'encre hors centre a gauche, fondue par
+ * un masque radial (opacite 0,66), et un lavis de papier sur la colonne de texte. Degrades ramenes a l'ecran
+ * (y vers le bas). La masse est ici la carte elle-meme : plus a droite que dans la maquette, sinon elle ne
+ * montrerait que la mer, et le lavis resserre sur le titre, sinon il l'effacerait.
+ */
+const PAGE = {
+  mass: {
+    at: [0.34, 0.56],
+    radii: [0.5, 0.62],
+    stops: [
+      [0, 1],
+      [0.46, 0.75],
+      [0.78, 0],
+    ],
+    opacity: 0.66,
+  },
+  wash: {
+    at: [0.5, 0.3],
+    radii: [0.36, 0.42],
+    stops: [
+      [0, 0.95],
+      [0.58, 0.9],
+      [0.88, 0.25],
+      [1, 0],
+    ],
+  },
+} as const;
+
+/** Opacite d'un degrade radial de la maquette au pixel courant, en part de l'ecran (y vers le bas, comme en CSS). */
+function cssRadial({ at, radii, stops }: CssRadial): Node {
+  const t = length(screenCoordinate.div(screenSize).sub(vec2(...at)).div(vec2(...radii)));
+  let alpha: Node = float(stops[stops.length - 1]![1]);
+  for (let i = stops.length - 2; i >= 0; i--) {
+    const [from, a] = stops[i]!;
+    const [to, b] = stops[i + 1]!;
+    alpha = mix(mix(float(a), float(b), t.sub(from).div(to - from).clamp(0, 1)), alpha, step(to, t));
+  }
+  return alpha;
+}
+
+/**
+ * Page d'entree posee sur la carte `map` deja dessinee, composee comme la maquette : la meme feuille `paper` portant
+ * quelques hachures, une masse d'encre a gauche (la carte fondue par un masque radial), un lavis de papier sur la
+ * colonne de texte. `mapUncovered` la retire ; le masque de la carte, lui, ne bouge pas.
+ */
+export function pageOver(map: Node, paper: Node, pixel: Node): Node {
+  return Fn(() => {
+    const color = map.toVar();
+    // Branche sur un uniforme : une fois la carte decouverte, tous les pixels la sautent et la page ne coute plus rien.
+    If(pageTransition.progress.lessThan(1), () => {
+      const idle = luminance(paper).max(0).pow(1 / 2.2).mul(IDLE_TONE);
+      let page: Node = inkOnPaper(inkCoverage(idle, pixel, float(1)), pixel, paper);
+      page = mix(page, map, cssRadial(PAGE.mass).mul(PAGE.mass.opacity));
+      page = mix(page, inkSettings.paper, cssRadial(PAGE.wash));
+      color.assign(mix(page, map, mapUncovered()));
+    });
+    return color;
+  })();
 }

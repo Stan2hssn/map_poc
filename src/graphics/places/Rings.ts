@@ -1,7 +1,20 @@
-import type { Ring } from "./AdminAreas.ts";
+/** Anneau de contour : une suite de points (longitude, latitude). */
+export type Ring = [number, number][];
 
 /** km par degre de latitude. */
-const KM_PER_DEGREE = 111.32;
+export const KM_PER_DEGREE = 111.32;
+
+export interface RingGeometry {
+  type: string;
+  coordinates: number[][][] | number[][][][];
+}
+
+/** Anneaux exterieurs d'un Polygon ou MultiPolygon GeoJSON : les trous sont ignores, un aplat de survol n'en a pas besoin. */
+export function ringsOfGeometry(geometry: RingGeometry | undefined): Ring[] {
+  if (!geometry) return [];
+  const polygons = geometry.type === "Polygon" ? [geometry.coordinates as number[][][]] : (geometry.coordinates as number[][][][]);
+  return polygons.flatMap((polygon) => (polygon[0] ? [polygon[0] as Ring] : []));
+}
 
 /** Le point (lon, lat) est-il dans l'un des anneaux ? Pair-impair : un contour non ferme se lit comme ferme. */
 export function ringsContain(rings: Ring[], lon: number, lat: number): boolean {

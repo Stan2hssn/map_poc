@@ -4,12 +4,13 @@ import { GEOMETRY, partsOf, type VectorFeature, type VectorLayer } from "./Vecto
 /**
  * Texture de donnees du sol, facon Chartogne-Taillet : les couches du PLAN IGN (tuiles vectorielles
  * Web Mercator) dessinees dans une grille lon/lat alignee sur le relief.
- * R : bati, G : vegetation, B : eau, A : routes.
+ * `areas` : R bati, G vegetation, B eau ; les routes sont une seconde image, `roads`.
  */
 export const landcoverUrl = (z: number, x: number, y: number) => `https://data.geopf.fr/tms/1.0.0/PLAN.IGN/${z}/${x}/${y}.pbf`;
 
 /** Zoom maximal du PLAN IGN, et taille a laquelle une tuile est dessinee. */
 const MAX_ZOOM = 16;
+const TILE_PX = 512;
 /** Au centre, deux niveaux plus fins : le PLAN IGN ne garde tout le bati qu'a partir du 14-15 ; au-dela de 15, rien de plus. */
 const FOCUS_LEVELS = 2;
 const MAX_FINE_ZOOM = 15;
@@ -27,16 +28,16 @@ export const LANDCOVER_LAYERS = {
   routier_chemin: [],
   routier_surf: [],
 } as const;
-const TILE_PX = 512;
 const EARTH_CIRCUMFERENCE_M = 40_075_016.7;
 
+const UNCLASSIFIED_ROAD_M = 6;
 /** Largeur des routes en metres selon leur classe ; jamais moins d'un demi-pixel. */
 const ROAD_WIDTH_M: [RegExp, number][] = [
   [/^AUTOROU/, 26],
   [/^PRINCIPALE/, 18],
   [/^REGIONALE/, 13],
   [/^LOCALE/, 9],
-  [/^NON_CLASSEE/, 6],
+  [/^NON_CLASSEE/, UNCLASSIFIED_ROAD_M],
 ];
 const PATH_WIDTH_M = 3;
 const RIVER_WIDTH_M = 18;
@@ -49,11 +50,15 @@ export interface TileXY {
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 const RAD = Math.PI / 180;
 
+/** Taille au sol (m) d'un pixel d'une image de `width` px sur `bounds`, a sa latitude centrale. */
+function metersPerPixel(bounds: GeoBounds, width: number): number {
+  return ((bounds.east - bounds.west) * RAD * 6_378_137 * Math.cos(((bounds.north + bounds.south) / 2) * RAD)) / width;
+}
+
 /** Zoom Web Mercator dont une tuile dessinee a 512 px egale la resolution voulue. */
 export function landcoverZoom(bounds: GeoBounds, widthPx: number): number {
   const lat = (bounds.north + bounds.south) / 2;
-  const metersPerPixel = ((bounds.east - bounds.west) * RAD * 6_378_137 * Math.cos(lat * RAD)) / widthPx;
-  const z = Math.round(Math.log2((EARTH_CIRCUMFERENCE_M * Math.cos(lat * RAD)) / (TILE_PX * metersPerPixel)));
+  const z = Math.round(Math.log2((EARTH_CIRCUMFERENCE_M * Math.cos(lat * RAD)) / (TILE_PX * metersPerPixel(bounds, widthPx))));
   return clamp(z, 0, MAX_ZOOM);
 }
 
@@ -86,6 +91,16 @@ export function tilePointToLonLat(z: number, tile: TileXY, px: number, py: numbe
   return [lon, lat];
 }
 
+/** Cle `z/x/y` d'une tuile. */
+export const tileKey = (z: number, tile: TileXY) => `${z}/${tile.x}/${tile.y}`;
+
+/** Emprise lon/lat d'une tuile. */
+export function tileBounds(z: number, tile: TileXY): GeoBounds {
+  const [west, north] = tilePointToLonLat(z, tile, 0, 0, 1);
+  const [east, south] = tilePointToLonLat(z, tile, 1, 1, 1);
+  return { west, east, north, south };
+}
+
 /** Largeur (m) d'une tuile, a sa latitude centrale. */
 export function tileMeters(z: number, tile: TileXY): number {
   const [, lat] = tilePointToLonLat(z, tile, 0.5, 0.5, 1);
@@ -106,7 +121,6 @@ export interface Pen {
   beginPath(): void;
   moveTo(x: number, y: number): void;
   lineTo(x: number, y: number): void;
-  closePath(): void;
   fill(rule?: CanvasFillRule): void;
   stroke(): void;
   fillStyle: string | CanvasGradient | CanvasPattern;
@@ -152,9 +166,9 @@ export function tileTracer(z: number, tile: TileXY, canvas: Canvas): (pen: Pen, 
 }
 
 /** Largeur (m) d'une route selon sa classe (`symbo` du PLAN IGN). */
-export const roadWidth = (feature: VectorFeature, fallback: number) => {
+export const roadWidth = (feature: VectorFeature) => {
   const symbo = String(feature.properties.symbo ?? "");
-  return ROAD_WIDTH_M.find(([pattern]) => pattern.test(symbo))?.[1] ?? fallback;
+  return ROAD_WIDTH_M.find(([pattern]) => pattern.test(symbo))?.[1] ?? UNCLASSIFIED_ROAD_M;
 };
 
 /**
@@ -162,8 +176,7 @@ export const roadWidth = (feature: VectorFeature, fallback: number) => {
  * routes et chemins en blanc sur `roads`.
  */
 export function drawLandcoverTile(areas: Pen, roads: Pen, layers: Map<string, VectorLayer>, z: number, tile: TileXY, canvas: Canvas): void {
-  const { bounds, width } = canvas;
-  const metersPerPixel = ((bounds.east - bounds.west) * RAD * 6_378_137 * Math.cos(((bounds.north + bounds.south) / 2) * RAD)) / width;
+  const mpp = metersPerPixel(canvas.bounds, canvas.width);
   const trace = tileTracer(z, tile, canvas);
   const fillLayer = (name: string, color: string) => {
     const layer = layers.get(name);
@@ -181,7 +194,7 @@ export function drawLandcoverTile(areas: Pen, roads: Pen, layers: Map<string, Ve
     pen.strokeStyle = color;
     for (const feature of layer.features) {
       if (feature.type !== GEOMETRY.line) continue;
-      pen.lineWidth = Math.max(0.5, widthM(feature) / metersPerPixel);
+      pen.lineWidth = Math.max(0.5, widthM(feature) / mpp);
       trace(pen, layer, feature);
       pen.stroke();
     }
@@ -203,18 +216,17 @@ export function drawLandcoverTile(areas: Pen, roads: Pen, layers: Map<string, Ve
     trace(roads, surfaces!, feature);
     roads.fill("nonzero");
   }
-  strokeLayer(roads, "routier_route", "#ffffff", (f) => roadWidth(f, 6));
+  strokeLayer(roads, "routier_route", "#ffffff", roadWidth);
   strokeLayer(roads, "routier_chemin", "#ffffff", () => PATH_WIDTH_M);
   // Routes sur ouvrage : les ponts, dessines par-dessus l'eau.
-  strokeLayer(roads, "routier_route_sup", "#ffffff", (f) => roadWidth(f, 6));
+  strokeLayer(roads, "routier_route_sup", "#ffffff", roadWidth);
   strokeLayer(roads, "routier_chemin_sup", "#ffffff", () => PATH_WIDTH_M);
 }
 
 /** Ce qu'il faut de plus pour ecrire : texte, et repere qu'on tourne. */
-export interface TextPen extends Pen {
+interface TextPen extends Pen {
   font: string;
   fillText(text: string, x: number, y: number): void;
-  strokeText(text: string, x: number, y: number): void;
   measureText(text: string): { width: number };
   save(): void;
   restore(): void;
@@ -243,16 +255,13 @@ const NAMES = {
 } as const;
 
 export function drawNames(pen: TextPen, halos: Pen, layers: Map<string, VectorLayer>, z: number, tile: TileXY, canvas: Canvas): void {
-  const { bounds, width } = canvas;
-  const metersPerPixel = ((bounds.east - bounds.west) * RAD * 6_378_137 * Math.cos(((bounds.north + bounds.south) / 2) * RAD)) / width;
+  const mpp = metersPerPixel(canvas.bounds, canvas.width);
   const toCanvas = tileToCanvas(z, tile, canvas);
   const place = (line: number[], text: string, meters: number, italic: boolean, minLengthM = 0) => {
-    const px = meters / metersPerPixel;
+    const px = meters / mpp;
     if (px < NAMES.minPx) return;
     const size = Math.min(px, NAMES.maxPx);
     pen.font = `${italic ? "italic " : ""}600 ${size}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-    pen.lineWidth = Math.max(1.6, size * 0.18);
-    pen.lineJoin = "round";
     const letters = [...text];
     const widths = letters.map((letter) => pen.measureText(letter).width);
     const gap = size * NAMES.tracking;
@@ -263,7 +272,7 @@ export function drawNames(pen: TextPen, halos: Pen, layers: Map<string, VectorLa
     for (let i = 1; i < points.length; i++)
       lengths.push(lengths[i - 1]! + Math.hypot(points[i]![0] - points[i - 1]![0], points[i]![1] - points[i - 1]![1]));
     const total = lengths.at(-1)!;
-    if (total < textWidth * 1.15 || total * metersPerPixel < minLengthM) return;
+    if (total < textWidth * 1.15 || total * mpp < minLengthM) return;
     // Une fois : la tuile qui contient le milieu de la voie l'ecrit.
     const middle = pointAt(points, lengths, total / 2);
     const [mx, my] = toCanvas(0, 0, 1);

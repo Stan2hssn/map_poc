@@ -39,7 +39,7 @@ export class TerrainGesturesHelper {
   private readonly _element: HTMLElement;
   private readonly _camera: () => Camera;
   private readonly _handlers: TerrainGestureHandlers;
-  private readonly _turn: TurnHandlers | null;
+  private readonly _turn: TurnHandlers;
   private readonly _plane = new Plane(new Vector3(0, 1, 0), 0);
   private readonly _raycaster = new Raycaster();
   private readonly _ndc = new Vector2();
@@ -51,7 +51,7 @@ export class TerrainGesturesHelper {
   private _pinch = 0;
   private _moves: { dx: number; dz: number; t: number }[] = [];
 
-  constructor(element: HTMLElement, camera: () => Camera, handlers: TerrainGestureHandlers, turn: TurnHandlers | null = null) {
+  constructor(element: HTMLElement, camera: () => Camera, handlers: TerrainGestureHandlers, turn: TurnHandlers) {
     this._element = element;
     this._camera = camera;
     this._handlers = handlers;
@@ -130,17 +130,14 @@ export class TerrainGesturesHelper {
     this._from.copy(grabbed);
     const hit = this._ground(event.clientX, event.clientY);
     if (!hit) return;
-    const pivot = this._turn?.pivot ?? { x: 0, z: 0 };
+    const pivot = this._turn.pivot;
     const [px, pz] = [this._from.x - pivot.x, this._from.z - pivot.z];
     const [qx, qz] = [hit.x - pivot.x, hit.z - pivot.z];
     // Angle dont le point saisi a tourne autour du point regarde : devant lui ou derriere, il suit le pointeur.
-    let angle = 0;
-    if (this._turn) {
-      const full = Math.atan2(px * qz - pz * qx, px * qx + pz * qz);
-      const near = MathUtils.smoothstep(Math.min(Math.hypot(px, pz), Math.hypot(qx, qz)), TURN_RADIUS, TURN_RADIUS * 2);
-      angle = MathUtils.clamp(full * this._turn.share() * near, -MAX_TURN, MAX_TURN);
-      if (angle !== 0) this._turn.turn(-angle);
-    }
+    const full = Math.atan2(px * qz - pz * qx, px * qx + pz * qz);
+    const near = MathUtils.smoothstep(Math.min(Math.hypot(px, pz), Math.hypot(qx, qz)), TURN_RADIUS, TURN_RADIUS * 2);
+    const angle = MathUtils.clamp(full * this._turn.share() * near, -MAX_TURN, MAX_TURN);
+    if (angle !== 0) this._turn.turn(-angle);
     // Le reste glisse : ce que la rotation n'a pas amene sous le pointeur. Rayon rasant : un petit geste viserait tres loin.
     const [cos, sin] = [Math.cos(-angle), Math.sin(-angle)];
     const dx = MathUtils.clamp(px - (qx * cos - qz * sin), -MAX_STEP, MAX_STEP);

@@ -34,7 +34,7 @@ export interface SdfFont {
 const SIZE = 48;
 const PAD = 8;
 /** Caracteres graves : de quoi ecrire les noms de lieux, leurs numeros et les dates du titre. */
-export const CHARSET =
+const CHARSET =
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÂÄÇÈÉÊËÎÏÔÖÙÛÜàâäçèéêëîïôöùûüñÑ .,'-()°/&·";
 
 /**

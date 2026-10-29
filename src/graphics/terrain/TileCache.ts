@@ -1,7 +1,7 @@
 import type IElevationProvider from "./ElevationProvider.interface.ts";
 import { encodeHalf } from "./HalfFloat.ts";
 
-export interface TileId {
+interface TileId {
   z: number;
   x: number;
   y: number;

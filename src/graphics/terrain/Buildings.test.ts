@@ -7,7 +7,6 @@ import {
   DEFAULT_HEIGHT_M,
   HEIGHT_RANGE_M,
   PEAK_CELL,
-  peakMap,
   spreadPeaks,
   SUMMIT_CELL,
   sunShadow,
@@ -21,6 +20,8 @@ const square = (x0: number, y0: number, x1: number, y1: number) => [x0, y0, x1, 
 const hole = (x0: number, y0: number, x1: number, y1: number) => [x0, y0, x0, y1, x1, y1, x1, y0, x0, y0];
 const layer = (...features: { geometry: number[][]; properties?: Record<string, number> }[]): VectorLayer =>
   vectorLayer(E, features.map((f) => ({ type: GEOMETRY.polygon, ...f })));
+const peakMap = (heights: Uint8Array, width: number, height: number, cell = PEAK_CELL, reach = 1) =>
+  spreadPeaks(cellMaxima(heights, width, height, cell), Math.ceil(width / cell), Math.ceil(height / cell), reach);
 const at = (a: Uint16Array, i: number, n: number) => Array.from(a.subarray(i * n, i * n + n), (v) => v / 65535);
 
 /** Normale sortante de chaque mur, (-dv, du) dans (u, v), et milieu de l'arete. */

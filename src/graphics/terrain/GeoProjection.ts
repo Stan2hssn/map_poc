@@ -1,8 +1,6 @@
 export const EARTH_RADIUS_KM = 6371.0088;
 const RAD = Math.PI / 180;
 export const KM_PER_DEGREE = EARTH_RADIUS_KM * RAD;
-/** Largeur du monde a l'equateur, et hauteur pole a pole. */
-export const WORLD_WIDTH_KM = 360 * KM_PER_DEGREE;
 export const WORLD_HEIGHT_KM = 180 * KM_PER_DEGREE;
 
 export interface GeoBounds {
@@ -59,14 +57,10 @@ export class GeoProjection {
       south: Math.max(-90, this.lat(h)),
     };
   }
-
-  rect(b: GeoBounds): SceneRect {
-    return { minX: this.x(b.west), maxX: this.x(b.east), minZ: this.z(b.north), maxZ: this.z(b.south) };
-  }
 }
 
 /** Grille WGS84G de l'IGN : origine (-180, 90), 2^(z+1) colonnes, 2^z lignes. */
-export function tileSpan(z: number): number {
+function tileSpan(z: number): number {
   return 180 / 2 ** z;
 }
 
@@ -77,7 +71,7 @@ export function tileBounds(z: number, x: number, y: number): GeoBounds {
   return { west, east: west + span, north, south: north - span };
 }
 
-const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+export const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
 /** Centre ramene pour que le rectangle reste dans `limits` et dans le monde. */
 export function clampCenter(lon: number, lat: number, widthKm: number, heightKm: number, limits: GeoBounds) {
@@ -110,10 +104,6 @@ export function expandBounds(b: GeoBounds, fraction: number): GeoBounds {
 
 export function containsBounds(outer: GeoBounds, inner: GeoBounds): boolean {
   return inner.west >= outer.west && inner.east <= outer.east && inner.south >= outer.south && inner.north <= outer.north;
-}
-
-export function containsPoint(b: GeoBounds, lon: number, lat: number): boolean {
-  return lon >= b.west && lon <= b.east && lat >= b.south && lat <= b.north;
 }
 
 export function intersectsBounds(a: GeoBounds, b: GeoBounds): boolean {

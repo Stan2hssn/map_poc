@@ -21,7 +21,7 @@ const WRITE_MS = 900;
 const ERASE_MS = 620;
 /** Taille des taches par lesquelles la feuille s'ecrit (px), et part du haut vers le bas dans leur ordre. */
 const CELL_PX = 150;
-/** Repetitions de la texture de bruit par cellule : ses taches ont la taille de celles de l'ancien bruit calcule. */
+/** Repetitions de la texture de bruit par cellule. */
 const NOISE_SCALE = 0.35;
 const DOWNWARD = 0.35;
 /**

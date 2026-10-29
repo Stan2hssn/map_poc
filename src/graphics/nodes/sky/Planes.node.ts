@@ -1,10 +1,9 @@
 import { Object3DNodeBase } from "@_core/nodes/object3d/Object3DNode.base.ts";
-import { terrainSettings } from "@graphics/materials/Terrain.material.ts";
+import { drawnMask, terrainSettings } from "@graphics/materials/Terrain.material.ts";
 import { NODE_ID } from "@graphics/nodes/Node.id.ts";
 import type { TerrainNode } from "@graphics/nodes/terrain/Terrain.node.ts";
 import { BoxGeometry, Group, InstancedMesh, MathUtils, Matrix4, Quaternion, Vector3, type BufferGeometry } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { drawnMask } from "@graphics/materials/Terrain.material.ts";
 import { float, mix, mrt, directionToColor, normalView, output, positionWorld, vec3, vec4 } from "three/tsl";
 import { MeshStandardNodeMaterial } from "three/webgpu";
 

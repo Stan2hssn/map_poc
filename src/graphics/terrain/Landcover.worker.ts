@@ -8,6 +8,8 @@ import {
   landcoverUrl,
   landcoverZoom,
   mercatorTiles,
+  tileBounds,
+  tileKey,
   tilePointToLonLat,
   type TileXY,
 } from "./Landcover.ts";
@@ -47,8 +49,6 @@ export interface LandcoverImage extends LandcoverRequest {
   heightTiles: string[] | null;
   buildingMax: number;
   complete: boolean;
-  /** Temps de dessin cumule de cette image dans le worker (ms). */
-  renderMs: number;
 }
 
 export interface TileRef extends TileXY {
@@ -78,13 +78,9 @@ const MAX_CONCURRENT = 16;
 // Pendant le chargement, une image partielle part au plus a ce rythme ; ses hauteurs du bati, moins souvent.
 const PARTIAL_MS = 300;
 const HEIGHTS_MS = 600;
-/**
- * Toiles dessinees en memoire, pas sur le GPU : un canvas accelere partage le GPU avec le rendu de la carte, et
- * ses gros lots de polygones y faisaient sauter des images a chaque redessin (mesure : 25 images de plus de
- * 10 ms en 5 s de zoom, aucune sans redessin).
- */
+/** Toiles en memoire, pas sur le GPU : un canvas accelere partage le GPU avec la carte et y fait sauter des images. */
 const CANVAS: CanvasRenderingContext2DSettings = { willReadFrequently: true };
-/** Portee des ombres du bati (texels) : celle de l'ancienne marche, qui s'arretait aux sommets des cellules voisines. */
+/** Portee des ombres du bati (texels) : jusqu'aux sommets des cellules voisines. */
 const SHADOW_REACH = PEAK_CELL * 1.5;
 /**
  * Tuiles deja dessinees, gardees pour les images suivantes (plafond en octets) : un deplacement ou un retour en
@@ -111,18 +107,16 @@ const waiting: { key: string; priority: number; start: () => void }[] = [];
 let running = 0;
 /**
  * Priorites : les volumes d'abord (ce qui se voit le plus), puis le niveau fin de l'image du sol, puis son niveau
- * d'ensemble ; dans chacun, du centre vers les bords (rang dans la demande). Sans elles, les tuiles de bati
- * attendaient derriere la centaine de tuiles de l'image du sol : des trous pendant plusieurs secondes.
+ * d'ensemble ; dans chacun, du centre vers les bords (rang dans la demande). Sinon les tuiles de bati attendent
+ * derriere la centaine de tuiles de l'image du sol.
  */
 const PRIORITY = { buildings: 0, fine: 1000, coarse: 2000 } as const;
 let latest: LandcoverRequest | null = null;
 let buildingsWanted = new Set<string>();
 
-const keyOf = (z: number, tile: TileXY) => `${z}/${tile.x}/${tile.y}`;
-
 scope.onmessage = ({ data }) => {
   if (data.kind === "buildings") {
-    buildingsWanted = new Set(data.tiles.map((t) => keyOf(t.z, t)));
+    buildingsWanted = new Set(data.tiles.map((t) => tileKey(t.z, t)));
     data.tiles.forEach((tile, index) => void sendBuildings(tile, PRIORITY.buildings + index));
     return;
   }
@@ -146,7 +140,7 @@ interface Pens {
 /**
  * Image en cours : chaque tuile y est posee une fois, a son arrivee, sur la toile de son niveau (depuis son
  * dessin garde, `rasterOf`). Le niveau d'ensemble a un fond noir opaque ; le niveau fin est transparent hors de
- * ses tuiles, et le recouvre a l'assemblage. Plus besoin de tout redessiner a chaque image partielle.
+ * ses tuiles, et le recouvre a l'assemblage.
  */
 interface Composition {
   request: LandcoverRequest;
@@ -157,7 +151,6 @@ interface Composition {
   /** Derniere relecture des hauteurs (ms). */
   heightsAt: number;
   buildingMax: number;
-  drawMs: number;
 }
 
 function pen(width: number, height: number, opaque: boolean): Pen2D {
@@ -187,7 +180,6 @@ async function compose(request: LandcoverRequest): Promise<void> {
     heightTiles: [],
     heightsAt: -Infinity,
     buildingMax: 0,
-    drawMs: 0,
   };
   let timer: ReturnType<typeof setTimeout> | undefined;
   const partial = () => {
@@ -204,7 +196,7 @@ async function compose(request: LandcoverRequest): Promise<void> {
         const withHeights = level === levels.length - 1;
         // Deja dessinee a la bonne taille : rien a telecharger, meme si ses donnees ont ete oubliees.
         const priority = (level > 0 ? PRIORITY.fine : PRIORITY.coarse) + index;
-        if (!reusable(composition, z, tile, withHeights)) await load(z, tile, current, priority);
+        if (!isReusable(composition, z, tile, withHeights)) await load(z, tile, current, priority);
         if (!draw(composition, z, tile, level > 0, withHeights)) {
           await load(z, tile, current, priority);
           draw(composition, z, tile, level > 0, withHeights);
@@ -232,7 +224,6 @@ function centerFirst(z: number, list: TileXY[], around: GeoBounds): TileXY[] {
 /** Pose la tuile sur l'image ; faux s'il faut d'abord ses donnees (dessin a faire, donnees oubliees). */
 function draw(c: Composition, z: number, tile: TileXY, fine: boolean, heights: boolean): boolean {
   if (latest !== c.request) return true;
-  const started = performance.now();
   const { bounds, width, height, focus } = c.request;
   const withHeights = heights && !!c.heights;
   const raster = rasterOf(z, tile, placement(z, tile, { bounds, width, height }), withHeights ? placement(z, tile, { bounds: focus, width, height }) : null);
@@ -244,9 +235,8 @@ function draw(c: Composition, z: number, tile: TileXY, fine: boolean, heights: b
   if (withHeights && raster.heights) {
     put(c.heights!, raster.heights.canvas, raster.heights.at);
     c.buildingMax = Math.max(c.buildingMax, raster.heights.max);
-    c.heightTiles.push(keyOf(z, tile));
+    c.heightTiles.push(tileKey(z, tile));
   }
-  c.drawMs += performance.now() - started;
   return true;
 }
 
@@ -259,8 +249,7 @@ interface Placement {
 }
 
 function placement(z: number, tile: TileXY, { bounds, width, height }: { bounds: GeoBounds; width: number; height: number }): Placement {
-  const [west, north] = tilePointToLonLat(z, tile, 0, 0, 1);
-  const [east, south] = tilePointToLonLat(z, tile, 1, 1, 1);
+  const { west, east, north, south } = tileBounds(z, tile);
   const sx = width / (bounds.east - bounds.west);
   const sy = height / (bounds.north - bounds.south);
   return { x: (west - bounds.west) * sx, y: (bounds.north - north) * sy, width: (east - west) * sx, height: (north - south) * sy };
@@ -279,18 +268,18 @@ const rasters = new Map<string, TileRaster>();
 let rasterBytes = 0;
 
 /**
- * Dessin garde d'une tuile, s'il convient aux places voulues (hauteurs comprises si `heights`) ; passe en fin de
- * file : il ne sera pas oublie avant d'etre pose.
+ * Un dessin garde de la tuile convient aux places voulues (hauteurs comprises si `heights`) ; il passe alors en fin
+ * de file : il ne sera pas oublie avant d'etre pose.
  */
-function reusable(c: Composition, z: number, tile: TileXY, heights: boolean): TileRaster | null {
+function isReusable(c: Composition, z: number, tile: TileXY, heights: boolean): boolean {
   const { bounds, focus, width, height } = c.request;
-  const key = keyOf(z, tile);
+  const key = tileKey(z, tile);
   const raster = rasters.get(key);
-  if (!raster || !fits(raster.areas, placement(z, tile, { bounds, width, height }))) return null;
-  if (heights && c.heights && !(raster.heights && fits(raster.heights.canvas, placement(z, tile, { bounds: focus, width, height })))) return null;
+  if (!raster || !fits(raster.areas, placement(z, tile, { bounds, width, height }))) return false;
+  if (heights && c.heights && !(raster.heights && fits(raster.heights.canvas, placement(z, tile, { bounds: focus, width, height })))) return false;
   rasters.delete(key);
   rasters.set(key, raster);
-  return raster;
+  return true;
 }
 
 /** Une toile dessinee pour une tuile convient a cette place : meme taille, a `RASTER_SLACK` pres. */
@@ -309,7 +298,7 @@ function rasterOf(
   at: Placement,
   heightsAt: Placement | null
 ): (TileRaster & { at: Placement; heights: (TileRaster["heights"] & { at: Placement }) | null }) | null {
-  const key = keyOf(z, tile);
+  const key = tileKey(z, tile);
   let raster = rasters.get(key);
   const layers = tiles.get(key);
   const areasOk = !!raster && fits(raster.areas, at);
@@ -340,8 +329,7 @@ function rasterOf(
 function frame(z: number, tile: TileXY, at: Placement): { width: number; height: number; bounds: GeoBounds } {
   const width = Math.max(1, Math.round(at.width)) + 2 * RASTER_MARGIN;
   const height = Math.max(1, Math.round(at.height)) + 2 * RASTER_MARGIN;
-  const [west, north] = tilePointToLonLat(z, tile, 0, 0, 1);
-  const [east, south] = tilePointToLonLat(z, tile, 1, 1, 1);
+  const { west, east, north, south } = tileBounds(z, tile);
   const mx = ((east - west) / (width - 2 * RASTER_MARGIN)) * RASTER_MARGIN;
   const my = ((north - south) / (height - 2 * RASTER_MARGIN)) * RASTER_MARGIN;
   return { width, height, bounds: { west: west - mx, east: east + mx, north: north + my, south: south - my } };
@@ -372,10 +360,7 @@ function put(into: Pen2D, canvas: OffscreenCanvas, at: Placement): void {
 
 const assemblies: Partial<Record<keyof Pens, Pen2D>> = {};
 
-/**
- * Niveau fin par-dessus le niveau d'ensemble, en image : elle part au thread principal puis au GPU sans jamais
- * etre relue en pixels (la relecture coutait l'essentiel de chaque envoi).
- */
+/** Niveau fin par-dessus le niveau d'ensemble, en image : elle part au GPU sans etre relue en pixels, ce qui coute. */
 function assemble(c: Composition, layer: keyof Pens): ImageBitmap {
   const { width, height } = c.request;
   let into = assemblies[layer];
@@ -389,7 +374,7 @@ function assemble(c: Composition, layer: keyof Pens): ImageBitmap {
 
 function post(c: Composition, complete: boolean): void {
   if (latest !== c.request) return;
-  const started = performance.now();
+  const now = performance.now();
   const { width, height } = c.request;
   const areas = assemble(c, "areas");
   const roads = assemble(c, "roads");
@@ -401,8 +386,8 @@ function post(c: Composition, complete: boolean): void {
   let buildingShade: Uint8Array | null = null;
   let heightTiles: string[] | null = null;
   // Relire les hauteurs (depuis le GPU) coute : pendant le chargement, pas a chaque image partielle.
-  if (c.heights && (complete || started - c.heightsAt >= HEIGHTS_MS)) {
-    c.heightsAt = started;
+  if (c.heights && (complete || now - c.heightsAt >= HEIGHTS_MS)) {
+    c.heightsAt = now;
     const rgba = c.heights.getImageData(0, 0, width, height).data;
     buildingHeights = new Uint8Array(width * height);
     for (let i = 0; i < buildingHeights.length; i++) buildingHeights[i] = rgba[i * 4]!;
@@ -416,9 +401,8 @@ function post(c: Composition, complete: boolean): void {
     heightTiles = [...c.heightTiles];
     transfer.push(buildingHeights.buffer, buildingPeaks.buffer, buildingSummits.buffer, buildingShade.buffer);
   }
-  const renderMs = c.drawMs + performance.now() - started;
   scope.postMessage(
-    { ...c.request, areas, roads, buildingHeights, buildingPeaks, buildingSummits, buildingShade, heightTiles, buildingMax: c.buildingMax, complete, renderMs },
+    { ...c.request, areas, roads, buildingHeights, buildingPeaks, buildingSummits, buildingShade, heightTiles, buildingMax: c.buildingMax, complete },
     transfer
   );
 }
@@ -434,7 +418,7 @@ function shadeOf(heights: Uint8Array, { focus, width, height, sun }: LandcoverRe
 }
 
 async function sendBuildings(tile: TileRef, priority: number): Promise<void> {
-  const key = keyOf(tile.z, tile);
+  const key = tileKey(tile.z, tile);
   const wanted = () => buildingsWanted.has(key);
   await load(tile.z, tile, wanted, priority);
   if (!wanted()) return;
@@ -463,7 +447,7 @@ async function sendBuildings(tile: TileRef, priority: number): Promise<void> {
 }
 
 function load(z: number, tile: TileXY, wanted: () => boolean, priority: number): Promise<void> {
-  const key = keyOf(z, tile);
+  const key = tileKey(z, tile);
   if (tiles.has(key)) return Promise.resolve();
   const pending = loading.get(key);
   if (pending) {

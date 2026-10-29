@@ -17,7 +17,7 @@ export const DEBUG_CONFIG: DebugConfig = {
     { id: FOLDER_ID.PAPER, tabId: TAB_ID.INK, label: "Papier", visible: true, expanded: true, order: 2 },
     { id: FOLDER_ID.WATER, tabId: TAB_ID.INK, label: "Eau", visible: true, expanded: true, order: 3 },
     { id: FOLDER_ID.HOVER, tabId: TAB_ID.INK, label: "Survol", visible: true, expanded: false, order: 4 },
-    { id: FOLDER_ID.SHADING, tabId: TAB_ID.INK, label: "Ombrage du bati", visible: true, expanded: false, order: 4 },
+    { id: FOLDER_ID.SHADING, tabId: TAB_ID.INK, label: "Ombrage du bati", visible: true, expanded: false, order: 5 },
     { id: FOLDER_ID.STATS, tabId: TAB_ID.RENDER, label: "Mesures", visible: true, expanded: true, order: 1 },
   ],
 };

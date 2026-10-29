@@ -1,7 +1,8 @@
 import type { Place } from "./PlaceIndex.ts";
+import { ringsOfGeometry, type Ring, type RingGeometry } from "./Rings.ts";
 
 /** Villes du monde (Natural Earth, ~7 300), population de l'agglomeration. */
-export const WORLD_CITIES_URL =
+const WORLD_CITIES_URL =
   "https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@v5.1.2/geojson/ne_10m_populated_places_simple.geojson";
 /**
  * Communes francaises (geo.api.gouv.fr), population municipale, par departement : la France entiere
@@ -69,27 +70,19 @@ export async function fetchDepartmentCommunes(code: string, signal: AbortSignal)
  * Contour d'une commune, demande au survol : le servir avec la liste ferait passer un departement de
  * quelques dizaines de Ko a plusieurs Mo, pour un seul contour utilise a la fois.
  */
-export async function fetchCommuneRings(code: string, signal: AbortSignal): Promise<[number, number][][]> {
-  const { contour } = await getJson<{ contour?: Contour }>(`${GEO_API}/communes/${code}?fields=contour&format=json`, signal);
-  return ringsOfContour(contour);
-}
-
-type Contour = { type: string; coordinates: number[][][] | number[][][][] };
-
-function ringsOfContour(contour: Contour | undefined): [number, number][][] {
-  if (!contour) return [];
-  const polygons = contour.type === "Polygon" ? [contour.coordinates as number[][][]] : (contour.coordinates as number[][][][]);
-  return polygons.flatMap((polygon) => (polygon[0] ? [polygon[0] as [number, number][]] : []));
+export async function fetchCommuneRings(code: string, signal: AbortSignal): Promise<Ring[]> {
+  const { contour } = await getJson<{ contour?: RingGeometry }>(`${GEO_API}/communes/${code}?fields=contour&format=json`, signal);
+  return ringsOfGeometry(contour);
 }
 
 /** Commune sous un point, contour compris : celle que la souris survole sur la carte. Null hors de France. */
 export async function fetchCommuneAt(lon: number, lat: number, signal: AbortSignal): Promise<Place | null> {
-  const found = await getJson<{ nom: string; code: string; population?: number; centre?: { coordinates: [number, number] }; contour?: Contour }[]>(
+  const found = await getJson<{ nom: string; code: string; population?: number; centre?: { coordinates: [number, number] }; contour?: RingGeometry }[]>(
     `${GEO_API}/communes?lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}&fields=nom,code,population,centre,contour&format=json`,
     signal
   );
   const commune = found[0];
   if (!commune) return null;
   const [clon, clat] = commune.centre?.coordinates ?? [lon, lat];
-  return { name: commune.nom, lon: clon, lat: clat, population: commune.population ?? 0, country: "FRA", code: commune.code, rings: ringsOfContour(commune.contour) };
+  return { name: commune.nom, lon: clon, lat: clat, population: commune.population ?? 0, country: "FRA", code: commune.code, rings: ringsOfGeometry(commune.contour) };
 }

@@ -1,13 +1,6 @@
 import type ThreeDevice from '@_core/systems/ThreeDevice.ts'
 
-/**
- * Point de rendez-vous entre la scene et ce qui veut la lire de l'exterieur —
- * une sonde, une page, un test. Le composant publie le device qu'il vient de
- * creer, sans que personne ait a l'importer.
- *
- * Une reference de module et non `useState` : un WebGLRenderer n'est pas
- * serialisable, il ne peut donc pas transiter par le payload Nuxt.
- */
+// Variable de module et non `useState` : un renderer n'est pas serialisable dans le payload Nuxt.
 let current: ThreeDevice | null = null
 
 export function useThreeStage() {

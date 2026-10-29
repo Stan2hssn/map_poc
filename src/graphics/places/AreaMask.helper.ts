@@ -1,6 +1,6 @@
 import { CanvasTexture, ClampToEdgeWrapping, LinearFilter, Vector4 } from "three";
 import { signedDistanceField } from "@graphics/text/DistanceField.ts";
-import type { Ring } from "./AdminAreas.ts";
+import { ringsBounds, type Ring } from "./Rings.ts";
 
 /** Cote de la texture du masque : le champ de distance est lisse, il n'a pas besoin de plus. */
 const SIZE = 256;
@@ -44,18 +44,7 @@ export class AreaMaskHelper {
       this.bounds.set(0, 0, 0, 0);
       return;
     }
-    let west = Infinity;
-    let east = -Infinity;
-    let south = Infinity;
-    let north = -Infinity;
-    for (const ring of rings) {
-      for (const [lon, lat] of ring) {
-        west = Math.min(west, lon);
-        east = Math.max(east, lon);
-        south = Math.min(south, lat);
-        north = Math.max(north, lat);
-      }
-    }
+    let { west, east, south, north } = ringsBounds(rings);
     const padX = (east - west) * MARGIN;
     const padY = (north - south) * MARGIN;
     west -= padX;

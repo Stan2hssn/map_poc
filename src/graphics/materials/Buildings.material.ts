@@ -46,7 +46,7 @@ const STAGGER = 0.5;
 /** Place de la tuile dessinee dans le bloc : origine et taille en uv du bloc (partagee par arbres et voitures). */
 export const tileUv = uniform(new Vector4()).onObjectUpdate(({ object }) => object?.userData.tileUv as Vector4);
 /** Apparition de la tuile, de 0 a 1 (`BuildingsNode`). */
-export const appear = uniform(1).onObjectUpdate(({ object }) => object?.userData.appear as number);
+const appear = uniform(1).onObjectUpdate(({ object }) => object?.userData.appear as number);
 /** Arrivee de ses hauteurs dans la texture du sol, de 0 a 1 : l'ombrage passe des faces du volume a la texture. */
 const raster = uniform(0).onObjectUpdate(({ object }) => object?.userData.raster as number);
 
@@ -75,7 +75,7 @@ const SIMPLIFY_TO = 240;
  * et nulle au loin pour les petits (le dessin respire, et il y a moins a dessiner). La simplification est rendue par
  * tuile : tous ses batiments partagent le meme seuil, qui ne saute donc pas d'un batiment a l'autre.
  */
-export const kept = (building: Node) => {
+const kept = (building: Node) => {
   const center = toScene(tileUv.xy.add(tileUv.zw.mul(0.5)), float(0));
   const far = smoothstep(SIMPLIFY_FROM, SIMPLIFY_TO, length(center.sub(cameraPosition)));
   // Le masque ne s'applique qu'au dessin : la carte de nuit (`pen` a 0) garde ses volumes partout.

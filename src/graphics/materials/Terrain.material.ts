@@ -46,7 +46,7 @@ import {
 } from "three/tsl";
 import { MeshStandardNodeMaterial, type Node, type TextureNode } from "three/webgpu";
 import { TERRAIN_CONFIG } from "@graphics/config/terrain.config.ts";
-import { inkSettings, type InkAnchor } from "@graphics/postprocessing/effects/InkStyle.ts";
+import { inkSettings } from "@graphics/postprocessing/effects/InkStyle.ts";
 import { PEAK_CELL } from "@graphics/terrain/Buildings.ts";
 
 /** Ecart des echantillons de pente, en texels : au-dela de 1, le modele est adouci. */
@@ -88,6 +88,8 @@ const RIM_PX = 1.1;
 export const FLAT_BUILDING = mix(color(RELIEF), color(INK), FLAT_INK);
 /** Hachures par cellule de bruit de brume (3 a 6 cellules sur la largeur de la vue). */
 const HATCHES_PER_CELL = 30;
+/** Epaisseur d'une hachure, en part de l'ecart. */
+const HATCH_WIDTH = 0.12;
 /** Trait de cote : rayon (texels du relief) et points de l'anneau qui lissent le bord. */
 const SHORE_TEXELS = 2;
 const SHORE_SAMPLES = 6;
@@ -296,6 +298,8 @@ const s = terrainSettings;
 const read = (map: TextureNode, uv: Node) => (map.sample(uv) as TextureNode).level(float(0)).r;
 // Hors de la mosaique du detail (en vol, elle suit avec retard), seul l'apercu compte.
 const inside = (uv: Node) => step(0, uv.x).mul(step(uv.x, 1)).mul(step(0, uv.y)).mul(step(uv.y, 1));
+/** `at` lu aux deux echelles de la brume, fondues pendant le zoom pour rester accroche au sol. */
+const twoScales = (at: (scale: Node) => Node): Node => mix(at(s.mistScales.x), at(s.mistScales.y), s.mistBlend);
 
 /** Coordonnees geographiques (longitude x cosinus, latitude) du point `xz` de la scene. */
 export const geoAt = (xz: Node) => s.geoOrigin.add(xz.div(s.blockSize).add(0.5).mul(s.geoSize)).mul(vec2(s.geoCos, 1));
@@ -311,8 +315,7 @@ export function pencilReveal(geo: Node, progress: Node): Node {
 
 /** Bruit des taches de `pencilReveal` au point `geo` (0 a 1, moyenne 0,5) : ordre d'apparition. */
 export function revealNoise(geo: Node): Node {
-  const at = (scale: Node) => read(s.mistNoise, geo.mul(scale).mul(REVEAL_FREQUENCY / NOISE_CELLS));
-  return mix(at(s.mistScales.x), at(s.mistScales.y), s.mistBlend);
+  return twoScales((scale) => read(s.mistNoise, geo.mul(scale).mul(REVEAL_FREQUENCY / NOISE_CELLS)));
 }
 
 /**
@@ -323,8 +326,7 @@ export function drawnMask(xz: Node): Node {
   const local = vec2(xz.x.mul(s.maskAxis.y).sub(xz.y.mul(s.maskAxis.x)), xz.dot(s.maskAxis));
   const distance = length(local.div(s.maskRadius.mul(s.maskScale)));
   const geo = geoAt(xz);
-  const at = (scale: Node) => read(s.mistNoise, geo.mul(scale).mul(MASK_FREQUENCY / NOISE_CELLS));
-  const noise = mix(at(s.mistScales.x), at(s.mistScales.y), s.mistBlend);
+  const noise = twoScales((scale) => read(s.mistNoise, geo.mul(scale).mul(MASK_FREQUENCY / NOISE_CELLS)));
   const edge = distance.add(noise.sub(0.5).mul(s.maskJitter));
   return smoothstep(s.maskSoftness.oneMinus(), 1, edge).oneMinus();
 }
@@ -364,7 +366,7 @@ function coarseAt(blockUv: Node, smooth: boolean): Node {
  * Le filtrage melange altitudes et zeros des trous : divise par la part de donnees, il redonne la moyenne des texels valides.
  * Mer a 0 : sans quoi le fond marin fixerait le plancher de la vue, et la camera y plongerait.
  */
-export function terrainMeters(blockUv: Node, detailed = true, smooth = detailed): Node {
+function terrainMeters(blockUv: Node, detailed = true, smooth = detailed): Node {
   const coarse = coarseAt(blockUv, smooth);
   if (!detailed) return coarse.max(0);
   const uv = s.uvOffset.add(blockUv.mul(s.uvScale));
@@ -391,35 +393,32 @@ function groundFromScreen(screen: Node): Node {
   return s.viewOrigin.add(ray.mul(distance));
 }
 
-/** Hachures : 1 sur les traits, epais de `width` (fraction de l'ecart), lisses a l'ecran. */
-function hatch(coord: Node, width: Node | number = 0.12): Node {
+/** Hachures : 1 sur les traits, lisses a l'ecran. */
+function hatch(coord: Node): Node {
   const distance = abs(coord.add(0.5).fract().sub(0.5));
   const aa = fwidth(coord);
-  const w = typeof width === "number" ? float(width) : width;
-  return smoothstep(w, aa.add(w), distance).oneMinus();
+  return smoothstep(float(HATCH_WIDTH), aa.add(HATCH_WIDTH), distance).oneMinus();
 }
 
-/** Traits a la plume accroches au sol, le long de `along` (degres, longitude x cosinus) ; deux echelles fondues pendant le zoom. */
-export function penLines(along: Node, width: Node | number = 0.12): Node {
-  const at = (scale: Node) => hatch(along.mul(scale).mul(HATCHES_PER_CELL), width);
-  return mix(at(s.mistScales.x), at(s.mistScales.y), s.mistBlend);
+/** Traits a la plume accroches au sol, le long de `along` (degres, longitude x cosinus). */
+function penLines(along: Node): Node {
+  return twoScales((scale) => hatch(along.mul(scale).mul(HATCHES_PER_CELL)));
 }
 
 /**
  * Part de terre autour du point `blockUv`, moyennee sur un anneau de rayon `radius` (part du bloc). Lue dans
  * l'apercu du relief : elle couvre toute la vue, et un texel isole n'y fait pas une ile.
  */
-function landAround(blockUv: Node, radius: Node | number, samples: number): Node {
-  const r = typeof radius === "number" ? float(radius) : radius;
+function landAround(blockUv: Node, radius: Node, samples: number): Node {
   let sum: Node = float(0);
-  for (const [x, y] of ring(samples)) sum = sum.add(step(0.5, terrainMeters(blockUv.add(vec2(x, y).mul(r)), false)));
+  for (const [x, y] of ring(samples)) sum = sum.add(step(0.5, terrainMeters(blockUv.add(vec2(x, y).mul(radius)), false)));
   return sum.div(samples);
 }
 
 /**
  * Rivage et large au point `blockUv`. `land` : part de terre tout pres (0 en mer, 1 a terre), qui passe de l'une
  * a l'autre en une largeur constante au lieu de suivre les bords des texels du relief — sans elle, le trait de
- * cote monte en escalier, et une grille plus fine n'y change rien (mesure du 2026-09-20).
+ * cote monte en escalier, et une grille plus fine n'y change rien.
  * `depth` : 0 au rivage, 2 au large, par deux anneaux de plus en plus larges ; elle espace les traits de l'eau.
  */
 function shoreAt(blockUv: Node): { land: Node; depth: Node } {
@@ -449,8 +448,7 @@ function shoreAt(blockUv: Node): { land: Node; depth: Node } {
  * une derivee n'a pas de sens dans une branche que tous les pixels ne prennent pas.
  */
 function seaLines(geo: Node, depth: Node, aa: Node): Node {
-  const at = (scale: Node) => penWater(geo.mul(scale), depth, aa.mul(scale));
-  return mix(at(s.mistScales.x), at(s.mistScales.y), s.mistBlend);
+  return twoScales((scale) => penWater(geo.mul(scale), depth, aa.mul(scale)));
 }
 
 /**
@@ -475,11 +473,6 @@ function penWater(p: Node, depth: Node, aa: Node): Node {
   return mix(mix(level(0), level(1), depth.clamp(0, 1)), level(2), depth.sub(1).clamp(0, 1));
 }
 
-/**
- * Dessine la texture de donnees sur le relief, facon carte imprimee : vegetation hachuree, eau en traits
- * horizontaux, routes en reserve de papier, bati a l'encre bleue cerne plus fonce.
- * Hachures accrochees au sol, fondues entre deux echelles pendant le zoom (comme la brume).
- */
 /**
  * Texture de donnees au point `blockUv` : aplats (bords nets a toute echelle) et contours, par canal. Une nouvelle
  * image se fond dans la precedente (changement de zoom compris), plutot que de la remplacer d'un coup.
@@ -515,6 +508,10 @@ interface Water {
   pixel: Node;
 }
 
+/**
+ * Texture de donnees sur le relief, facon carte imprimee : vegetation hachuree, eau a la plume, routes en reserve
+ * de papier, bati a l'encre bleue cerne plus fonce.
+ */
 function drawLandcover(
   relief: Node,
   { fill, outline }: { fill: Node; outline: Node },
@@ -532,11 +529,11 @@ function drawLandcover(
   paper = mix(paper, vec3(s.seaTone), wet);
   // Le motif de l'eau ne se calcule que sur l'eau : ailleurs il ne couterait rien d'autre que du temps.
   const lines = Fn(() => {
-    const drawn = float(0).toVar();
+    const strokes = float(0).toVar();
     If(wet.greaterThan(0.001), () => {
-      drawn.assign(seaLines(geo, water.depth, water.pixel));
+      strokes.assign(seaLines(geo, water.depth, water.pixel));
     });
-    return drawn;
+    return strokes;
   })();
   // Trait franc (l'encre la plus sombre) : un trait a demi teinte se ferait hachurer a 45 degres par la passe
   // d'encre au lieu de rester un trait.
@@ -553,20 +550,13 @@ function drawLandcover(
 }
 
 /**
- * Motifs d'encre accroches a la carte au point `blockUv` du bloc : ecart au coin de la vue (petit, donc
- * precis) recale sur l'origine calculee cote CPU, aux deux echelles de la brume.
+ * Pseudo-pixels d'encre accroches a la carte au point `xz` de la scene : ecart au coin de la vue (petit, donc
+ * precis) recale sur l'origine calculee cote CPU.
  */
-function inkAnchorOf(blockUv: Node): InkAnchor {
-  const fromCorner = blockUv.mul(s.geoSize).mul(vec2(s.geoCos, 1));
-  return {
-    at: fromCorner.add(s.inkOrigin.xy).mul(s.inkScale.x),
-    next: fromCorner.add(s.inkOrigin.zw).mul(s.inkScale.y),
-    blend: s.mistBlend,
-  };
+export function inkAnchorAt(xz: Node): Node {
+  const fromCorner = xz.div(s.blockSize).add(0.5).mul(s.geoSize).mul(vec2(s.geoCos, 1));
+  return fromCorner.add(s.inkOrigin.xy).mul(s.inkScale.x);
 }
-
-/** Meme ancre, depuis un point `xz` de la scene : pour l'effet plein ecran. */
-export const inkAnchorAt = (xz: Node): InkAnchor => inkAnchorOf(xz.div(s.blockSize).add(0.5));
 
 /** Hauteur du bati (m) au point `at` de sa texture, et sommet de sa cellule. */
 const buildingMeters = (at: Node, lod: Node) => (s.buildingHeights.sample(at) as TextureNode).level(lod).r.mul(255);
@@ -605,7 +595,7 @@ const marchEntry = Fn(([at, perUnit, climb, texelsPerUnit]: [Node, Node, Node, N
 });
 
 /** Pas fins d'une marche entamee a `entry` : `stepTexels` texels du niveau de mip lu (loin, moins de pas). */
-function fineSteps(entry: Node, texelsPerUnit: Node, lod: Node): { steps: Node; spacing: Node } {
+function marchSteps(entry: Node, texelsPerUnit: Node, lod: Node): { steps: Node; spacing: Node } {
   const steps = entry.mul(texelsPerUnit).div(lod.exp2().mul(s.stepTexels)).ceil().clamp(1, s.fineSteps);
   return { steps, spacing: entry.div(steps) };
 }
@@ -721,7 +711,7 @@ export function buildingSurface(
   const reach = length(position.sub(vec3(ground.x, base, ground.y)));
   // Sommets manquants (hors de la texture) : depart juste au-dessus du volume.
   const entry = marchEntry(onGround, perUnit, climb, texelsPerUnit).max(reach);
-  const { steps, spacing } = fineSteps(entry, texelsPerUnit, lod);
+  const { steps, spacing } = marchSteps(entry, texelsPerUnit, lod);
   const from = steps.sub(reach.div(spacing)).floor().sub(1).max(0);
   const found = fineMarch(onGround, perUnit, climb, lod, entry, steps, from, float(SURFACE_STEPS)).toVar();
   const inRaster = found.w.greaterThan(0.5);
@@ -776,8 +766,7 @@ export function createTerrainMaterial(): MeshStandardNodeMaterial {
   const low = vertexStage(meters.sub(s.floor).div(s.relief.max(1)));
   const lonLat = s.geoOrigin.add(uv.mul(s.geoSize));
   const geo = lonLat.mul(vec2(s.geoCos, 1));
-  const noiseAt = (scale: Node) => s.mistNoise.sample(geo.mul(scale).div(NOISE_CELLS).add(s.mistDrift)).r;
-  const clouds = mix(noiseAt(s.mistScales.x), noiseAt(s.mistScales.y), s.mistBlend);
+  const clouds = twoScales((scale) => s.mistNoise.sample(geo.mul(scale).div(NOISE_CELLS).add(s.mistDrift)).r);
   const seaTint = vertexStage(sea);
   // Bord de mer : le trait de cote, et la distance au rivage qui espace les traits de l'eau.
   const water: Water = {

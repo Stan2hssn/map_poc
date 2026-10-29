@@ -1,4 +1,4 @@
-import { EventKeyboard } from "@/_core/helpers/event/Input.events";
+import { EventKeyboard } from "@_core/helpers/event/Input.events.ts";
 import type Input from "@_core/systems/Input.ts";
 import type { UniverseBase } from "@_core/universes/Universe.base.ts";
 import type { UniverseId } from "@graphics/universes/Universe.id.ts";
@@ -49,13 +49,9 @@ export class OrbitCameraHelper {
   bindInput(input: Input): void {
     this._unsubscribeKeyDown?.();
     this._unsubscribeKeyDown = input.subscribe(EventKeyboard.DOWN, (event) => {
-      console.log('keydown');
-
       if (event.repeat) return;
       if (event[EventKeyboard.SHIFT] && event.code === EventKeyboard.C) {
         this.toggle();
-        console.log('toggle');
-
       }
     });
   }

@@ -1,7 +1,6 @@
 const STORAGE_KEY = "map:scene-scale";
-/** Ancienne qualite dynamique : densite de pixels retenue d'une visite a l'autre, a oublier. */
+// Cle de l'ancienne qualite dynamique, purgee chez les visiteurs.
 const LEGACY_KEY = "map:pixel-ratio";
-/** Echelle de la scene : de 1 a `MIN_SCALE`, par pas de `STEP`. */
 const STEP = 0.1;
 const MIN_SCALE = 0.6;
 const WINDOW_MS = 1000;
@@ -9,15 +8,13 @@ const WINDOW_MS = 1000;
 const WARMUP_MS = 3000;
 // Au-dela, l'image manquee est une pause (onglet cache), pas une lenteur.
 const PAUSE_MS = 250;
-/** Trop lent : moyenne au-dela de la periode d'affichage x `SLOW`, `SLOW_WINDOWS` fenetres de suite. */
+// Seuils et nombres de fenetres asymetriques : l'hysteresis evite que l'echelle oscille.
 const SLOW = 1.12;
 const SLOW_WINDOWS = 2;
-/** A l'aise : sous la periode x `EASY` pendant `EASY_WINDOWS` fenetres, on essaie un cran au-dessus. */
 const EASY = 1.03;
 const EASY_WINDOWS = 6;
-/** Un essai rate bloque la remontee ce temps (ms). */
+// Un essai de remontee rate bloque le suivant ce temps.
 const RETRY_MS = 20000;
-/** Frequences d'affichage courantes (Hz) : la periode mesuree s'aligne sur la plus proche. */
 const RATES = [60, 75, 90, 100, 120, 144, 165, 240];
 
 const stored = (): number | null => {
@@ -30,12 +27,7 @@ const stored = (): number | null => {
   }
 };
 
-/**
- * Qualite dynamique : tenir la frequence de l'ecran (60, 120 Hz...) en rendant la scene, le plus cher, a une
- * echelle plus petite ; l'encre, les trames et le papier restent a pleine resolution. Baisse d'un cran quand la
- * cadence decroche, remonte a l'essai quand elle est a l'aise ; l'echelle atteinte est retenue pour la visite
- * suivante.
- */
+// Seule la scene, la passe la plus chere, change d'echelle : encre, trames et papier restent nets.
 export class DynamicQualityHelper {
   enabled = true;
   scale = 1;
@@ -45,10 +37,8 @@ export class DynamicQualityHelper {
   private _frames = 0;
   private _slow = 0;
   private _easy = 0;
-  /** Periode d'affichage (ms), mesuree apres le demarrage. */
   private _period = 0;
   private readonly _warmup: number[] = [];
-  /** Remontee a l'essai en cours, et date avant laquelle ne pas reessayer. */
   private _trial = false;
   private _blockedUntil = 0;
 
@@ -100,7 +90,7 @@ export class DynamicQualityHelper {
   }
 }
 
-/** Periode d'affichage : le decile le plus rapide des images, aligne sur la frequence courante la plus proche. */
+// Decile le plus rapide, aligne sur la frequence d'ecran courante la plus proche : on mesure au lieu de supposer 60 Hz.
 function periodOf(intervals: number[]): number {
   const sorted = [...intervals].sort((a, b) => a - b);
   const fast = sorted[Math.floor(sorted.length * 0.1)] ?? 1000 / 60;

@@ -1,4 +1,4 @@
-import type { IThreeDeviceSlice } from "@/_core/systems/ThreeDevice.ts";
+import type { IThreeDeviceSlice } from "@_core/systems/ThreeDevice.ts";
 import type { DebugTarget } from "@_core/debug/index.ts";
 import { NodeGraph } from "@_core/nodes/NodeGraph.ts";
 import { UniverseBase } from "@_core/universes/Universe.base.ts";
@@ -26,21 +26,15 @@ import { LightsNode } from "@graphics/nodes/lights/Lights.node.ts";
 import { TerrainNode } from "@graphics/nodes/terrain/Terrain.node.ts";
 import { EffectComposer, EffectPass, InkEffect, inkSettings, newsprintMap, OverlayPass, pageTransition, RenderPass } from "@graphics/postprocessing/index.ts";
 import { IgnElevationProvider } from "@graphics/terrain/IgnElevationProvider.ts";
-import type IMapNavigator from "@graphics/universes/MapNavigator.interface.ts";
-import type { MapView, SelectedPlace } from "@graphics/universes/MapNavigator.interface.ts";
+import type { default as IMapNavigator, MapView, SelectedPlace } from "@graphics/universes/MapNavigator.interface.ts";
 import { Color, Matrix4, Scene, type Camera, type Texture } from "three";
 import type { WebGPURenderer } from "three/webgpu";
-import type { UniverseId } from "../Universe.id.ts";
-import { UNIVERSE_ID } from "../Universe.id.ts";
+import { UNIVERSE_ID, type UniverseId } from "@graphics/universes/Universe.id.ts";
 
 const BACKGROUND = 0x000000;
-/**
- * Au repos (camera et vue immobiles), la scene ne se rend plus qu'a cette cadence : seule la brume derive,
- * lentement ; voitures, bateaux et avions, eux, bougent a `LIVELY_FPS`.
- */
+/** Cadences de veille : immobile, seule la brume derive ; vehicules et avions demandent `LIVELY_FPS`. */
 const IDLE_FPS = 15;
 const LIVELY_FPS = 30;
-/** Choix de subdivisions du sol, pour le panneau. */
 const SEGMENT_OPTIONS = Object.fromEntries(TERRAIN_CONFIG.segmentOptions.map((n) => [`${n} x ${n}`, n]));
 const SUN_CONTROLS = [
   ["azimuth", { label: "soleil azimut", min: 0, max: 360, step: 1 }],
@@ -49,7 +43,6 @@ const SUN_CONTROLS = [
   ["ambient", { label: "ambiance", min: 0, max: 3, step: 0.05 }],
   ["bounce", { label: "rebond", min: 0, max: 1, step: 0.01 }],
 ] as const;
-/** Trait : ce qui dessine. */
 const INK_CONTROLS = [
   ["amount", { label: "dessin", min: 0, max: 1, step: 1 }],
   ["detail", { label: "niveau de detail", min: 0, max: 1, step: 0.01 }],
@@ -65,7 +58,6 @@ const INK_CONTROLS = [
   ["wobble", { label: "tremble (px)", min: 0, max: 6, step: 0.1 }],
   ["grain", { label: "grain", min: 0, max: 1, step: 0.01 }],
 ] as const;
-/** Support : papier, journal, et l'encre des nuages. */
 const PAPER_CONTROLS = [
   ["bleed", { label: "bavure", min: 0, max: 1, step: 0.01 }],
   ["fibers", { label: "fibres du papier", min: 0, max: 2, step: 0.01 }],
@@ -73,7 +65,6 @@ const PAPER_CONTROLS = [
   ["newsprintScale", { label: "journal echelle", min: 0.1, max: 20, step: 0.1 }],
   ["clouds", { label: "traits des nuages", min: 0, max: 1, step: 0.01 }],
 ] as const;
-/** Ombrage du bati : la marche dans la texture de hauteurs. */
 const SHADING_CONTROLS = [
   ["fineSteps", { label: "pas fins", min: 1, max: 96, step: 1 }],
   ["stepTexels", { label: "texels par pas", min: 0.5, max: 8, step: 0.25 }],
@@ -82,8 +73,6 @@ const SHADING_CONTROLS = [
   ["lodBias", { label: "mip (flou)", min: 0, max: 4, step: 0.1 }],
   ["contact", { label: "creux au pied", min: 0, max: 1, step: 0.01 }],
 ] as const;
-
-/** Eau dessinee : des droites a 45 degres qui s'effacent vers le milieu de l'eau (voir `terrainSettings`). */
 const WATER_CONTROLS = [
   ["waterInk", { label: "trait", min: 0, max: 1, step: 0.05 }],
   ["waterLines", { label: "traits (serrage)", min: 4, max: 80, step: 1 }],
@@ -94,7 +83,6 @@ const WATER_CONTROLS = [
   ["seaTone", { label: "ton de la mer", min: 0.5, max: 1, step: 0.01 }],
 ] as const;
 
-/** Marge autour d'un territoire quand on vole jusqu'a lui : il ne touche pas les bords. */
 const FIT_MARGIN = 1.25;
 
 /** Largeur de vue (km) qui contient le contour, sans descendre sous l'echelle d'une ville. */
@@ -115,7 +103,7 @@ function extentOfRings(rings: [number, number][][]): number {
   return Math.max(CITY_EXTENT_KM, km * FIT_MARGIN);
 }
 
-/** Camera immobile : aucun coefficient de sa matrice n'a bouge de plus que cela. */
+/** Tolerance par coefficient de la matrice camera pour la juger immobile. */
 const STILL = 1e-5;
 
 export class MainUniverse extends UniverseBase<UniverseId> implements IMapNavigator {
@@ -124,7 +112,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   private readonly _terrain: TerrainNode;
   private readonly _labels: Labels3DNode;
   private readonly _panel: PanelNode;
-  private readonly _intro3d: IntroNode;
+  private readonly _intro: IntroNode;
   private readonly _survey: SurveyNode;
   private readonly _buildings: BuildingsNode;
   private readonly _planes: PlanesNode;
@@ -135,24 +123,15 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   private readonly _renderer: WebGPURenderer;
   private readonly _assets: IThreeDeviceSlice["assets"];
   private readonly _quality: DynamicQualityHelper;
-  /** Pixels rendus par pixel CSS, pour le panneau. */
   private readonly _resolution = { pixelRatio: 1, auto: true, scene: 1 };
   private _nodesRegistered = false;
   private readonly _composer: EffectComposer;
   private readonly _renderedCamera = new Matrix4();
   private _sinceRender = Infinity;
-  /**
-   * Intro : timeline du passage de la page d'entree a la carte, reglee dans SONDE (`IntroTheatre`). A sa
-   * premiere image la page couvre tout — attendre que la page appelle `holdIntro` laisserait la carte paraitre
-   * le temps d'une image ; c'est `drawMap` (ou toute navigation) qui la lance.
-   */
   private readonly _introTheatre: Theatre;
   private _introStarted = false;
   private readonly _gestures: { open: boolean };
-  /**
-   * Pipelines prepares pendant l'attente, et prets : lances une fois la vue chargee, car ses textures changent
-   * le shader du sol. Sans cela il se compilait au premier passage — la carte y manquait, ou saccadait.
-   */
+  /** Precompile une fois la vue chargee : ses textures changent le shader du sol, qui saccadait au passage. */
   private _compiling: Promise<void> | null = null;
   private _compiled = false;
   /** La timeline a ecrit dans la scene depuis la derniere image (lecture, ou reglage dans SONDE). */
@@ -164,8 +143,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     scene.background = new Color(BACKGROUND);
 
     const terrain = new TerrainNode(new IgnElevationProvider());
-    // Sous la page d'entree, la carte attend cadree sur la France : un geste l'en ferait sortir sans qu'on le
-    // voie, et l'on entrerait ailleurs. Les gestes n'agissent qu'une fois l'intro lancee.
+    // Fermes sous la page d'entree : un geste deplacerait la carte sans qu'on le voie.
     const gestures = { open: false };
     const cameraNode = new MapCameraNode(
       device.input,
@@ -180,14 +158,12 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       },
     );
 
-    // Tremble du trait accroche a la carte.
     const ink = new InkEffect({ anchorAt: inkAnchorAt });
     const inkPass = new EffectPass([ink]);
-    // L'interface se dessine apres l'encre : sinon la passe la prendrait pour un relief et la hachurerait.
-    // La feuille du panneau vient par-dessus les noms, puisqu'elle les recouvre.
+    // Apres l'encre, sinon elle hachurerait l'interface ; la feuille du panneau recouvre les noms.
     const labelsPass = new OverlayPass(() => this._labels.scene);
     const panelPass = new OverlayPass(() => this._panel.scene);
-    const introPass = new OverlayPass(() => this._intro3d.scene);
+    const introPass = new OverlayPass(() => this._intro.scene);
     const composer = new EffectComposer([new RenderPass(), inkPass, labelsPass, panelPass, introPass], {
       normalDepth: true,
     });
@@ -201,7 +177,6 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       device.debug,
     );
 
-    // Sonde de developpement, comme `__stage` : reglages des shaders depuis la console.
     if (import.meta.env?.DEV)
       Object.assign(globalThis, {
         __map: { terrain: terrainSettings, ink: inkSettings },
@@ -223,18 +198,16 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     this._clouds = new CloudsNode(terrain, () => cameraNode.camera);
     terrain.projectFrom = () => cameraNode.camera;
     terrain.lookAxis = (into) => cameraNode.lookAxis(into);
-    // Un nom de ville clique : vol jusqu'a elle, bati en relief, sans reculer si l'on est deja plus pres.
     this._labels = new Labels3DNode(device.renderer.domElement, terrain, () => this.camera as Camera, (place) => {
       this.goToPlace({ name: place.name, lon: place.lon, lat: place.lat });
       for (const listener of this._selectionListeners) listener({ name: place.name, lon: place.lon, lat: place.lat });
     });
     this._panel = new PanelNode(device.renderer.domElement, () => this.camera as Camera);
-    this._intro3d = new IntroNode(device.renderer.domElement, () => this.camera as Camera);
+    this._intro = new IntroNode(device.renderer.domElement, () => this.camera as Camera);
     this._introTheatre = this._createIntroTheatre();
     this._gestures = gestures;
     this._survey = new SurveyNode(terrain, device.renderer.domElement, () => this.camera as Camera);
     this._buildings = new BuildingsNode(terrain);
-    // map tourne sur WebGPURenderer (WebGPU ou son repli WebGL2).
     this._renderStats = new RenderStatsHelper(device.renderer as WebGPURenderer);
     cameraNode.isActive = () => this.camera === cameraNode.camera;
     // La carte se fige quand on vise un nom : sinon la parallaxe le deplace pendant qu'on l'approche.
@@ -258,17 +231,14 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
   }
 
   flyTo(view: MapView): void {
-    // Naviguer, c'est vouloir la carte : l'intro, si elle attendait encore, s'ouvre.
     if (!this._introStarted) this.drawMap();
     this._terrain.flyTo(view);
   }
 
-  /** Niveau nomme par la carte : communes, departements ou regions (onglets de focus). */
   setFocus(focus: MapFocusId): void {
     this._labels.setFocus(focus);
   }
 
-  /** Interface prevenue du lieu choisi : elle ouvre son fonds et complete son fil d'Ariane. */
   onPlaceSelected(listener: (place: SelectedPlace) => void): () => void {
     this._selectionListeners.add(listener);
     return () => this._selectionListeners.delete(listener);
@@ -278,30 +248,21 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     return this._labels.search(query, limit).map(({ name, lon, lat }) => ({ name, lon, lat }));
   }
 
-  /**
-   * Vol jusqu'a un lieu : un departement ou une region tient tout entier dans la vue (son contour donne son
-   * emprise), une ville arrive de pres. Sans contour connu, on garde l'echelle d'une ville.
-   */
   goToPlace({ name, lon, lat }: SelectedPlace): void {
     const rings = this._labels.find(name)?.rings;
     this._terrain.flyTo({ lon, lat, extentKm: rings ? extentOfRings(rings) : Math.min(this._terrain.extentKm, CITY_EXTENT_KM) });
   }
 
-  /** Largeur de la vue et point vise, pour l'echelle et les coordonnees de l'interface. */
   readout(): { extentKm: number; lon: number; lat: number; flying: boolean } {
     const { west, east, south, north } = this._terrain.bounds;
     return { extentKm: this._terrain.extentKm, lon: (west + east) / 2, lat: (south + north) / 2, flying: this._terrain.flying };
   }
 
-  /** L'experience peut partir : le mot de l'intro prend toute son encre. */
   setIntroReady(ready: boolean): void {
-    this._intro3d.ready = ready;
+    this._intro.ready = ready;
   }
 
-  /**
-   * Page d'entree : la carte attend dessous, deja posee sur la France (sans vol : le passage ne doit pas
-   * decouvrir un dezoom), et se charge pendant qu'on lit la page.
-   */
+  // Saut sans vol : le passage ne doit pas decouvrir un dezoom.
   holdIntro(): void {
     this._introStarted = false;
     this._gestures.open = false;
@@ -310,24 +271,17 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     this._terrain.jumpTo(MAP_VIEWS.france);
   }
 
-  /** La page se retire et decouvre la carte, puis la vue vole vers `view` si elle est donnee. */
-  drawMap(view?: MapView): void {
+  drawMap(): void {
     if (this._introStarted) return;
     this._introStarted = true;
     this._gestures.open = true;
     this._introTheatre.seek(0);
     this._introTheatre.play();
-    if (view) this._terrain.flyTo(view);
   }
 
-  /**
-   * Chargement de la page d'entree et de la vue qui attend dessous : relief et plan, lieux a nommer, textes
-   * graves. Tant qu'elle n'est pas prete, la page reste sous son voile et l'on n'entre pas — des tuiles arrivees
-   * en plein passage le font saccader.
-   */
   loadState(): { progress: number; ready: boolean } {
     const map = this._terrain.loadState;
-    const rest = (this._labels.loaded ? 0.5 : 0) + (this._intro3d.built ? 0.5 : 0);
+    const rest = (this._labels.loaded ? 0.5 : 0) + (this._intro.built ? 0.5 : 0);
     const compiled = this._compiled ? 1 : 0;
     return {
       progress: Math.max(0, map.progress) * 0.8 + rest * 0.1 + compiled * 0.1,
@@ -335,7 +289,6 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     };
   }
 
-  /** Theatres offerts a la timeline de SONDE. */
   getTheatre(id: string): Theatre | undefined {
     return id === INTRO_THEATRE ? this._introTheatre : undefined;
   }
@@ -393,7 +346,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
         this._survey,
         this._labels,
         this._panel,
-        this._intro3d,
+        this._intro,
       ]);
       this._nodesRegistered = true;
     }
@@ -410,9 +363,8 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
 
   override update(time: number, dt: number): void {
     super.update(time, dt);
-    // A l'encre, l'effet plein ecran dessine l'image ; la carte de nuit ne passe par rien.
     this._inkPass.enabled = inkSettings.amount.value > 0.5;
-    // Intro : la timeline avance au temps reel ecoule, sans borne — une image lourde ne la fait pas patiner.
+    // Temps reel sans borne : une image lourde saute des etapes plutot que de ralentir l'intro.
     this._introTheatre.advance(dt / 1000);
     if (!this._compiling && !this._introStarted && this._terrain.loadState.ready) {
       this._compiling = this._composer
@@ -425,7 +377,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     this._lights.relief(terrainSettings.relief.value);
     this._renderStats.update(dt);
 
-    // Au repos, pas d'image nouvelle a chaque rafraichissement : l'ordinateur ne chauffe pas pour une image fixe.
+    // Rendu a la demande : une image fixe ne doit pas faire chauffer le GPU.
     const camera = (this.camera as Camera).matrixWorld;
     const still =
       camera.elements.every((v, i) => Math.abs(v - this._renderedCamera.elements[i]!) < STILL) &&
@@ -433,13 +385,11 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       this._buildings.settled &&
       this._labels.settled &&
       this._panel.settled &&
-      this._intro3d.settled &&
+      this._intro.settled &&
       !this._introTheatre.playing &&
       !this._introMoved &&
       terrainSettings.landcoverReveal.value >= 1;
     this._sinceRender += dt;
-    // Ce qui bouge tout seul (vehicules, avions, vent dans les arbres) : l'image n'est alors jamais tout a fait
-    // immobile, et se redessine a la cadence de veille.
     const lively = this._buildings.lively || this._planes.lively || terrainSettings.wind.value > 0;
     const render = !still || this._sinceRender >= 1000 / (lively ? LIVELY_FPS : IDLE_FPS);
     this._composer.paused = !render;
@@ -458,7 +408,7 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     this._settings();
   }
 
-  /** Declare une fois : application toujours, panneau seulement avec `?debug`. */
+  /** Applique toujours les valeurs du JSON ; le panneau ne se monte qu'avec `?debug`. */
   private _settings(): void {
     const debug = this._debug;
     if (!debug) return;
@@ -469,7 +419,6 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     const ink = this._ink;
     const asRecord = (value: object) => value as unknown as Record<string, unknown>;
     type Options = Parameters<typeof debug.bind>[3];
-    /** Reglage porte par un uniform (`.value`). */
     const knob = (target: DebugTarget | null, node: object, options: Options, path: string) =>
       debug.bind(target, asRecord(node), "value", options, path);
     const applySun = () => {
@@ -483,7 +432,6 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       document.documentElement.dataset.mapTheme = paper ? "paper" : "night";
     };
 
-    // Vue : le relief, le plan et la zone dessinee.
     const mask = terrainSettings.maskRadius.value;
     const folder = (
       tabId: (typeof TAB_ID)[keyof typeof TAB_ID],
@@ -520,7 +468,6 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       knob(target, terrainSettings.maskJitter, { label: "masque bord", min: 0, max: 0.6, step: 0.01 }, "mask.jitter"),
     ]);
 
-    // Vie : ce qui peuple la carte, en part de ce que les donnees proposent.
     const share = { label: "", min: 0, max: 1, step: 0.05 };
     folder(TAB_ID.MAP, FOLDER_ID.LIFE, (target) => [
       debug.bind(
@@ -547,7 +494,6 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       knob(target, terrainSettings.wind, { ...share, label: "vent" }, "life.wind"),
     ]);
 
-    // Camera et soleil : les reglages de mise en scene, rarement touches.
     folder(
       TAB_ID.MAP,
       FOLDER_ID.CAMERA,
@@ -582,7 +528,6 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       applySun,
     );
 
-    // Encre : le trait lui-meme.
     folder(
       TAB_ID.INK,
       FOLDER_ID.INK,
@@ -594,7 +539,6 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       applyInk,
     );
 
-    // Papier : le support et ce qui s'y imprime.
     folder(TAB_ID.INK, FOLDER_ID.PAPER, (target) => [
       ...PAPER_CONTROLS.map(([key, options]) =>
         knob(target, inkSettings[key], options, key === "clouds" ? "ink.cloudLines" : `ink.${key}`),
@@ -603,24 +547,20 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
       knob(target, inkSettings.ink, { label: "encre", color: { type: "float" } }, "ink.ink"),
     ]);
 
-    // Ombrage du bati : la marche dans la texture de hauteurs (contours rugueux, ombres, creux).
     folder(TAB_ID.INK, FOLDER_ID.SHADING, (target) =>
       SHADING_CONTROLS.map(([key, options]) => knob(target, terrainSettings[key], options, `shading.${key}`)),
     );
 
-    // Eau : traits paralleles, plus rares vers le large, et leur tremble.
     folder(TAB_ID.INK, FOLDER_ID.WATER, (target) =>
       WATER_CONTROLS.map(([key, options]) => knob(target, terrainSettings[key], options, `water.${key}`)),
     );
 
-    // Lieu survole : l'encre de son trait, et le lavis pose sur son papier.
     folder(TAB_ID.INK, FOLDER_ID.HOVER, (target) => [
       knob(target, inkSettings.hoverInk, { label: "encre du survol", color: { type: "float" } }, "ink.hoverInk"),
       knob(target, inkSettings.hoverWash, { label: "lavis du survol", min: 0, max: 0.6, step: 0.01 }, "ink.hoverWash"),
       knob(target, inkSettings.hoverRim, { label: "trait du perimetre", min: 0, max: 1, step: 0.05 }, "ink.hoverRim"),
     ]);
 
-    // Rendu : ce que la scene coute, et la resolution a laquelle elle est rendue.
     const resolution = this._resolution;
     const quality = this._quality;
     folder(
@@ -647,82 +587,42 @@ export class MainUniverse extends UniverseBase<UniverseId> implements IMapNaviga
     );
   }
 
-  /** Mesures en lecture seule : cadence, GPU, dessin, et ce que coute le bati. */
   private _monitors(target: DebugTarget): { dispose(): void }[] {
     const frame = this._renderStats.values;
     const buildings = this._buildings.stats;
     const terrain = this._terrain.settings;
     const resolution = this._resolution;
-    const readout = {
-      get fps() {
-        return frame.fps;
-      },
-      get echelle() {
-        return resolution.scene;
-      },
-      get image() {
-        return frame.frameMs;
-      },
-      get gpu() {
-        return frame.gpuMs;
-      },
-      get dessins() {
-        return frame.drawCalls;
-      },
-      get triangles() {
-        return frame.triangles;
-      },
-      get sol() {
+    const ground = {
+      get vertices() {
         return (terrain.segments + 1) ** 2;
-      },
-      get bati() {
-        return buildings.vertices;
-      },
-      get batiments() {
-        return buildings.buildings;
-      },
-      get tuiles() {
-        return buildings.tiles;
-      },
-      get memoire() {
-        return buildings.memoryMb;
-      },
-      get arbres() {
-        return buildings.trees;
-      },
-      get voitures() {
-        return buildings.cars;
-      },
-      get bateaux() {
-        return buildings.boats;
       },
     };
     const count = (v: number) => (v >= 1e6 ? `${(v / 1e6).toFixed(2)} M` : v >= 1e3 ? `${(v / 1e3).toFixed(1)} k` : v.toFixed(0));
     const ms = (v: number) => `${v.toFixed(2)} ms`;
-    const monitor = (key: keyof typeof readout, label: string, format: (v: number) => string) =>
-      target.addBinding(readout, key, { readonly: true, label, format });
+    const monitor = <T extends Record<string, unknown>>(source: T, key: keyof T & string, label: string, format: (v: number) => string) =>
+      target.addBinding(source, key, { readonly: true, label, format });
     return [
-      monitor("fps", "fps", (v) => v.toFixed(0)),
-      monitor("image", "image", ms),
-      monitor("echelle", "echelle scene", (v) => v.toFixed(2)),
-      monitor("gpu", "gpu", (v) => (v ? ms(v) : "-")),
-      target.addBinding(readout, "gpu", {
+      monitor(frame, "fps", "fps", (v) => v.toFixed(0)),
+      monitor(frame, "frameMs", "image", ms),
+      monitor(resolution, "scene", "echelle scene", (v) => v.toFixed(2)),
+      monitor(frame, "gpuMs", "gpu", (v) => (v ? ms(v) : "-")),
+      target.addBinding(frame, "gpuMs", {
         readonly: true,
         label: "gpu (graphe)",
         view: "graph",
         min: 0,
         max: 16,
       }),
-      monitor("dessins", "appels de dessin", count),
-      monitor("triangles", "triangles", count),
-      monitor("sol", "sommets sol", count),
-      monitor("bati", "sommets bati", count),
-      monitor("batiments", "batiments", count),
-      monitor("tuiles", "tuiles", count),
-      monitor("arbres", "arbres", count),
-      monitor("voitures", "voitures", count),
-      monitor("bateaux", "bateaux", count),
-      monitor("memoire", "memoire bati", (v) => `${v.toFixed(1)} Mo`),
+      monitor(frame, "drawCalls", "appels de dessin", count),
+      monitor(frame, "triangles", "triangles", count),
+      monitor(ground, "vertices", "sommets sol", count),
+      monitor(buildings, "vertices", "sommets bati", count),
+      monitor(buildings, "buildings", "batiments", count),
+      monitor(buildings, "tiles", "tuiles", count),
+      monitor(buildings, "trees", "arbres", count),
+      monitor(buildings, "cars", "voitures", count),
+      monitor(buildings, "boats", "bateaux", count),
+      monitor(buildings, "memoryMb", "memoire bati", (v) => `${v.toFixed(1)} Mo`),
     ];
   }
 }

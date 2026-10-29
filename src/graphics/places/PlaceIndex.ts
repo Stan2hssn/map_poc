@@ -1,4 +1,4 @@
-import { ringsBounds, ringsContain } from "./Rings.ts";
+import { ringsBounds, ringsContain, type Ring } from "./Rings.ts";
 import type { GeoBounds } from "@graphics/terrain/GeoProjection.ts";
 
 export interface Place {
@@ -9,7 +9,7 @@ export interface Place {
   /** Code ISO 3 lettres. */
   country: string;
   /** Contour du lieu, pour le colorier au survol. Charge d'avance (departement, region) ou au survol (commune). */
-  rings?: [number, number][][];
+  rings?: Ring[];
   /** Code INSEE d'une commune : de quoi aller chercher son contour au survol. */
   code?: string;
 }

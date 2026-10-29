@@ -16,10 +16,8 @@ const EDGE = { level: 0.5, px: 0.7 };
 
 /**
  * Etiquettes des villes : un quadrilatere par caractere (et par trait), pose dans le repere de son etiquette,
- * en pixels. Le panneau face a la camera n'est plus calcule ici : c'est le groupe de l'etiquette qui porte le
- * point ancre, l'orientation de la camera et l'echelle pixel vers scene (`Labels3DNode`). Le dessin et la zone
- * cliquable partagent ainsi une seule transformation, et ne peuvent plus diverger — c'est ce qui rendait les
- * noms inattrapables.
+ * en pixels. Le groupe de l'etiquette porte le point ancre, l'orientation de la camera et l'echelle pixel vers
+ * scene (`Labels3DNode`) : le dessin et la zone cliquable partagent une seule transformation et ne divergent pas.
  *
  * Attributs par instance : `glyph` (uv du caractere dans l'atlas), `screen` (coin et taille en pixels dans le
  * repere de l'etiquette), `tint` (part de survol, le texte passe a l'accent) et `fade` (part apparue du
