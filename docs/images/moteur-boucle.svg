@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 620" width="860" height="620" font-family="sans-serif">
+  <rect width="860" height="620" fill="#ffffff"/>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#333"/></marker></defs>
+  <text x="30" y="40" font-size="22" font-weight="bold" fill="#222">La boucle : un tour = une image</text>
+  <circle cx="430" cy="335" r="190" fill="none" stroke="#bbb" stroke-width="2" stroke-dasharray="5 6"/>
+  <g stroke="#333" stroke-width="2.5" fill="none" marker-end="url(#a)">
+    <path d="M520 168 A190 190 0 0 1 605 250"/>
+    <path d="M610 420 A190 190 0 0 1 564 470"/>
+    <path d="M340 502 A190 190 0 0 1 252 420"/>
+    <path d="M250 250 A190 190 0 0 1 312 186"/>
+  </g>
+  <rect x="320" y="110" width="220" height="80" rx="10" fill="#eef3ff" stroke="#335" stroke-width="2"/>
+  <text x="430" y="138" font-size="17" font-weight="bold" fill="#222" text-anchor="middle">1. Lire les entrées</text>
+  <text x="430" y="160" font-size="14" fill="#333" text-anchor="middle">où est la souris, quelle</text>
+  <text x="430" y="178" font-size="14" fill="#333" text-anchor="middle">touche est enfoncée</text>
+  <rect x="590" y="290" width="240" height="96" rx="10" fill="#fff4e0" stroke="#853" stroke-width="2"/>
+  <text x="710" y="318" font-size="17" font-weight="bold" fill="#222" text-anchor="middle">2. Mettre à jour</text>
+  <text x="710" y="340" font-size="14" fill="#333" text-anchor="middle">chaque élément monté avance</text>
+  <text x="710" y="358" font-size="14" fill="#333" text-anchor="middle">du temps écoulé : la vue glisse,</text>
+  <text x="710" y="376" font-size="14" fill="#333" text-anchor="middle">les voitures roulent</text>
+  <rect x="300" y="482" width="260" height="96" rx="10" fill="#f3eefb" stroke="#536" stroke-width="2"/>
+  <text x="430" y="510" font-size="17" font-weight="bold" fill="#222" text-anchor="middle">3. L'image a-t-elle changé ?</text>
+  <text x="430" y="532" font-size="14" fill="#333" text-anchor="middle">oui : on dessine tout de suite</text>
+  <text x="430" y="550" font-size="14" fill="#333" text-anchor="middle">non : on attend, et on ne redessine</text>
+  <text x="430" y="568" font-size="14" fill="#333" text-anchor="middle">que 15 (ou 30) fois par seconde</text>
+  <rect x="30" y="282" width="240" height="112" rx="10" fill="#eaf7ea" stroke="#363" stroke-width="2"/>
+  <text x="150" y="310" font-size="17" font-weight="bold" fill="#222" text-anchor="middle">4. Dessiner</text>
+  <text x="150" y="332" font-size="14" fill="#333" text-anchor="middle">a. la scène 3D éclairée</text>
+  <text x="150" y="350" font-size="14" fill="#333" text-anchor="middle">b. repeinte à l'encre</text>
+  <text x="150" y="368" font-size="14" fill="#333" text-anchor="middle">c. par-dessus : noms,</text>
+  <text x="150" y="386" font-size="14" fill="#333" text-anchor="middle">panneau, page d'intro</text>
+  <text x="430" y="315" font-size="16" font-weight="bold" fill="#222" text-anchor="middle">Le navigateur relance</text>
+  <text x="430" y="337" font-size="16" font-weight="bold" fill="#222" text-anchor="middle">la boucle à chaque</text>
+  <text x="430" y="359" font-size="16" font-weight="bold" fill="#222" text-anchor="middle">rafraîchissement d'écran</text>
+  <text x="430" y="390" font-size="14" fill="#555" text-anchor="middle">écran à 60 images/s → 16,7 ms par tour</text>
+  <text x="430" y="410" font-size="14" fill="#555" text-anchor="middle">écran à 120 images/s → 8,3 ms par tour</text>
+</svg>

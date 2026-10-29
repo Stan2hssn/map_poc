@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" width="900" height="520" font-family="sans-serif" font-size="15" fill="#222">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222"/></marker>
+    <pattern id="h1" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#000" stroke-width="1.5"/></pattern>
+    <pattern id="h2" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#000" stroke-width="3"/><line x1="0" y1="0" x2="8" y2="0" stroke="#000" stroke-width="2.5"/></pattern>
+    <pattern id="i1" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#1d2a4d" stroke-width="1.5"/></pattern>
+    <pattern id="i2" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#1d2a4d" stroke-width="3"/><line x1="0" y1="0" x2="8" y2="0" stroke="#1d2a4d" stroke-width="2.5"/></pattern>
+    <linearGradient id="lit" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3efe6"/><stop offset="1" stop-color="#e2ddd2"/></linearGradient>
+    <linearGradient id="mid" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#a9a49b"/><stop offset="1" stop-color="#8d887f"/></linearGradient>
+    <linearGradient id="dark" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#55524d"/><stop offset="1" stop-color="#3c3a36"/></linearGradient>
+    <linearGradient id="scale" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000"/><stop offset="1" stop-color="#fff"/></linearGradient>
+  </defs>
+  <rect width="900" height="520" fill="#fff"/>
+  <text x="30" y="36" font-size="20" font-weight="bold">De l'image 3D au dessin, pixel par pixel</text>
+
+  <!-- panel 1: 3D render -->
+  <g transform="translate(30,70)">
+    <rect width="190" height="170" fill="#fff" stroke="#222" stroke-width="1.5"/>
+    <path d="M10,150 L95,30 L110,150 z" fill="url(#lit)"/>
+    <path d="M95,30 L110,150 L150,150 z" fill="url(#mid)"/>
+    <path d="M95,30 L150,150 L180,150 z" fill="url(#dark)"/>
+    <rect x="0" y="150" width="190" height="20" fill="#d8d4ca"/>
+    <circle cx="28" cy="28" r="11" fill="#fff" stroke="#222" stroke-width="2"/>
+    <line x1="42" y1="38" x2="70" y2="58" stroke="#222" stroke-width="1.5" marker-end="url(#a)"/>
+  </g>
+  <text x="30" y="266" font-weight="bold">1. Image 3D cachée</text>
+  <text x="30" y="286" font-size="14">le soleil éclaire un</text>
+  <text x="30" y="304" font-size="14">versant, l'autre est</text>
+  <text x="30" y="322" font-size="14">à l'ombre</text>
+
+  <line x1="226" y1="155" x2="252" y2="155" stroke="#222" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- panel 2: tones -->
+  <g transform="translate(258,70)">
+    <rect width="190" height="170" fill="#fff" stroke="#222" stroke-width="1.5"/>
+    <path d="M10,150 L95,30 L110,150 z" fill="#e8e8e8" stroke="#222"/>
+    <path d="M95,30 L110,150 L150,150 z" fill="#999" stroke="#222"/>
+    <path d="M95,30 L150,150 L180,150 z" fill="#444" stroke="#222"/>
+    <rect x="0" y="150" width="190" height="20" fill="#d4d4d4" stroke="#222"/>
+    <text x="40" y="128" font-size="14">0,85</text>
+    <text x="111" y="140" font-size="14">0,5</text>
+    <line x1="152" y1="68" x2="142" y2="118" stroke="#222"/><text x="146" y="62" font-size="14">0,2</text>
+  </g>
+  <text x="258" y="266" font-weight="bold">2. On ne garde que</text>
+  <text x="258" y="286" font-weight="bold">la clarté</text>
+  <text x="258" y="306" font-size="14">0 = noir, 1 = blanc</text>
+
+  <line x1="454" y1="155" x2="480" y2="155" stroke="#222" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- panel 3: hatching -->
+  <g transform="translate(486,70)">
+    <rect width="190" height="170" fill="#fff" stroke="#222" stroke-width="1.5"/>
+    <path d="M95,30 L110,150 L150,150 z" fill="url(#h1)"/>
+    <path d="M95,30 L150,150 L180,150 z" fill="url(#h2)"/>
+    <path d="M10,150 L95,30 L180,150 M95,30 L110,150" fill="none" stroke="#999" stroke-dasharray="4 4"/>
+  </g>
+  <text x="486" y="266" font-weight="bold">3. Clarté → encre</text>
+  <text x="486" y="286" font-size="14">clair : rien ; moyen :</text>
+  <text x="486" y="304" font-size="14">hachures ; sombre :</text>
+  <text x="486" y="322" font-size="14">hachures croisées</text>
+
+  <line x1="682" y1="155" x2="708" y2="155" stroke="#222" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- panel 4: on paper -->
+  <g transform="translate(714,70)">
+    <rect width="160" height="170" fill="#f1ece0" stroke="#222" stroke-width="1.5"/>
+    <g transform="scale(0.84,1)">
+      <path d="M95,30 L110,150 L150,150 z" fill="url(#i1)"/>
+      <path d="M95,30 L150,150 L180,150 z" fill="url(#i2)"/>
+      <path d="M10,150 L95,30 L180,150" fill="none" stroke="#1d2a4d" stroke-width="2.5"/>
+      <path d="M95,30 L110,150" fill="none" stroke="#1d2a4d" stroke-width="1.5"/>
+    </g>
+    <path d="M20,60 q14,-4 26,2 M120,20 q10,6 22,2 M30,110 q8,6 18,4" stroke="#b9b09c" stroke-width="1" fill="none"/>
+  </g>
+  <text x="714" y="266" font-weight="bold">4. Sur papier</text>
+  <text x="714" y="286" font-size="14">encre bleu-noir,</text>
+  <text x="714" y="304" font-size="14">+ contours,</text>
+  <text x="714" y="322" font-size="14">+ fibres du papier</text>
+
+  <!-- tone scale -->
+  <text x="30" y="372" font-weight="bold">La règle, en une bande : clarté du pixel → ce qu'on dessine</text>
+  <rect x="30" y="388" width="840" height="34" fill="url(#scale)" stroke="#222"/>
+  <g font-size="14">
+    <line x1="97" y1="388" x2="97" y2="440" stroke="#c22" stroke-width="2"/>
+    <line x1="379" y1="388" x2="379" y2="440" stroke="#c22" stroke-width="2"/>
+    <line x1="576" y1="388" x2="576" y2="440" stroke="#c22" stroke-width="2"/>
+    <text x="30" y="458">0</text>
+    <text x="82" y="458">0,08</text>
+    <text x="364" y="458">≈ 0,42</text>
+    <text x="561" y="458">≈ 0,65</text>
+    <text x="858" y="458">1</text>
+    <text x="30" y="484">aplat</text>
+    <text x="30" y="502">d'encre</text>
+    <text x="140" y="484">hachures croisées, de plus en plus</text>
+    <text x="140" y="502">épaisses vers le noir</text>
+    <text x="400" y="484">hachures simples,</text>
+    <text x="400" y="502">qui s'affinent</text>
+    <text x="600" y="484">papier nu (les traits trop fins</text>
+    <text x="600" y="502">sont retirés : pas de voile gris)</text>
+  </g>
+</svg>

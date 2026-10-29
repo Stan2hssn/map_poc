@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 520" width="880" height="520" font-family="sans-serif" font-size="15" fill="#222">
+  <rect x="0" y="0" width="880" height="520" fill="#ffffff"/>
+  <defs>
+    <marker id="fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#222"/>
+    </marker>
+  </defs>
+
+  <text x="440" y="34" text-anchor="middle" font-size="20" font-weight="bold">Qui fournit quoi, et par où ça passe</text>
+
+  <text x="140" y="72" text-anchor="middle" font-weight="bold" fill="#555">Sur Internet</text>
+  <text x="440" y="72" text-anchor="middle" font-weight="bold" fill="#555">Dans le navigateur</text>
+  <text x="740" y="72" text-anchor="middle" font-weight="bold" fill="#555">À l'écran</text>
+
+  <!-- Sources -->
+  <g>
+    <rect x="30" y="90" width="220" height="70" rx="6" fill="#fff" stroke="#222" stroke-width="2"/>
+    <text x="140" y="118" text-anchor="middle" font-weight="bold">IGN : altitudes</text>
+    <text x="140" y="142" text-anchor="middle" font-size="14">RGE ALTI (France), SRTM</text>
+
+    <rect x="30" y="185" width="220" height="70" rx="6" fill="#fff" stroke="#222" stroke-width="2"/>
+    <text x="140" y="213" text-anchor="middle" font-weight="bold">IGN : plan</text>
+    <text x="140" y="237" text-anchor="middle" font-size="14">routes, bâti, forêts, eau</text>
+
+    <rect x="30" y="280" width="220" height="70" rx="6" fill="#fff" stroke="#222" stroke-width="2"/>
+    <text x="140" y="308" text-anchor="middle" font-weight="bold">geo.api.gouv.fr</text>
+    <text x="140" y="332" text-anchor="middle" font-size="14">communes, contours</text>
+
+    <rect x="30" y="375" width="220" height="70" rx="6" fill="#fff" stroke="#222" stroke-width="2"/>
+    <text x="140" y="403" text-anchor="middle" font-weight="bold">Fichiers publics</text>
+    <text x="140" y="427" text-anchor="middle" font-size="14">villes, départements, régions</text>
+  </g>
+
+  <!-- Milieu -->
+  <rect x="330" y="90" width="220" height="70" rx="6" fill="#f0f0f0" stroke="#222" stroke-width="2"/>
+  <text x="440" y="118" text-anchor="middle" font-weight="bold">Réserve d'altitudes</text>
+  <text x="440" y="142" text-anchor="middle" font-size="14">320 tuiles gardées</text>
+
+  <rect x="330" y="185" width="220" height="70" rx="6" fill="#f0f0f0" stroke="#222" stroke-width="2" stroke-dasharray="7 4"/>
+  <text x="440" y="213" text-anchor="middle" font-weight="bold">Aide en coulisse</text>
+  <text x="440" y="237" text-anchor="middle" font-size="14">lit et dessine le plan</text>
+
+  <rect x="330" y="280" width="220" height="165" rx="6" fill="#f0f0f0" stroke="#222" stroke-width="2"/>
+  <text x="440" y="308" text-anchor="middle" font-weight="bold">Annuaire des lieux</text>
+  <text x="440" y="334" text-anchor="middle" font-size="14">noms, positions,</text>
+  <text x="440" y="354" text-anchor="middle" font-size="14">populations, contours</text>
+  <text x="440" y="384" text-anchor="middle" font-size="14" fill="#555">un doublon (même nom,</text>
+  <text x="440" y="404" text-anchor="middle" font-size="14" fill="#555">même endroit) est fusionné</text>
+
+  <!-- Ecran -->
+  <rect x="630" y="90" width="220" height="165" rx="6" fill="#fff" stroke="#222" stroke-width="2"/>
+  <text x="740" y="150" text-anchor="middle" font-weight="bold">Relief et dessin</text>
+  <text x="740" y="174" text-anchor="middle" font-weight="bold">du sol</text>
+  <text x="740" y="204" text-anchor="middle" font-size="14" fill="#555">voir les autres chapitres</text>
+
+  <rect x="630" y="280" width="220" height="165" rx="6" fill="#fff" stroke="#222" stroke-width="2"/>
+  <text x="740" y="340" text-anchor="middle" font-weight="bold">Noms de lieux,</text>
+  <text x="740" y="364" text-anchor="middle" font-weight="bold">recherche, survol</text>
+
+  <!-- Fleches -->
+  <g stroke="#222" stroke-width="2" fill="none" marker-end="url(#fl)">
+    <line x1="252" y1="125" x2="326" y2="125"/>
+    <line x1="252" y1="220" x2="326" y2="220"/>
+    <line x1="252" y1="315" x2="326" y2="330"/>
+    <line x1="252" y1="410" x2="326" y2="395"/>
+    <line x1="552" y1="125" x2="626" y2="150"/>
+    <line x1="552" y1="220" x2="626" y2="195"/>
+    <line x1="552" y1="362" x2="626" y2="362"/>
+  </g>
+
+  <text x="440" y="490" text-anchor="middle" fill="#555">Rien n'est préparé à l'avance : tout est demandé en direct, seulement pour ce qu'on regarde.</text>
+</svg>

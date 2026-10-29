@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="500" viewBox="0 0 900 500">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222"/></marker>
+<marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/></marker></defs>
+<rect width="900" height="500" fill="#ffffff"/>
+<text x="450" y="32" font-family="Helvetica, Arial, sans-serif" font-size="20" text-anchor="middle" font-weight="bold" fill="#222">La zone dessinée, vue de dessus</text>
+<rect x="40" y="50" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="40" y="102" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="40" y="154" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="40" y="206" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="40" y="258" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="40" y="310" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="40" y="362" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="40" y="414" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="100" y="50" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="100" y="102" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="100" y="154" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="100" y="206" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="100" y="258" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="100" y="310" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="100" y="362" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="100" y="414" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="160" y="50" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="160" y="102" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="160" y="154" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="160" y="206" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="160" y="258" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="160" y="310" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="160" y="362" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="160" y="414" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="220" y="50" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="220" y="102" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="220" y="154" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="220" y="206" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="220" y="258" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="220" y="310" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="220" y="362" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="220" y="414" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="280" y="50" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="280" y="102" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="280" y="154" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="280" y="206" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="280" y="258" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="280" y="310" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="280" y="362" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="280" y="414" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="340" y="50" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="340" y="102" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="340" y="154" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="340" y="206" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="340" y="258" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="340" y="310" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="340" y="362" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="340" y="414" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="400" y="50" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="400" y="102" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="400" y="154" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="400" y="206" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="400" y="258" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="400" y="310" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="400" y="362" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="400" y="414" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="460" y="50" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="460" y="102" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="460" y="154" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="460" y="206" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="460" y="258" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="460" y="310" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="460" y="362" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="460" y="414" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="520" y="50" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="520" y="102" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="520" y="154" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="520" y="206" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="520" y="258" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="520" y="310" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="520" y="362" width="60" height="52" fill="none" stroke="#eee"/>
+<rect x="520" y="414" width="60" height="52" fill="none" stroke="#eee"/>
+<ellipse cx="300" cy="250" rx="126" ry="171" fill="rgb(250,250,250)" opacity="0.35"/>
+<ellipse cx="300" cy="250" rx="110.88" ry="150.48" fill="rgb(230,230,230)" opacity="0.35"/>
+<ellipse cx="300" cy="250" rx="95.76" ry="129.96" fill="rgb(210,210,210)" opacity="0.35"/>
+<ellipse cx="300" cy="250" rx="80.64" ry="109.44" fill="rgb(190,190,190)" opacity="0.35"/>
+<ellipse cx="300" cy="250" rx="65.52" ry="88.92" fill="rgb(170,170,170)" opacity="0.35"/>
+<ellipse cx="300" cy="250" rx="50.400000000000006" ry="68.4" fill="rgb(150,150,150)" opacity="0.35"/>
+<path d="M431.0,250.0 L432.1,267.7 L428.8,284.8 L423.5,300.9 L418.6,316.6 L414.1,332.7 L408.3,348.2 L399.6,360.9 L387.8,369.2 L375.0,374.1 L363.6,379.1 L354.4,388.0 L346.4,401.9 L337.5,417.7 L326.4,429.9 L313.4,434.4 L300.0,431.3 L287.4,423.9 L275.6,416.7 L263.9,411.5 L252.2,406.8 L241.1,399.6 L231.8,388.5 L224.3,375.1 L217.2,362.4 L208.2,352.3 L196.3,344.0 L183.4,334.6 L172.8,321.5 L168.0,304.4 L169.3,285.3 L174.2,266.8 L179.0,250.0 L181.3,234.1 L181.6,218.0 L182.4,201.6 L185.7,185.8 L191.8,171.5 L198.8,158.2 L204.8,143.9 L209.6,127.4 L215.2,109.7 L223.6,94.7 L235.6,86.4 L249.9,86.0 L264.3,90.4 L277.2,94.5 L288.7,94.1 L300.0,89.3 L312.1,83.6 L324.7,81.3 L337.1,84.2 L348.6,90.8 L359.9,98.0 L371.8,104.2 L384.2,110.7 L395.4,120.5 L403.0,135.3 L405.9,154.0 L405.6,173.4 L405.7,190.6 L409.1,205.1 L416.4,218.6 L425.0,233.3 L431.0,250.0 Z" fill="none" stroke="#222" stroke-width="2.5"/>
+<rect x="154" y="59" width="292" height="382" fill="none" stroke="#c0392b" stroke-width="2" stroke-dasharray="8 5"/>
+<line x1="300" y1="250" x2="426" y2="250" stroke="#222" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="363" y="242" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="bold" fill="#222">70</text>
+<line x1="300" y1="250" x2="300" y2="79" stroke="#222" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="310" y="164.5" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="bold" fill="#222">95</text>
+<circle cx="300" cy="250" r="5" fill="#222"/>
+<line x1="300" y1="480" x2="300" y2="451" stroke="#222" stroke-width="3" marker-end="url(#arrow)"/>
+<text x="322" y="478" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="start" font-weight="normal" fill="#222">la caméra regarde vers le haut du croquis</text>
+<text x="570" y="90" font-family="Helvetica, Arial, sans-serif" font-size="16" text-anchor="start" font-weight="bold" fill="#222">Ellipse posée sur la carte</text>
+<text x="570" y="112" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">centrée sur le point visé</text>
+<text x="570" y="134" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">rayons : 70 en travers, 95 en profondeur</text>
+<text x="570" y="156" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">(la zone de détail fait 100 de large)</text>
+<text x="570" y="192" font-family="Helvetica, Arial, sans-serif" font-size="16" text-anchor="start" font-weight="bold" fill="#222">Bord fondu et irrégulier</text>
+<text x="570" y="214" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">le fondu commence à 40 % du rayon ;</text>
+<text x="570" y="236" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">un bruit accroché à la carte</text>
+<text x="570" y="258" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">froisse le bord de ±6 %</text>
+<text x="570" y="294" font-family="Helvetica, Arial, sans-serif" font-size="16" text-anchor="start" font-weight="bold" fill="#c0392b">Rectangle rouge</text>
+<text x="570" y="316" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">en mode encre, la grille ne couvre que</text>
+<text x="570" y="338" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">le cadre de l'écran autour de l'ellipse :</text>
+<text x="570" y="360" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">aucun point gaspillé au-dehors</text>
+</svg>

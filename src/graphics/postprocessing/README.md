@@ -53,4 +53,4 @@ export class VignetteEffect implements IEffect {
 
 Vers `_lib/postprocessing` quand un deuxième projet en a besoin. Dépend aujourd'hui du `_core` (`IPass`, `PassContext`, `PipelineBase`, `FrameTiming`) : à remplacer à ce moment-là par des interfaces propres à la lib. L'encre dépend aussi du projet : `HOVER_BAND` (`Terrain.material.ts`) et le bruit peint (`NoiseMap.ts`, via `PageTransition`).
 
-Détail du rendu : [`docs/rendu.md`](../../../docs/rendu.md).
+Détail du rendu, expliqué simplement : [`docs/dessin.md`](../../../docs/dessin.md).

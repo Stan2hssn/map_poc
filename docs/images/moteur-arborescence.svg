@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 560" width="880" height="560" font-family="sans-serif">
+  <rect width="880" height="560" fill="#ffffff"/>
+  <text x="30" y="40" font-size="22" font-weight="bold" fill="#222">Les dossiers du projet, en simplifié</text>
+  <text x="30" y="66" font-size="15" fill="#555">À gauche les dossiers, à droite ce qu'on y trouve (et leur rôle dans le « théâtre »).</text>
+  <g stroke="#333" stroke-width="2" fill="none">
+    <path d="M48 104 V510"/>
+    <path d="M48 120 H76"/><path d="M48 190 H76"/><path d="M48 454 H76"/><path d="M48 510 H76"/>
+    <path d="M100 206 V336"/>
+    <path d="M100 236 H128"/><path d="M100 336 H128"/>
+  </g>
+  <text x="30" y="98" font-size="18" font-weight="bold" fill="#222">map/</text>
+  <rect x="80" y="102" width="150" height="34" rx="6" fill="#eef3ff" stroke="#335" stroke-width="2"/>
+  <text x="95" y="125" font-size="17" font-weight="bold" fill="#222">app/</text>
+  <text x="270" y="118" font-size="15" fill="#222">LA SALLE. L'interface : la page web, l'en-tête,</text>
+  <text x="270" y="137" font-size="15" fill="#222">la recherche, le curseur. Posée par-dessus la 3D.</text>
+  <text x="80" y="196" font-size="17" font-weight="bold" fill="#222">src/</text>
+  <rect x="132" y="218" width="150" height="36" rx="6" fill="#eeeeee" stroke="#333" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="146" y="242" font-size="17" font-weight="bold" fill="#222">_core/</text>
+  <g transform="translate(252,226)"><rect x="0" y="8" width="16" height="12" fill="#333"/><path d="M3 8 V4 a5 5 0 0 1 10 0 V8" stroke="#333" stroke-width="2.5" fill="none"/></g>
+  <text x="310" y="234" font-size="15" fill="#222">LA MACHINERIE. Le moteur : il fait tourner la boucle,</text>
+  <text x="310" y="253" font-size="15" fill="#222">monte les éléments, dessine. Partagé avec d'autres</text>
+  <text x="310" y="272" font-size="15" fill="#a22" font-weight="bold">projets : on n'y touche pas ici.</text>
+  <rect x="132" y="318" width="150" height="36" rx="6" fill="#fff4e0" stroke="#853" stroke-width="2"/>
+  <text x="146" y="342" font-size="17" font-weight="bold" fill="#222">graphics/</text>
+  <text x="310" y="312" font-size="15" fill="#222">LE SPECTACLE. La carte elle-même, propre au projet :</text>
+  <g font-size="15" fill="#222">
+    <text x="310" y="336">· l'assemblage de la scène complète</text>
+    <text x="310" y="356">· les 10 éléments (terrain, bâtiments, ciel...)</text>
+    <text x="310" y="376">· les calculs du relief, l'aspect des surfaces</text>
+    <text x="324" y="394">   et la reprise à l'encre</text>
+    <text x="310" y="412">· les réglages enregistrés</text>
+  </g>
+  <rect x="80" y="436" width="150" height="36" rx="6" fill="#eaf7ea" stroke="#363" stroke-width="2"/>
+  <text x="95" y="460" font-size="17" font-weight="bold" fill="#222">tests/</text>
+  <text x="270" y="460" font-size="15" fill="#222">73 vérifications automatiques des calculs.</text>
+  <text x="80" y="516" font-size="17" font-weight="bold" fill="#222">docs/</text>
+  <text x="270" y="516" font-size="15" fill="#222">Cette documentation et ses croquis.</text>
+  <g font-size="14" fill="#555">
+    <text x="30" y="548">Qui lance qui : la salle (app/) démarre la machinerie (_core/), qui charge le spectacle (graphics/).</text>
+  </g>
+</svg>

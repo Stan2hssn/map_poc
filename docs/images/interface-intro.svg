@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 560" width="880" height="560" font-family="sans-serif">
+  <rect x="0" y="0" width="880" height="560" fill="#ffffff"/>
+  <defs>
+    <marker id="fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#222"/>
+    </marker>
+  </defs>
+
+  <text x="40" y="38" font-size="20" font-weight="bold" fill="#222">De la page d'entrée à la carte</text>
+
+  <!-- etape 1 : chargement -->
+  <circle cx="52" cy="82" r="14" fill="#222"/><text x="52" y="87" font-size="15" fill="#fff" text-anchor="middle" font-weight="bold">1</text>
+  <text x="76" y="87" font-size="16" font-weight="bold" fill="#222">La jauge se remplit (la carte se dessine déjà, cachée sous la page)</text>
+  <rect x="76" y="104" width="560" height="34" fill="none" stroke="#222" stroke-width="2"/>
+  <rect x="76" y="104" width="448" height="34" fill="#d6d6d6" stroke="#222" stroke-width="1.5"/>
+  <rect x="524" y="104" width="56" height="34" fill="#ececec" stroke="#222" stroke-width="1.5"/>
+  <rect x="580" y="104" width="56" height="34" fill="#f8f8f8" stroke="#222" stroke-width="1.5"/>
+  <text x="300" y="126" font-size="14" fill="#222" text-anchor="middle">80 % : le relief de la France</text>
+  <text x="552" y="160" font-size="14" fill="#222" text-anchor="middle">10 % : noms</text>
+  <text x="552" y="176" font-size="14" fill="#222" text-anchor="middle">et titres</text>
+  <text x="640" y="160" font-size="14" fill="#222" text-anchor="start">10 % : préparer</text>
+  <text x="640" y="176" font-size="14" fill="#222" text-anchor="start">les programmes</text>
+  <text x="640" y="192" font-size="14" fill="#222" text-anchor="start">de dessin</text>
+  <line x1="552" y1="140" x2="552" y2="148" stroke="#222"/>
+  <line x1="608" y1="140" x2="640" y2="150" stroke="#222"/>
+
+  <!-- etape 2 : clic -->
+  <circle cx="52" cy="216" r="14" fill="#222"/><text x="52" y="221" font-size="15" fill="#fff" text-anchor="middle" font-weight="bold">2</text>
+  <text x="76" y="221" font-size="16" font-weight="bold" fill="#222">100 % : le voile se lève, « ENTRER » s’allume au-dessus du curseur, on clique</text>
+
+  <!-- etape 3 : timeline -->
+  <circle cx="52" cy="266" r="14" fill="#222"/><text x="52" y="271" font-size="15" fill="#fff" text-anchor="middle" font-weight="bold">3</text>
+  <text x="76" y="271" font-size="16" font-weight="bold" fill="#222">La timeline (une partition de 3 secondes) se joue</text>
+
+  <!-- grille verticale -->
+  <g stroke="#bbb" stroke-width="1" stroke-dasharray="3 4">
+    <line x1="240" y1="295" x2="240" y2="505"/>
+    <line x1="420" y1="295" x2="420" y2="505"/>
+    <line x1="600" y1="295" x2="600" y2="505"/>
+    <line x1="780" y1="295" x2="780" y2="505"/>
+  </g>
+
+  <!-- pistes -->
+  <text x="40" y="322" font-size="14" fill="#222">Tache d’encre</text>
+  <path d="M240,330 C330,330 580,306 672,306" fill="none" stroke="#222" stroke-width="2.5"/>
+  <line x1="240" y1="330" x2="672" y2="330" stroke="#999" stroke-width="1"/>
+  <text x="680" y="312" font-size="14" fill="#222">carte découverte</text>
+
+  <text x="40" y="364" font-size="14" fill="#222">Bandeau du haut</text>
+  <rect x="510" y="352" width="126" height="16" fill="#cfcfcf" stroke="#222" stroke-width="1.5"/>
+
+  <text x="40" y="398" font-size="14" fill="#222">Rail de gauche</text>
+  <rect x="537" y="386" width="126" height="16" fill="#cfcfcf" stroke="#222" stroke-width="1.5"/>
+
+  <text x="40" y="432" font-size="14" fill="#222">Pied (frise, échelle)</text>
+  <rect x="564" y="420" width="126" height="16" fill="#cfcfcf" stroke="#222" stroke-width="1.5"/>
+
+  <text x="40" y="466" font-size="14" fill="#222">Noms des lieux</text>
+  <line x1="240" y1="462" x2="672" y2="462" stroke="#999" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <circle cx="672" cy="462" r="7" fill="#222"/>
+  <text x="684" y="467" font-size="14" fill="#222">d'un coup</text>
+
+  <!-- axe -->
+  <line x1="240" y1="505" x2="800" y2="505" stroke="#222" stroke-width="2" marker-end="url(#fl)"/>
+  <text x="240" y="526" font-size="14" fill="#222" text-anchor="middle">0 s</text>
+  <text x="420" y="526" font-size="14" fill="#222" text-anchor="middle">1 s</text>
+  <text x="600" y="526" font-size="14" fill="#222" text-anchor="middle">2 s</text>
+  <text x="780" y="526" font-size="14" fill="#222" text-anchor="middle">3 s</text>
+  <text x="672" y="546" font-size="14" fill="#555" text-anchor="middle">2,4 s</text>
+  <line x1="672" y1="300" x2="672" y2="532" stroke="#222" stroke-width="1" stroke-dasharray="2 3"/>
+  <text x="40" y="548" font-size="14" fill="#444">barre grise : le bandeau apparaît en fondu, en 0,7 s</text>
+</svg>

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="465" viewBox="0 0 900 465">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222"/></marker>
+<marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/></marker></defs>
+<rect width="900" height="465" fill="#ffffff"/>
+<text x="450" y="32" font-family="Helvetica, Arial, sans-serif" font-size="20" text-anchor="middle" font-weight="bold" fill="#222">La pente décide de la lumière</text>
+<path d="M60,330 L60,329.5 L68,329.4 L76,329.2 L84,329.0 L92,328.8 L100,328.5 L108,328.1 L116,327.7 L124,327.1 L132,326.5 L140,325.8 L148,324.9 L156,323.9 L164,322.7 L172,321.3 L180,319.7 L188,317.9 L196,315.8 L204,313.4 L212,310.8 L220,307.8 L228,304.5 L236,300.8 L244,296.8 L252,292.4 L260,287.6 L268,282.4 L276,276.9 L284,271.1 L292,264.9 L300,258.4 L308,251.7 L316,244.8 L324,237.7 L332,230.5 L340,223.3 L348,216.1 L356,209.0 L364,202.1 L372,195.5 L380,189.2 L388,183.4 L396,178.0 L404,173.3 L412,169.2 L420,165.8 L428,163.1 L436,161.3 L444,160.2 L452,160.0 L460,160.7 L468,162.1 L476,164.4 L484,167.4 L492,171.2 L500,175.6 L508,180.6 L516,186.2 L524,192.3 L532,198.7 L540,205.5 L548,212.5 L556,219.7 L564,226.9 L572,234.1 L580,241.3 L588,248.3 L596,255.1 L604,261.7 L612,268.0 L620,274.1 L628,279.7 L636,285.1 L644,290.0 L652,294.6 L660,298.8 L668,302.7 L676,306.2 L684,309.3 L692,312.1 L700,314.6 L708,316.9 L716,318.8 L724,320.5 L732,322.0 L740,323.3 L748,324.4 L756,325.4 L764,326.2 L772,326.8 L780,327.4 L788,327.9 L796,328.3 L804,328.6 L812,328.9 L820,329.1 L828,329.3 L836,329.4 L840,360 L60,360 Z" fill="#eeeeee" stroke="none"/>
+<path d="M60,330 L60,329.5 L68,329.4 L76,329.2 L84,329.0 L92,328.8 L100,328.5 L108,328.1 L116,327.7 L124,327.1 L132,326.5 L140,325.8 L148,324.9 L156,323.9 L164,322.7 L172,321.3 L180,319.7 L188,317.9 L196,315.8 L204,313.4 L212,310.8 L220,307.8 L228,304.5 L236,300.8 L244,296.8 L252,292.4 L260,287.6 L268,282.4 L276,276.9 L284,271.1 L292,264.9 L300,258.4 L308,251.7 L316,244.8 L324,237.7 L332,230.5 L340,223.3 L348,216.1 L356,209.0 L364,202.1 L372,195.5 L380,189.2 L388,183.4 L396,178.0 L404,173.3 L412,169.2 L420,165.8 L428,163.1 L436,161.3 L444,160.2 L452,160.0 L460,160.7 L468,162.1 L476,164.4 L484,167.4 L492,171.2 L500,175.6 L508,180.6 L516,186.2 L524,192.3 L532,198.7 L540,205.5 L548,212.5 L556,219.7 L564,226.9 L572,234.1 L580,241.3 L588,248.3 L596,255.1 L604,261.7 L612,268.0 L620,274.1 L628,279.7 L636,285.1 L644,290.0 L652,294.6 L660,298.8 L668,302.7 L676,306.2 L684,309.3 L692,312.1 L700,314.6 L708,316.9 L716,318.8 L724,320.5 L732,322.0 L740,323.3 L748,324.4 L756,325.4 L764,326.2 L772,326.8 L780,327.4 L788,327.9 L796,328.3 L804,328.6 L812,328.9 L820,329.1 L828,329.3 L836,329.4" fill="none" stroke="#222" stroke-width="2.5"/>
+<path d="M450,160.0 L458,160.4 L466,161.7 L474,163.7 L482,166.6 L490,170.1 L498,174.4 L506,179.3 L514,184.8 L522,190.7 L530,197.1 L538,203.8 L546,210.7 L554,217.9 L562,225.1 L570,232.3 L578,239.5 L586,246.5 L594,253.4 L602,260.1 L610,266.5 L618,272.6 L626,278.4 L634,283.8 L642,288.8 L650,293.5 L658,297.8 L666,301.7 L674,305.3 L682,308.6 L690,311.5 L698,314.0 L706,316.3 L714,318.4 L722,320.1 L730,321.7 L738,323.0 L746,324.2 L754,325.1 L762,326.0 L770,326.7 L778,327.3 L786,327.8 L794,328.2 L802,328.6 L810,328.8 L818,329.1 L826,329.3 L834,329.4 L840,360 L450,360 Z" fill="#bdbdbd" opacity="0.7"/>
+<circle cx="290" cy="266.4909095443312" r="5" fill="#fff" stroke="#222" stroke-width="2"/>
+<circle cx="370" cy="197.09367046322654" r="5" fill="#fff" stroke="#222" stroke-width="2"/>
+<line x1="245" y1="291.5268565274526" x2="415" y2="144.05772348010518" stroke="#c0392b" stroke-width="2.5" stroke-dasharray="6 4"/>
+<circle cx="330" cy="232.29504412433005" r="6" fill="#222"/>
+<line x1="330" y1="232.29504412433005" x2="277.5779948567717" y2="171.86381563472094" stroke="#222" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="262.5779948567717" y="201.86381563472094" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="end" font-weight="bold" fill="#222">face au soleil : clair</text>
+<circle cx="540" cy="205.50569454868736" r="5" fill="#fff" stroke="#222" stroke-width="2"/>
+<circle cx="620" cy="274.06110269306873" r="5" fill="#fff" stroke="#222" stroke-width="2"/>
+<line x1="495" y1="152.94327746747283" x2="665" y2="298.62351977428324" stroke="#c0392b" stroke-width="2.5" stroke-dasharray="6 4"/>
+<circle cx="580" cy="241.25221795062726" r="6" fill="#222"/>
+<line x1="580" y1="241.25221795062726" x2="632.0562968693401" y2="180.5056793146594" stroke="#222" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="647.0562968693401" y="210.5056793146594" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="bold" fill="#222">dos au soleil : sombre</text>
+<circle cx="110" cy="90" r="22" fill="#fff" stroke="#222" stroke-width="2.5"/>
+<line x1="138" y1="90" x2="148" y2="90" stroke="#222" stroke-width="2"/>
+<line x1="129.79898987322332" y1="109.79898987322332" x2="136.8700576850888" y2="116.8700576850888" stroke="#222" stroke-width="2"/>
+<line x1="110" y1="118" x2="110" y2="128" stroke="#222" stroke-width="2"/>
+<line x1="90.20101012677668" y1="109.79898987322333" x2="83.1299423149112" y2="116.87005768508881" stroke="#222" stroke-width="2"/>
+<line x1="82" y1="90" x2="72" y2="90" stroke="#222" stroke-width="2"/>
+<line x1="90.20101012677667" y1="70.20101012677668" x2="83.12994231491119" y2="63.1299423149112" stroke="#222" stroke-width="2"/>
+<line x1="110" y1="62" x2="110" y2="52" stroke="#222" stroke-width="2"/>
+<line x1="129.79898987322332" y1="70.20101012677667" x2="136.8700576850888" y2="63.12994231491119" stroke="#222" stroke-width="2"/>
+<line x1="150" y1="110" x2="240" y2="160" stroke="#222" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="110" y="145" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="normal" fill="#222">soleil</text>
+<text x="60" y="395" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">1. On lit l'altitude un peu à gauche et un peu à droite du point (cercles blancs).</text>
+<text x="60" y="418" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">2. La différence donne la pente (pointillés rouges), et la flèche qui lui est perpendiculaire.</text>
+<text x="60" y="441" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">3. Plus cette flèche regarde vers le soleil, plus la surface est claire.</text>
+</svg>

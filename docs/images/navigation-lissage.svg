@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 470" width="800" height="470" font-family="sans-serif">
+  <rect width="800" height="470" fill="#ffffff"/>
+  <text x="400" y="34" font-size="20" font-weight="bold" fill="#222" text-anchor="middle">Un cran de molette : la vue visée saute, la vue affichée la rattrape</text>
+
+  <line x1="100" y1="340" x2="740" y2="340" stroke="#222" stroke-width="2"/>
+  <line x1="100" y1="340" x2="100" y2="70" stroke="#222" stroke-width="2"/>
+  <text x="745" y="345" font-size="14" fill="#222">temps</text>
+  <text x="90" y="105" font-size="15" fill="#222" text-anchor="end">arrivée</text>
+  <text x="90" y="325" font-size="15" fill="#222" text-anchor="end">départ</text>
+
+  <g font-size="14" fill="#555" text-anchor="middle">
+    <line x1="255" y1="340" x2="255" y2="347" stroke="#222"/><text x="255" y="365">0,25 s</text>
+    <line x1="410" y1="340" x2="410" y2="347" stroke="#222"/><text x="410" y="365">0,5 s</text>
+    <line x1="565" y1="340" x2="565" y2="347" stroke="#222"/><text x="565" y="365">0,75 s</text>
+    <line x1="720" y1="340" x2="720" y2="347" stroke="#222"/><text x="720" y="365">1 s</text>
+    <text x="100" y="365">0</text>
+  </g>
+
+  <polyline points="100,320 100,100 720,100" fill="none" stroke="#c0392b" stroke-width="3" stroke-dasharray="9 6"/>
+  <polyline fill="none" stroke="#1f4e79" stroke-width="4" points="100.0,320.0 115.5,299.1 131.0,280.1 146.5,263.0 162.0,247.5 177.5,233.4 193.0,220.7 208.5,209.2 224.0,198.9 239.5,189.4 255.0,180.9 270.5,173.2 286.0,166.3 301.5,160.0 317.0,154.3 332.5,149.1 348.0,144.4 363.5,140.2 379.0,136.4 394.5,132.9 410.0,129.8 425.5,126.9 441.0,124.4 456.5,122.1 472.0,120.0 487.5,118.1 503.0,116.3 518.5,114.8 534.0,113.4 549.5,112.1 565.0,111.0 580.5,109.9 596.0,109.0 611.5,108.1 627.0,107.3 642.5,106.6 658.0,106.0 673.5,105.4 689.0,104.9 704.5,104.5 720.0,104.0"/>
+
+  <g font-size="15" fill="#1f4e79">
+    <circle cx="255" cy="180.9" r="5" fill="#1f4e79"/><text x="265" y="200">63 % du chemin</text>
+    <circle cx="410" cy="129.8" r="5" fill="#1f4e79"/><text x="420" y="152">86 %</text>
+    <circle cx="565" cy="111" r="5" fill="#1f4e79"/><text x="575" y="134">95 %</text>
+  </g>
+
+  <text x="300" y="270" font-size="15" fill="#222">À chaque image, la vue affichée</text>
+  <text x="300" y="290" font-size="15" fill="#222">parcourt une part du chemin qui reste :</text>
+  <text x="300" y="310" font-size="15" fill="#222">vite au début, puis de plus en plus doucement.</text>
+
+  <g font-size="15" fill="#222">
+    <line x1="110" y1="405" x2="160" y2="405" stroke="#c0392b" stroke-width="3" stroke-dasharray="9 6"/>
+    <text x="170" y="410">vue visée : là où votre geste veut aller (bouge tout de suite)</text>
+    <line x1="110" y1="438" x2="160" y2="438" stroke="#1f4e79" stroke-width="4"/>
+    <text x="170" y="443">vue affichée : ce que vous voyez à l'écran (la suit en douceur)</text>
+  </g>
+</svg>

@@ -155,7 +155,8 @@ src/graphics/
   timeline/             théâtre et pistes de l'intro (réglées dans SONDE)
   config/               réglages du panneau et pistes en JSON, vues, focus, terrain, bâti
   debug/, device/       onglets du panneau, mesures, qualité dynamique
-docs/                   documentation technique ; docs/archive/ pour les anciens documents
+tests/                  tests automatiques (node --test), rangés comme src/ (tests/graphics/...)
+docs/                   documentation (sommaire : docs/README.md) ; docs/archive/ pour les anciens documents
 scripts/                conversion des assets au build
 public/                 assets servis (images, modèles, décodeur draco)
 ```
@@ -166,13 +167,15 @@ Flux global :
 
 ## Documentation technique
 
-- [Architecture et moteur](docs/architecture.md) : couches `_core` / `graphics` / `app`, démarrage, boucle, panneau et réglages persistants.
-- [Terrain et relief](docs/terrain.md) : tuiles IGN, mosaïques d'altitudes, grille d'écran, masque elliptique.
-- [Occupation du sol](docs/occupation-du-sol.md) : plan IGN, worker, bâti extrudé, arbres, trafic.
-- [Rendu encre et papier](docs/rendu.md) : sol, MRT, passe d'encre, mode nuit, réglages effectifs.
-- [Scène](docs/scene.md) : lieux, texte SDF, survol, caméra et gestes, ciel, intro, timeline.
-- [Interface](docs/interface.md) : Nuxt, contrat Vue -> scène, chrome, SONDE, build.
-- [Cadrage technique initial](docs/cadrage-technique.md) : données temps réel, collecte côté serveur, légalité du scraping.
+Une série de petits cours, lisibles sans être développeur : l'idée, comment ça marche en gros, pourquoi ce choix, ce qu'on aurait pu faire autrement. Point d'entrée et parcours de lecture : [docs/README.md](docs/README.md).
+
+- [Les bases](docs/00-les-bases.md) : comment un navigateur dessine de la 3D.
+- [La carte en 3D](docs/3d/README.md) : l'astuce de la grille collée à l'écran, puis [les données](docs/3d/donnees.md), [le terrain](docs/3d/terrain.md), [les bâtiments](docs/3d/batiments.md), [la végétation](docs/3d/vegetation.md), [les véhicules](docs/3d/vehicules.md), [le ciel](docs/3d/ciel.md).
+- [Le dessin à l'encre](docs/dessin.md) : contours, hachures, papier, mode nuit.
+- [Se déplacer](docs/navigation.md) et [les noms et les lieux](docs/lieux.md).
+- [L'application autour de la carte](docs/interface.md) et [l'organisation du code](docs/moteur.md).
+- [Glossaire](docs/glossaire.md) : tous les mots techniques.
+- [Cadrage technique initial](docs/cadrage-technique.md) : données temps réel à venir, collecte côté serveur, légalité du scraping.
 - [Règles du `_core`](src/_core/README.md) : référence du moteur partagé.
 - [`docs/archive/`](docs/archive/) : conceptions et plans précédents (relief, carte plein écran, boilerplate, audit).
 

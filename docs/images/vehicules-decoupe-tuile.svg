@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 400" width="820" height="400" font-family="sans-serif">
+  <rect width="820" height="400" fill="#ffffff"/>
+  <text x="410" y="30" text-anchor="middle" font-size="20" font-weight="bold" fill="#222">Une route coupée au bord de la tuile donne des voies</text>
+  <g transform="translate(0,20)">
+  <rect x="60" y="60" width="300" height="300" fill="#f6f6f2" stroke="#222" stroke-width="2"/>
+  <text x="210" y="352" text-anchor="middle" font-size="15" fill="#555">la tuile (≈ 850 m de côté)</text>
+  <g fill="none" stroke="#999" stroke-width="2" stroke-dasharray="6 5">
+    <polyline points="20,300 60,288.9"/>
+    <polyline points="231.7,60 240,10 300,10 305.3,60"/>
+    <polyline points="360,213.3 440,240"/>
+  </g>
+  <polyline points="60,288.9 200,250 231.7,60" fill="none" stroke="#1a4f8a" stroke-width="5" stroke-linejoin="round"/>
+  <polyline points="305.3,60 320,200 360,213.3" fill="none" stroke="#c0392b" stroke-width="5" stroke-linejoin="round"/>
+  <g fill="#fff" stroke="#222" stroke-width="2">
+    <circle cx="60" cy="288.9" r="6"/><circle cx="231.7" cy="60" r="6"/><circle cx="305.3" cy="60" r="6"/><circle cx="360" cy="213.3" r="6"/>
+  </g>
+  <text x="105" y="250" font-size="16" font-weight="bold" fill="#1a4f8a">voie 1</text>
+  <text x="250" y="160" font-size="16" font-weight="bold" fill="#c0392b">voie 2</text>
+  </g>
+  <g font-size="15" fill="#222">
+    <text x="470" y="110">1. On parcourt la route segment par segment.</text>
+    <text x="470" y="140">2. Chaque segment est rogné au carré</text>
+    <text x="490" y="160">de la tuile (ronds blancs = coupes).</text>
+    <text x="470" y="190">3. Tant qu'on reste dedans, on prolonge</text>
+    <text x="490" y="210">la voie en cours.</text>
+    <text x="470" y="240">4. Dès qu'on sort, la voie est fermée ;</text>
+    <text x="490" y="260">si on revient, une nouvelle commence.</text>
+    <text x="470" y="290" fill="#777">Pointillés : hors tuile, ignorés ici.</text>
+    <text x="470" y="310" fill="#777">La tuile voisine fait ses propres voies.</text>
+  </g>
+</svg>

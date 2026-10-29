@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 560" width="880" height="560" font-family="sans-serif">
+  <rect width="880" height="560" fill="#ffffff"/>
+  <defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#333"/></marker></defs>
+  <text x="30" y="40" font-size="22" font-weight="bold" fill="#222">Univers, contrat, éléments</text>
+  <rect x="30" y="62" width="520" height="470" rx="14" fill="#fafafa" stroke="#333" stroke-width="2"/>
+  <text x="50" y="92" font-size="18" font-weight="bold" fill="#222">L'univers de la carte (il n'y en a qu'un)</text>
+  <text x="50" y="114" font-size="14" fill="#555">il crée les éléments, les relie, et tient la liste à monter</text>
+  <rect x="50" y="130" width="480" height="50" rx="8" fill="#fff4e0" stroke="#853" stroke-width="2"/>
+  <text x="66" y="152" font-size="15" font-weight="bold" fill="#222">Contrat de base = une liste de noms</text>
+  <text x="66" y="171" font-size="14" fill="#333">« ces 10 éléments doivent être présents »</text>
+  <g font-size="15" fill="#222" text-anchor="middle">
+    <g stroke="#335" stroke-width="2" fill="#eef3ff">
+      <rect x="50" y="200" width="150" height="40" rx="6"/><rect x="215" y="200" width="150" height="40" rx="6"/><rect x="380" y="200" width="150" height="40" rx="6"/>
+      <rect x="50" y="252" width="150" height="40" rx="6"/><rect x="215" y="252" width="150" height="40" rx="6"/><rect x="380" y="252" width="150" height="40" rx="6"/>
+      <rect x="50" y="304" width="150" height="40" rx="6"/><rect x="215" y="304" width="150" height="40" rx="6"/><rect x="380" y="304" width="150" height="40" rx="6"/>
+      <rect x="215" y="356" width="150" height="40" rx="6"/>
+    </g>
+    <text x="125" y="226">caméra</text><text x="290" y="226">lumières</text><text x="455" y="226">terrain</text>
+    <text x="125" y="278">bâtiments</text><text x="290" y="278">avions</text><text x="455" y="278">nuages</text>
+    <text x="125" y="330">relevés</text><text x="290" y="330">noms</text><text x="455" y="330">panneau</text>
+    <text x="290" y="382">page d'intro</text>
+  </g>
+  <text x="50" y="430" font-size="14" fill="#333">Changer de contrat = comparer deux listes :</text>
+  <text x="50" y="450" font-size="14" fill="#333">ce qui n'y est plus est démonté, ce qui arrive est monté,</text>
+  <text x="50" y="470" font-size="14" fill="#333">ce qui reste ne bouge pas.</text>
+  <text x="50" y="506" font-size="14" fill="#555">(la carte n'a qu'un contrat : tout est monté une fois)</text>
+  <text x="590" y="100" font-size="18" font-weight="bold" fill="#222">Monter un élément</text>
+  <g font-size="15" fill="#222">
+    <text x="590" y="132">1. le préparer</text>
+    <text x="606" y="152" font-size="13" fill="#555">charger, construire (on attend)</text>
+    <text x="590" y="182">2. le poser dans la scène</text>
+    <text x="590" y="212">3. le démarrer</text>
+    <text x="606" y="232" font-size="13" fill="#555">animation d'entrée possible</text>
+  </g>
+  <path d="M570 120 V230" stroke="#363" stroke-width="2.5" marker-end="url(#a)"/>
+  <text x="590" y="300" font-size="18" font-weight="bold" fill="#222">Démonter un élément</text>
+  <g font-size="15" fill="#222">
+    <text x="590" y="332">1. le laisser finir</text>
+    <text x="606" y="352" font-size="13" fill="#555">animation de sortie (on attend)</text>
+    <text x="590" y="382">2. le retirer de la scène</text>
+    <text x="590" y="412">3. le nettoyer</text>
+  </g>
+  <path d="M570 320 V410" stroke="#a22" stroke-width="2.5" marker-end="url(#a)"/>
+  <rect x="580" y="450" width="270" height="70" rx="8" fill="#eaf7ea" stroke="#363" stroke-width="2"/>
+  <text x="596" y="476" font-size="14" fill="#222">Entre les deux, à chaque image :</text>
+  <text x="596" y="498" font-size="14" fill="#222">« mets-toi à jour » (jamais « dessine »)</text>
+</svg>

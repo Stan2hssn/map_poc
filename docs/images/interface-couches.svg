@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 600" width="880" height="600" font-family="sans-serif">
+  <rect x="0" y="0" width="880" height="600" fill="#ffffff"/>
+  <defs>
+    <marker id="fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#222"/>
+    </marker>
+  </defs>
+
+  <text x="40" y="38" font-size="20" font-weight="bold" fill="#222">La page, vue de côté : trois feuilles empilées</text>
+  <text x="40" y="62" font-size="14" fill="#555">On regarde d'en haut : la feuille du dessus cache celle du dessous, sauf là où elle est transparente.</text>
+
+  <!-- oeil -->
+  <g transform="translate(560,95)">
+    <ellipse cx="0" cy="0" rx="26" ry="14" fill="none" stroke="#222" stroke-width="2"/>
+    <circle cx="0" cy="0" r="6" fill="#222"/>
+  </g>
+  <text x="600" y="100" font-size="14" fill="#222">ce que tu vois</text>
+  <line x1="560" y1="115" x2="440" y2="165" stroke="#222" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#fl)"/>
+
+  <!-- 3 : HTML -->
+  <polygon points="140,170 520,170 440,250 60,250" fill="#f3f3f3" fill-opacity="0.85" stroke="#222" stroke-width="2"/>
+  <rect x="150" y="182" width="230" height="12" fill="#222" fill-opacity="0.75" transform="skewX(-45) translate(186,0)"/>
+  <text x="230" y="218" font-size="14" fill="#222" text-anchor="middle">bandeaux · recherche</text>
+  <text x="230" y="238" font-size="14" fill="#222" text-anchor="middle">texte du panneau · curseur</text>
+
+  <!-- 2 : passe d'interface -->
+  <polygon points="140,300 520,300 440,380 60,380" fill="#e6e6e6" fill-opacity="0.85" stroke="#222" stroke-width="2" stroke-dasharray="8 5"/>
+  <polygon points="410,306 500,306 430,374 340,374" fill="#ffffff" stroke="#222" stroke-width="1.5"/>
+  <text x="200" y="336" font-size="14" fill="#222" text-anchor="middle">noms des lieux</text>
+  <text x="200" y="358" font-size="14" fill="#222" text-anchor="middle">textes de l'intro</text>
+  <text x="420" y="345" font-size="14" fill="#222" text-anchor="middle">feuille</text>
+
+  <!-- 1 : la carte -->
+  <polygon points="140,430 520,430 440,510 60,510" fill="#cfcfcf" stroke="#222" stroke-width="2"/>
+  <path d="M95,495 q40,-25 80,-10 t70,-15 t60,5" fill="none" stroke="#222" stroke-width="1.5"/>
+  <path d="M105,498 l12,-10 M125,498 l12,-10 M145,498 l12,-10 M165,498 l12,-10" stroke="#222" stroke-width="1"/>
+  <text x="395" y="458" font-size="14" fill="#222" text-anchor="middle">relief, bâti, avions,</text>
+  <text x="395" y="476" font-size="14" fill="#222" text-anchor="middle">nuages + encre</text>
+
+  <!-- numeros -->
+  <circle cx="40" cy="210" r="15" fill="#222"/><text x="40" y="215" font-size="15" fill="#fff" text-anchor="middle" font-weight="bold">3</text>
+  <circle cx="40" cy="340" r="15" fill="#222"/><text x="40" y="345" font-size="15" fill="#fff" text-anchor="middle" font-weight="bold">2</text>
+  <circle cx="40" cy="470" r="15" fill="#222"/><text x="40" y="475" font-size="15" fill="#fff" text-anchor="middle" font-weight="bold">1</text>
+
+  <!-- accolade canvas -->
+  <path d="M545,300 q14,0 14,14 v86 q0,10 10,10 q-10,0 -10,10 v86 q0,14 -14,14" fill="none" stroke="#222" stroke-width="2"/>
+  <text x="580" y="404" font-size="15" font-weight="bold" fill="#222">Le canvas</text>
+  <text x="580" y="424" font-size="14" fill="#444">une seule image, dessinée</text>
+  <text x="580" y="442" font-size="14" fill="#444">par la carte graphique</text>
+
+  <!-- legendes -->
+  <text x="580" y="196" font-size="15" font-weight="bold" fill="#222">3. Le HTML</text>
+  <text x="580" y="216" font-size="14" fill="#444">du texte de page web normal :</text>
+  <text x="580" y="234" font-size="14" fill="#444">lisible, cliquable, sélectionnable</text>
+
+  <text x="580" y="326" font-size="15" font-weight="bold" fill="#222">2. Passe d'interface</text>
+  <text x="580" y="346" font-size="14" fill="#444">posée APRÈS l'encre :</text>
+  <text x="580" y="364" font-size="14" fill="#444">jamais hachurée</text>
+
+  <text x="580" y="490" font-size="15" font-weight="bold" fill="#222">1. La carte dessinée</text>
+  <text x="580" y="510" font-size="14" fill="#444">la scène 3D, puis l'encre</text>
+
+  <!-- clic -->
+  <line x1="270" y1="255" x2="270" y2="425" stroke="#222" stroke-width="1.5" marker-end="url(#fl)"/>
+  <text x="280" y="270" font-size="14" fill="#222">un clic hors des boutons</text>
+  <text x="280" y="286" font-size="14" fill="#222">traverse jusqu'à la carte</text>
+
+  <text x="40" y="570" font-size="14" fill="#555">Ordre de dessin : 1, puis 2 (dans la même image), puis le navigateur pose 3 par-dessus.</text>
+</svg>

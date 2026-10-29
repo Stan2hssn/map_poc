@@ -1,0 +1,214 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="380" viewBox="0 0 900 380">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222"/></marker>
+<marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/></marker></defs>
+<rect width="900" height="380" fill="#ffffff"/>
+<text x="450" y="32" font-family="Helvetica, Arial, sans-serif" font-size="20" text-anchor="middle" font-weight="bold" fill="#222">D'une image d'altitudes à un relief en triangles</text>
+<circle cx="42" cy="62" r="13" fill="#222"/><text x="42" y="67" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="bold" fill="#fff">1</text>
+<text x="62" y="68" font-family="Helvetica, Arial, sans-serif" font-size="16" text-anchor="start" font-weight="bold" fill="#222">L'image d'altitudes</text>
+<rect x="30" y="90" width="30" height="30" fill="rgb(44,44,44)" stroke="#fff" stroke-width="1"/>
+<rect x="60" y="90" width="30" height="30" fill="rgb(53,53,53)" stroke="#fff" stroke-width="1"/>
+<rect x="90" y="90" width="30" height="30" fill="rgb(63,63,63)" stroke="#fff" stroke-width="1"/>
+<rect x="120" y="90" width="30" height="30" fill="rgb(65,65,65)" stroke="#fff" stroke-width="1"/>
+<rect x="150" y="90" width="30" height="30" fill="rgb(73,73,73)" stroke="#fff" stroke-width="1"/>
+<rect x="180" y="90" width="30" height="30" fill="rgb(69,69,69)" stroke="#fff" stroke-width="1"/>
+<rect x="30" y="120" width="30" height="30" fill="rgb(55,55,55)" stroke="#fff" stroke-width="1"/>
+<rect x="60" y="120" width="30" height="30" fill="rgb(89,89,89)" stroke="#fff" stroke-width="1"/>
+<rect x="90" y="120" width="30" height="30" fill="rgb(126,126,126)" stroke="#fff" stroke-width="1"/>
+<rect x="120" y="120" width="30" height="30" fill="rgb(126,126,126)" stroke="#fff" stroke-width="1"/>
+<rect x="150" y="120" width="30" height="30" fill="rgb(116,116,116)" stroke="#fff" stroke-width="1"/>
+<rect x="180" y="120" width="30" height="30" fill="rgb(93,93,93)" stroke="#fff" stroke-width="1"/>
+<rect x="30" y="150" width="30" height="30" fill="rgb(70,70,70)" stroke="#fff" stroke-width="1"/>
+<rect x="60" y="150" width="30" height="30" fill="rgb(137,137,137)" stroke="#fff" stroke-width="1"/>
+<rect x="90" y="150" width="30" height="30" fill="rgb(210,210,210)" stroke="#fff" stroke-width="1"/>
+<rect x="120" y="150" width="30" height="30" fill="rgb(201,201,201)" stroke="#fff" stroke-width="1"/>
+<rect x="150" y="150" width="30" height="30" fill="rgb(131,131,131)" stroke="#fff" stroke-width="1"/>
+<rect x="180" y="150" width="30" height="30" fill="rgb(75,75,75)" stroke="#fff" stroke-width="1"/>
+<rect x="30" y="180" width="30" height="30" fill="rgb(71,71,71)" stroke="#fff" stroke-width="1"/>
+<rect x="60" y="180" width="30" height="30" fill="rgb(143,143,143)" stroke="#fff" stroke-width="1"/>
+<rect x="90" y="180" width="30" height="30" fill="rgb(221,221,221)" stroke="#fff" stroke-width="1"/>
+<rect x="120" y="180" width="30" height="30" fill="rgb(210,210,210)" stroke="#fff" stroke-width="1"/>
+<rect x="150" y="180" width="30" height="30" fill="rgb(126,126,126)" stroke="#fff" stroke-width="1"/>
+<rect x="180" y="180" width="30" height="30" fill="rgb(64,64,64)" stroke="#fff" stroke-width="1"/>
+<rect x="30" y="210" width="30" height="30" fill="rgb(58,58,58)" stroke="#fff" stroke-width="1"/>
+<rect x="60" y="210" width="30" height="30" fill="rgb(99,99,99)" stroke="#fff" stroke-width="1"/>
+<rect x="90" y="210" width="30" height="30" fill="rgb(143,143,143)" stroke="#fff" stroke-width="1"/>
+<rect x="120" y="210" width="30" height="30" fill="rgb(137,137,137)" stroke="#fff" stroke-width="1"/>
+<rect x="150" y="210" width="30" height="30" fill="rgb(89,89,89)" stroke="#fff" stroke-width="1"/>
+<rect x="180" y="210" width="30" height="30" fill="rgb(53,53,53)" stroke="#fff" stroke-width="1"/>
+<rect x="30" y="240" width="30" height="30" fill="rgb(45,45,45)" stroke="#fff" stroke-width="1"/>
+<rect x="60" y="240" width="30" height="30" fill="rgb(58,58,58)" stroke="#fff" stroke-width="1"/>
+<rect x="90" y="240" width="30" height="30" fill="rgb(71,71,71)" stroke="#fff" stroke-width="1"/>
+<rect x="120" y="240" width="30" height="30" fill="rgb(70,70,70)" stroke="#fff" stroke-width="1"/>
+<rect x="150" y="240" width="30" height="30" fill="rgb(55,55,55)" stroke="#fff" stroke-width="1"/>
+<rect x="180" y="240" width="30" height="30" fill="rgb(44,44,44)" stroke="#fff" stroke-width="1"/>
+<text x="105" y="171" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="bold" fill="#222">1567 m</text>
+<text x="60" y="260" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="normal" fill="#fff">200 m</text>
+<text x="120" y="300" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="normal" fill="#222">chaque case = une altitude</text>
+<text x="120" y="320" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="normal" fill="#555">clair = haut, foncé = bas</text>
+<line x1="218" y1="180" x2="242" y2="180" stroke="#222" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="262" cy="62" r="13" fill="#222"/><text x="262" y="67" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="bold" fill="#fff">2</text>
+<text x="282" y="68" font-family="Helvetica, Arial, sans-serif" font-size="16" text-anchor="start" font-weight="bold" fill="#222">Un point par case</text>
+<rect x="250" y="90" width="180" height="180" fill="none" stroke="#ddd"/>
+<circle cx="265" cy="105" r="4" fill="#c0392b"/>
+<circle cx="295" cy="105" r="4" fill="#c0392b"/>
+<circle cx="325" cy="105" r="4" fill="#c0392b"/>
+<circle cx="355" cy="105" r="4" fill="#c0392b"/>
+<circle cx="385" cy="105" r="4" fill="#c0392b"/>
+<circle cx="415" cy="105" r="4" fill="#c0392b"/>
+<circle cx="265" cy="135" r="4" fill="#c0392b"/>
+<circle cx="295" cy="135" r="4" fill="#c0392b"/>
+<circle cx="325" cy="135" r="4" fill="#c0392b"/>
+<circle cx="355" cy="135" r="4" fill="#c0392b"/>
+<circle cx="385" cy="135" r="4" fill="#c0392b"/>
+<circle cx="415" cy="135" r="4" fill="#c0392b"/>
+<circle cx="265" cy="165" r="4" fill="#c0392b"/>
+<circle cx="295" cy="165" r="4" fill="#c0392b"/>
+<circle cx="325" cy="165" r="4" fill="#c0392b"/>
+<circle cx="355" cy="165" r="4" fill="#c0392b"/>
+<circle cx="385" cy="165" r="4" fill="#c0392b"/>
+<circle cx="415" cy="165" r="4" fill="#c0392b"/>
+<circle cx="265" cy="195" r="4" fill="#c0392b"/>
+<circle cx="295" cy="195" r="4" fill="#c0392b"/>
+<circle cx="325" cy="195" r="4" fill="#c0392b"/>
+<circle cx="355" cy="195" r="4" fill="#c0392b"/>
+<circle cx="385" cy="195" r="4" fill="#c0392b"/>
+<circle cx="415" cy="195" r="4" fill="#c0392b"/>
+<circle cx="265" cy="225" r="4" fill="#c0392b"/>
+<circle cx="295" cy="225" r="4" fill="#c0392b"/>
+<circle cx="325" cy="225" r="4" fill="#c0392b"/>
+<circle cx="355" cy="225" r="4" fill="#c0392b"/>
+<circle cx="385" cy="225" r="4" fill="#c0392b"/>
+<circle cx="415" cy="225" r="4" fill="#c0392b"/>
+<circle cx="265" cy="255" r="4" fill="#c0392b"/>
+<circle cx="295" cy="255" r="4" fill="#c0392b"/>
+<circle cx="325" cy="255" r="4" fill="#c0392b"/>
+<circle cx="355" cy="255" r="4" fill="#c0392b"/>
+<circle cx="385" cy="255" r="4" fill="#c0392b"/>
+<circle cx="415" cy="255" r="4" fill="#c0392b"/>
+<text x="340" y="300" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="normal" fill="#222">une grille de points</text>
+<text x="340" y="320" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="normal" fill="#555">à plat, tous à hauteur 0</text>
+<line x1="438" y1="180" x2="462" y2="180" stroke="#222" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="482" cy="62" r="13" fill="#222"/><text x="482" y="67" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="bold" fill="#fff">3</text>
+<text x="502" y="68" font-family="Helvetica, Arial, sans-serif" font-size="16" text-anchor="start" font-weight="bold" fill="#222">Des triangles</text>
+<rect x="470" y="90" width="180" height="180" fill="none" stroke="#ddd"/>
+<path d="M485,105 L515,105 L515,135 L485,135 Z M515,105 L485,135" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M515,105 L545,105 L545,135 L515,135 Z M545,105 L515,135" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M545,105 L575,105 L575,135 L545,135 Z M575,105 L545,135" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M575,105 L605,105 L605,135 L575,135 Z M605,105 L575,135" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M605,105 L635,105 L635,135 L605,135 Z M635,105 L605,135" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M485,135 L515,135 L515,165 L485,165 Z M515,135 L485,165" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M515,135 L545,135 L545,165 L515,165 Z M545,135 L515,165" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M545,135 L575,135 L575,165 L545,165 Z M575,135 L545,165" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M575,135 L605,135 L605,165 L575,165 Z M605,135 L575,165" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M605,135 L635,135 L635,165 L605,165 Z M635,135 L605,165" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M485,165 L515,165 L515,195 L485,195 Z M515,165 L485,195" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M515,165 L545,165 L545,195 L515,195 Z M545,165 L515,195" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M545,165 L575,165 L575,195 L545,195 Z M575,165 L545,195" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M575,165 L605,165 L605,195 L575,195 Z M605,165 L575,195" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M605,165 L635,165 L635,195 L605,195 Z M635,165 L605,195" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M485,195 L515,195 L515,225 L485,225 Z M515,195 L485,225" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M515,195 L545,195 L545,225 L515,225 Z M545,195 L515,225" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M545,195 L575,195 L575,225 L545,225 Z M575,195 L545,225" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M575,195 L605,195 L605,225 L575,225 Z M605,195 L575,225" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M605,195 L635,195 L635,225 L605,225 Z M635,195 L605,225" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M485,225 L515,225 L515,255 L485,255 Z M515,225 L485,255" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M515,225 L545,225 L545,255 L515,255 Z M545,225 L515,255" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M545,225 L575,225 L575,255 L545,255 Z M575,225 L545,255" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M575,225 L605,225 L605,255 L575,255 Z M605,225 L575,255" fill="none" stroke="#222" stroke-width="1.2"/>
+<path d="M605,225 L635,225 L635,255 L605,255 Z M635,225 L605,255" fill="none" stroke="#222" stroke-width="1.2"/>
+<circle cx="485" cy="105" r="4" fill="#222"/>
+<circle cx="515" cy="105" r="4" fill="#222"/>
+<circle cx="545" cy="105" r="4" fill="#222"/>
+<circle cx="575" cy="105" r="4" fill="#222"/>
+<circle cx="605" cy="105" r="4" fill="#222"/>
+<circle cx="635" cy="105" r="4" fill="#222"/>
+<circle cx="485" cy="135" r="4" fill="#222"/>
+<circle cx="515" cy="135" r="4" fill="#222"/>
+<circle cx="545" cy="135" r="4" fill="#222"/>
+<circle cx="575" cy="135" r="4" fill="#222"/>
+<circle cx="605" cy="135" r="4" fill="#222"/>
+<circle cx="635" cy="135" r="4" fill="#222"/>
+<circle cx="485" cy="165" r="4" fill="#222"/>
+<circle cx="515" cy="165" r="4" fill="#222"/>
+<circle cx="545" cy="165" r="4" fill="#222"/>
+<circle cx="575" cy="165" r="4" fill="#222"/>
+<circle cx="605" cy="165" r="4" fill="#222"/>
+<circle cx="635" cy="165" r="4" fill="#222"/>
+<circle cx="485" cy="195" r="4" fill="#222"/>
+<circle cx="515" cy="195" r="4" fill="#222"/>
+<circle cx="545" cy="195" r="4" fill="#222"/>
+<circle cx="575" cy="195" r="4" fill="#222"/>
+<circle cx="605" cy="195" r="4" fill="#222"/>
+<circle cx="635" cy="195" r="4" fill="#222"/>
+<circle cx="485" cy="225" r="4" fill="#222"/>
+<circle cx="515" cy="225" r="4" fill="#222"/>
+<circle cx="545" cy="225" r="4" fill="#222"/>
+<circle cx="575" cy="225" r="4" fill="#222"/>
+<circle cx="605" cy="225" r="4" fill="#222"/>
+<circle cx="635" cy="225" r="4" fill="#222"/>
+<circle cx="485" cy="255" r="4" fill="#222"/>
+<circle cx="515" cy="255" r="4" fill="#222"/>
+<circle cx="545" cy="255" r="4" fill="#222"/>
+<circle cx="575" cy="255" r="4" fill="#222"/>
+<circle cx="605" cy="255" r="4" fill="#222"/>
+<circle cx="635" cy="255" r="4" fill="#222"/>
+<text x="560" y="300" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="normal" fill="#222">on relie les points</text>
+<text x="560" y="320" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="normal" fill="#555">3 par 3 : une surface</text>
+<line x1="658" y1="180" x2="682" y2="180" stroke="#222" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="702" cy="62" r="13" fill="#222"/><text x="702" y="67" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="bold" fill="#fff">4</text>
+<text x="722" y="68" font-family="Helvetica, Arial, sans-serif" font-size="16" text-anchor="start" font-weight="bold" fill="#222">Le relief soulevé</text>
+<path d="M780,158.80057206361514 L795,165.0670483275452 L780,163.38768280360264 L765,164.54358498831274 Z" fill="rgb(227,227,227)" stroke="#222" stroke-width="1"/>
+<path d="M795,165.0670483275452 L765,164.54358498831274" stroke="#222" stroke-width="0.8"/>
+<path d="M795,165.0670483275452 L810,171.06629662414883 L795,161.30321342302943 L780,163.38768280360264 Z" fill="rgb(220,220,220)" stroke="#222" stroke-width="1"/>
+<path d="M810,171.06629662414883 L780,163.38768280360264" stroke="#222" stroke-width="0.8"/>
+<path d="M810,171.06629662414883 L825,179.4737031135682 L810,170.1904671212597 L795,161.30321342302943 Z" fill="rgb(219,219,219)" stroke="#222" stroke-width="1"/>
+<path d="M825,179.4737031135682 L795,161.30321342302943" stroke="#222" stroke-width="0.8"/>
+<path d="M825,179.4737031135682 L840,186.22064423402998 L825,182.13823926171384 L810,170.1904671212597 Z" fill="rgb(220,220,220)" stroke="#222" stroke-width="1"/>
+<path d="M840,186.22064423402998 L810,170.1904671212597" stroke="#222" stroke-width="0.8"/>
+<path d="M840,186.22064423402998 L855,196.42122313193548 L840,198.04239148827693 L825,182.13823926171384 Z" fill="rgb(222,222,222)" stroke="#222" stroke-width="1"/>
+<path d="M855,196.42122313193548 L825,182.13823926171384" stroke="#222" stroke-width="0.8"/>
+<path d="M765,164.54358498831274 L780,163.38768280360264 L765,157.94043369949296 L750,169.13736102102837 Z" fill="rgb(218,218,218)" stroke="#222" stroke-width="1"/>
+<path d="M780,163.38768280360264 L750,169.13736102102837" stroke="#222" stroke-width="0.8"/>
+<path d="M780,163.38768280360264 L795,161.30321342302943 L780,144.98287566764643 L765,157.94043369949296 Z" fill="rgb(202,202,202)" stroke="#222" stroke-width="1"/>
+<path d="M795,161.30321342302943 L765,157.94043369949296" stroke="#222" stroke-width="0.8"/>
+<path d="M795,161.30321342302943 L810,170.1904671212597 L795,156.55391697422857 L780,144.98287566764643 Z" fill="rgb(198,198,198)" stroke="#222" stroke-width="1"/>
+<path d="M810,170.1904671212597 L780,144.98287566764643" stroke="#222" stroke-width="0.8"/>
+<path d="M810,170.1904671212597 L825,182.13823926171384 L810,186.56189737892356 L795,156.55391697422857 Z" fill="rgb(208,208,208)" stroke="#222" stroke-width="1"/>
+<path d="M825,182.13823926171384 L795,156.55391697422857" stroke="#222" stroke-width="0.8"/>
+<path d="M825,182.13823926171384 L840,198.04239148827693 L825,212.56199781017435 L810,186.56189737892356 Z" fill="rgb(218,218,218)" stroke="#222" stroke-width="1"/>
+<path d="M840,198.04239148827693 L810,186.56189737892356" stroke="#222" stroke-width="0.8"/>
+<path d="M750,169.13736102102837 L765,157.94043369949296 L750,165.06634538104078 L735,177.56577001534282 Z" fill="rgb(215,215,215)" stroke="#222" stroke-width="1"/>
+<path d="M765,157.94043369949296 L735,177.56577001534282" stroke="#222" stroke-width="0.8"/>
+<path d="M765,157.94043369949296 L780,144.98287566764643 L765,150.7088045072513 L750,165.06634538104078 Z" fill="rgb(193,193,193)" stroke="#222" stroke-width="1"/>
+<path d="M780,144.98287566764643 L750,165.06634538104078" stroke="#222" stroke-width="0.8"/>
+<path d="M780,144.98287566764643 L795,156.55391697422857 L780,162.9675613102049 L765,150.7088045072513 Z" fill="rgb(184,184,184)" stroke="#222" stroke-width="1"/>
+<path d="M795,156.55391697422857 L765,150.7088045072513" stroke="#222" stroke-width="0.8"/>
+<path d="M795,156.55391697422857 L810,186.56189737892356 L795,197.15824815202228 L780,162.9675613102049 Z" fill="rgb(198,198,198)" stroke="#222" stroke-width="1"/>
+<path d="M810,186.56189737892356 L780,162.9675613102049" stroke="#222" stroke-width="0.8"/>
+<path d="M810,186.56189737892356 L825,212.56199781017435 L810,224.86521209643493 L795,197.15824815202228 Z" fill="rgb(218,218,218)" stroke="#222" stroke-width="1"/>
+<path d="M825,212.56199781017435 L795,197.15824815202228" stroke="#222" stroke-width="0.8"/>
+<path d="M735,177.56577001534282 L750,165.06634538104078 L735,187.37453792036933 L720,190.62453779344324 Z" fill="rgb(221,221,221)" stroke="#222" stroke-width="1"/>
+<path d="M750,165.06634538104078 L720,190.62453779344324" stroke="#222" stroke-width="0.8"/>
+<path d="M750,165.06634538104078 L765,150.7088045072513 L750,183.06634024364618 L735,187.37453792036933 Z" fill="rgb(204,204,204)" stroke="#222" stroke-width="1"/>
+<path d="M765,150.7088045072513 L735,187.37453792036933" stroke="#222" stroke-width="0.8"/>
+<path d="M765,150.7088045072513 L780,162.9675613102049 L765,193.9401762261611 L750,183.06634024364618 Z" fill="rgb(193,193,193)" stroke="#222" stroke-width="1"/>
+<path d="M780,162.9675613102049 L750,183.06634024364618" stroke="#222" stroke-width="0.8"/>
+<path d="M780,162.9675613102049 L795,197.15824815202228 L780,217.38579189266815 L765,193.9401762261611 Z" fill="rgb(202,202,202)" stroke="#222" stroke-width="1"/>
+<path d="M795,197.15824815202228 L765,193.9401762261611" stroke="#222" stroke-width="0.8"/>
+<path d="M795,197.15824815202228 L810,224.86521209643493 L795,237.06464435307913 L780,217.38579189266815 Z" fill="rgb(220,220,220)" stroke="#222" stroke-width="1"/>
+<path d="M810,224.86521209643493 L780,217.38579189266815" stroke="#222" stroke-width="0.8"/>
+<path d="M720,190.62453779344324 L735,187.37453792036933 L720,208.62453779338176 L705,203.3605766531623 Z" fill="rgb(230,230,230)" stroke="#222" stroke-width="1"/>
+<path d="M735,187.37453792036933 L705,203.3605766531623" stroke="#222" stroke-width="0.8"/>
+<path d="M735,187.37453792036933 L750,183.06634024364618 L735,213.56576999902913 L720,208.62453779338176 Z" fill="rgb(221,221,221)" stroke="#222" stroke-width="1"/>
+<path d="M750,183.06634024364618 L720,208.62453779338176" stroke="#222" stroke-width="0.8"/>
+<path d="M750,183.06634024364618 L765,193.9401762261611 L750,223.13736038669842 L735,213.56576999902913 Z" fill="rgb(215,215,215)" stroke="#222" stroke-width="1"/>
+<path d="M765,193.9401762261611 L735,213.56576999902913" stroke="#222" stroke-width="0.8"/>
+<path d="M765,193.9401762261611 L780,217.38579189266815 L765,236.54358071860517 L750,223.13736038669842 Z" fill="rgb(218,218,218)" stroke="#222" stroke-width="1"/>
+<path d="M780,217.38579189266815 L750,223.13736038669842" stroke="#222" stroke-width="0.8"/>
+<path d="M780,217.38579189266815 L795,237.06464435307913 L780,248.80056683628027 L765,236.54358071860517 Z" fill="rgb(227,227,227)" stroke="#222" stroke-width="1"/>
+<path d="M795,237.06464435307913 L765,236.54358071860517" stroke="#222" stroke-width="0.8"/>
+<line x1="765" y1="255" x2="765" y2="154.7088045072513" stroke="#c0392b" stroke-width="2" marker-end="url(#arrowRed)"/>
+<text x="780" y="300" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="normal" fill="#222">chaque point monte</text>
+<text x="780" y="320" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="normal" fill="#555">à l'altitude lue</text>
+<text x="450" y="360" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="normal" fill="#555">Sur la vraie carte : jusqu'à 1 025 × 1 025 points, et une image de plusieurs millions d'altitudes.</text>
+</svg>

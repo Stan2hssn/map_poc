@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="460" viewBox="0 0 900 460">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222"/></marker>
+<marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/></marker></defs>
+<rect width="900" height="460" fill="#ffffff"/>
+<text x="450" y="32" font-family="Helvetica, Arial, sans-serif" font-size="20" text-anchor="middle" font-weight="bold" fill="#222">Le filet : une grille posée sur l'écran, lancée vers le sol</text>
+<rect x="60" y="92" width="44" height="32" rx="4" fill="#222"/>
+<path d="M104,102 L120,94 L120,122 L104,114 Z" fill="#222"/>
+<text x="82" y="80" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="bold" fill="#222">caméra</text>
+<line x1="215" y1="112" x2="251" y2="236" stroke="#222" stroke-width="4"/>
+<text x="235" y="102" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="bold" fill="#222">écran</text>
+<line x1="60" y1="360" x2="860" y2="360" stroke="#888" stroke-width="1.5" stroke-dasharray="6 5"/>
+<path d="M60,360 L60,360.0 L70,360.0 L80,360.0 L90,360.0 L100,360.0 L110,360.0 L120,360.0 L130,360.0 L140,360.0 L150,360.0 L160,360.0 L170,360.0 L180,360.0 L190,360.0 L200,360.0 L210,360.0 L220,360.0 L230,360.0 L240,360.0 L250,359.9 L260,359.8 L270,359.6 L280,359.3 L290,358.8 L300,357.9 L310,356.7 L320,354.9 L330,352.6 L340,349.8 L350,346.6 L360,343.1 L370,339.9 L380,337.1 L390,335.2 L400,334.3 L410,334.5 L420,335.7 L430,337.6 L440,339.8 L450,341.7 L460,343.0 L470,343.5 L480,342.8 L490,341.1 L500,338.2 L510,334.4 L520,329.9 L530,324.8 L540,319.6 L550,314.5 L560,309.7 L570,305.7 L580,302.6 L590,300.7 L600,300.0 L610,300.7 L620,302.6 L630,305.7 L640,309.8 L650,314.6 L660,319.8 L670,325.2 L680,330.5 L690,335.6 L700,340.2 L710,344.4 L720,347.9 L730,350.8 L740,353.2 L750,355.1 L760,356.5 L770,357.6 L780,358.4 L790,358.9 L800,359.3 L810,359.6 L820,359.7 L830,359.8 L840,359.9 L850,359.9 L860,360.0" fill="none" stroke="#222" stroke-width="2.5"/>
+<text x="862" y="382" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="end" font-weight="normal" fill="#555">sol plat (hauteur 0)</text>
+<text x="745" y="338" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="bold" fill="#222">relief</text>
+<circle cx="215" cy="120" r="4.5" fill="#c0392b"/>
+<circle cx="187" cy="116" r="13" fill="#222"/><text x="187" y="121" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="bold" fill="#fff">1</text>
+<line x1="120" y1="110" x2="860" y2="187.89473684210526" stroke="#888" stroke-width="1" stroke-dasharray="3 4"/>
+<circle cx="221" cy="138" r="4.5" fill="#c0392b"/>
+<line x1="120" y1="110" x2="860" y2="315.1485148514852" stroke="#888" stroke-width="1" stroke-dasharray="3 4"/>
+<circle cx="227" cy="156" r="4.5" fill="#c0392b"/>
+<line x1="120" y1="110" x2="701.5217391304348" y2="360" stroke="#888" stroke-width="1"/>
+<circle cx="701.5217391304348" cy="360" r="4" fill="#fff" stroke="#222" stroke-width="1.5"/>
+<line x1="701.5217391304348" y1="355" x2="701.5217391304348" y2="347.91009374041266" stroke="#c0392b" stroke-width="2" marker-end="url(#arrowRed)"/>
+<circle cx="701.5217391304348" cy="340.91009374041266" r="4.5" fill="#222"/>
+<circle cx="233" cy="174" r="4.5" fill="#c0392b"/>
+<line x1="120" y1="110" x2="561.40625" y2="360" stroke="#888" stroke-width="1"/>
+<circle cx="561.40625" cy="360" r="4" fill="#fff" stroke="#222" stroke-width="1.5"/>
+<line x1="561.40625" y1="355" x2="561.40625" y2="316.11458057504944" stroke="#c0392b" stroke-width="2" marker-end="url(#arrowRed)"/>
+<circle cx="561.40625" cy="309.11458057504944" r="4.5" fill="#222"/>
+<circle cx="239" cy="192" r="4.5" fill="#c0392b"/>
+<line x1="120" y1="110" x2="482.8048780487805" y2="360" stroke="#888" stroke-width="1"/>
+<circle cx="482.8048780487805" cy="360" r="4" fill="#fff" stroke="#222" stroke-width="1.5"/>
+<line x1="482.8048780487805" y1="355" x2="482.8048780487805" y2="349.45393189049463" stroke="#c0392b" stroke-width="2" marker-end="url(#arrowRed)"/>
+<circle cx="482.8048780487805" cy="342.45393189049463" r="4.5" fill="#222"/>
+<circle cx="245" cy="210" r="4.5" fill="#c0392b"/>
+<line x1="120" y1="110" x2="432.5" y2="360" stroke="#888" stroke-width="1"/>
+<circle cx="432.5" cy="360" r="4" fill="#fff" stroke="#222" stroke-width="1.5"/>
+<line x1="432.5" y1="355" x2="432.5" y2="345.1454305398082" stroke="#c0392b" stroke-width="2" marker-end="url(#arrowRed)"/>
+<circle cx="432.5" cy="338.1454305398082" r="4.5" fill="#222"/>
+<circle cx="251" cy="228" r="4.5" fill="#c0392b"/>
+<line x1="120" y1="110" x2="397.54237288135596" y2="360" stroke="#888" stroke-width="1"/>
+<circle cx="397.54237288135596" cy="360" r="4" fill="#fff" stroke="#222" stroke-width="1.5"/>
+<line x1="397.54237288135596" y1="355" x2="397.54237288135596" y2="341.4064367161519" stroke="#c0392b" stroke-width="2" marker-end="url(#arrowRed)"/>
+<circle cx="397.54237288135596" cy="334.4064367161519" r="4.5" fill="#222"/>
+<circle cx="250" cy="300" r="13" fill="#222"/><text x="250" y="305" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="bold" fill="#fff">2</text>
+<text x="270" y="305" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="start" font-weight="normal" fill="#222">chaque point est lancé</text>
+<text x="270" y="323" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="start" font-weight="normal" fill="#222">tout droit jusqu'au sol</text>
+<circle cx="560" cy="225" r="13" fill="#222"/><text x="560" y="230" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="middle" font-weight="bold" fill="#fff">3</text>
+<text x="580" y="222" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="start" font-weight="normal" fill="#222">puis soulevé à l'altitude</text>
+<text x="580" y="240" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="start" font-weight="normal" fill="#222">lue dans l'image</text>
+<text x="40" y="250" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="start" font-weight="normal" fill="#c0392b">points rouges :</text>
+<text x="40" y="268" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="start" font-weight="normal" fill="#c0392b">la grille, fixée à l'écran</text>
+<line x1="300" y1="410" x2="60" y2="410" stroke="#222" stroke-width="2.5" marker-end="url(#arrow)"/>
+<text x="320" y="415" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="start" font-weight="normal" fill="#222">on fait glisser la carte : c'est elle qui défile sous le filet ;</text>
+<text x="320" y="434" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="start" font-weight="normal" fill="#222">la grille et la caméra restent (presque) au même endroit</text>
+</svg>

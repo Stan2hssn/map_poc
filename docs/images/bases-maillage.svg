@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 460" width="900" height="460" font-family="Helvetica, Arial, sans-serif">
+<rect width="900" height="460" fill="#ffffff"/>
+<text x="450" y="36" font-size="20" font-weight="bold" text-anchor="middle" fill="#222">Une forme 3D = des points reliés en triangles</text>
+<!-- panneau 1 -->
+<text x="150" y="80" font-size="16" font-weight="bold" text-anchor="middle" fill="#222">1. Trois points</text>
+<polygon points="60,250 240,230 160,120" fill="#e8e4da" stroke="#222" stroke-width="2.5"/>
+<circle cx="60" cy="250" r="6" fill="#222"/><circle cx="240" cy="230" r="6" fill="#222"/><circle cx="160" cy="120" r="6" fill="#222"/>
+<text x="150" y="290" font-size="14" text-anchor="middle" fill="#222">toujours à plat,</text>
+<text x="150" y="310" font-size="14" text-anchor="middle" fill="#222">comme un tabouret à 3 pieds</text>
+<text x="150" y="330" font-size="14" text-anchor="middle" fill="#222">qui ne boite jamais</text>
+<!-- panneau 2 -->
+<text x="450" y="80" font-size="16" font-weight="bold" text-anchor="middle" fill="#222">2. Quatre points</text>
+<polygon points="360,250 540,250 520,150 380,110" fill="#e8e4da" stroke="#222" stroke-width="2.5"/>
+<line x1="360" y1="250" x2="520" y2="150" stroke="#b03a2e" stroke-width="2.5" stroke-dasharray="7 5"/>
+<circle cx="360" cy="250" r="6" fill="#222"/><circle cx="540" cy="250" r="6" fill="#222"/><circle cx="520" cy="150" r="6" fill="#222"/><circle cx="380" cy="110" r="6" fill="#b03a2e"/>
+<text x="398" y="104" font-size="14" fill="#b03a2e">point soulevé</text>
+<text x="450" y="290" font-size="14" text-anchor="middle" fill="#222">le carré peut se plier :</text>
+<text x="450" y="310" font-size="14" text-anchor="middle" fill="#222">on le coupe en 2 triangles</text>
+<text x="450" y="330" font-size="14" text-anchor="middle" fill="#b03a2e">(la diagonale en pointillé)</text>
+<!-- panneau 3 : grille 4x4 -->
+<text x="750" y="80" font-size="16" font-weight="bold" text-anchor="middle" fill="#222">3. Une grille</text>
+<g stroke="#222" stroke-width="1.5" fill="none">
+<rect x="650" y="110" width="200" height="160" fill="#e8e4da"/>
+<line x1="700" y1="110" x2="700" y2="270"/><line x1="750" y1="110" x2="750" y2="270"/><line x1="800" y1="110" x2="800" y2="270"/>
+<line x1="650" y1="150" x2="850" y2="150"/><line x1="650" y1="190" x2="850" y2="190"/><line x1="650" y1="230" x2="850" y2="230"/>
+<line x1="650" y1="150" x2="700" y2="110"/><line x1="650" y1="190" x2="750" y2="110"/><line x1="650" y1="230" x2="800" y2="110"/><line x1="650" y1="270" x2="850" y2="110"/>
+<line x1="700" y1="270" x2="850" y2="150"/><line x1="750" y1="270" x2="850" y2="190"/><line x1="800" y1="270" x2="850" y2="230"/>
+</g>
+<g fill="#222">
+<circle cx="650" cy="110" r="3.5"/><circle cx="700" cy="110" r="3.5"/><circle cx="750" cy="110" r="3.5"/><circle cx="800" cy="110" r="3.5"/><circle cx="850" cy="110" r="3.5"/>
+<circle cx="650" cy="150" r="3.5"/><circle cx="700" cy="150" r="3.5"/><circle cx="750" cy="150" r="3.5"/><circle cx="800" cy="150" r="3.5"/><circle cx="850" cy="150" r="3.5"/>
+<circle cx="650" cy="190" r="3.5"/><circle cx="700" cy="190" r="3.5"/><circle cx="750" cy="190" r="3.5"/><circle cx="800" cy="190" r="3.5"/><circle cx="850" cy="190" r="3.5"/>
+<circle cx="650" cy="230" r="3.5"/><circle cx="700" cy="230" r="3.5"/><circle cx="750" cy="230" r="3.5"/><circle cx="800" cy="230" r="3.5"/><circle cx="850" cy="230" r="3.5"/>
+<circle cx="650" cy="270" r="3.5"/><circle cx="700" cy="270" r="3.5"/><circle cx="750" cy="270" r="3.5"/><circle cx="800" cy="270" r="3.5"/><circle cx="850" cy="270" r="3.5"/>
+</g>
+<text x="750" y="290" font-size="14" text-anchor="middle" fill="#222">4 × 4 cases</text>
+<text x="750" y="310" font-size="14" text-anchor="middle" fill="#222">= 5 × 5 = 25 sommets</text>
+<text x="750" y="330" font-size="14" text-anchor="middle" fill="#222">= 4 × 4 × 2 = 32 triangles</text>
+<!-- bandeau -->
+<rect x="40" y="360" width="820" height="80" fill="#f3f0e8" stroke="#ccc"/>
+<text x="450" y="390" font-size="15" text-anchor="middle" fill="#222">Le sol de la carte est une grille de ce type posée sur l’écran, en bien plus fin (au plus) :</text>
+<text x="450" y="418" font-size="15" text-anchor="middle" fill="#222">1024 × 1024 cases → 1025 × 1025 = 1 050 625 sommets et 2 097 152 triangles.</text>
+</svg>

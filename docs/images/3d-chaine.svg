@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="720" viewBox="0 0 880 720" font-family="sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#222"/>
+    </marker>
+  </defs>
+  <rect width="880" height="720" fill="#fff"/>
+  <text x="24" y="34" font-size="20" font-weight="bold" fill="#222">De l'internet à l'image dessinée, en 7 étapes</text>
+
+  <g stroke="#222" stroke-width="2" fill="#fff">
+    <rect x="24" y="56" width="832" height="70" rx="8"/>
+    <rect x="24" y="148" width="832" height="70" rx="8"/>
+    <rect x="24" y="240" width="832" height="70" rx="8"/>
+    <rect x="24" y="332" width="832" height="70" rx="8"/>
+    <rect x="24" y="424" width="832" height="70" rx="8"/>
+    <rect x="24" y="516" width="832" height="70" rx="8"/>
+    <rect x="24" y="608" width="832" height="70" rx="8"/>
+  </g>
+  <g stroke="#222" stroke-width="2">
+    <line x1="440" y1="126" x2="440" y2="146" marker-end="url(#a)"/>
+    <line x1="440" y1="218" x2="440" y2="238" marker-end="url(#a)"/>
+    <line x1="440" y1="310" x2="440" y2="330" marker-end="url(#a)"/>
+    <line x1="440" y1="402" x2="440" y2="422" marker-end="url(#a)"/>
+    <line x1="440" y1="494" x2="440" y2="514" marker-end="url(#a)"/>
+    <line x1="440" y1="586" x2="440" y2="606" marker-end="url(#a)"/>
+  </g>
+
+  <!-- icons column x 40..100 -->
+  <!-- 1 cloud/server -->
+  <g fill="none" stroke="#222" stroke-width="2">
+    <path d="M52 104 a10 10 0 0 1 4 -19 a14 14 0 0 1 26 -2 a10 10 0 0 1 8 21 z"/>
+  </g>
+  <!-- 2 tile -->
+  <g stroke="#222" stroke-width="1.5">
+    <rect x="50" y="160" width="44" height="44" fill="#eee"/>
+    <rect x="50" y="160" width="22" height="22" fill="#bbb"/>
+    <rect x="72" y="182" width="22" height="22" fill="#777"/>
+    <rect x="72" y="160" width="22" height="22" fill="#999"/>
+  </g>
+  <!-- 3 points -->
+  <g fill="#222">
+    <circle cx="54" cy="256" r="3"/><circle cx="72" cy="256" r="3"/><circle cx="90" cy="256" r="3"/>
+    <circle cx="54" cy="274" r="3"/><circle cx="72" cy="274" r="3"/><circle cx="90" cy="274" r="3"/>
+    <circle cx="54" cy="292" r="3"/><circle cx="72" cy="292" r="3"/><circle cx="90" cy="292" r="3"/>
+  </g>
+  <!-- 4 triangles -->
+  <g fill="none" stroke="#222" stroke-width="1.5">
+    <path d="M54 348 H90 V384 H54 z M72 348 V384 M54 366 H90 M54 366 L72 348 M54 384 L72 366 M72 366 L90 348 M72 384 L90 366"/>
+  </g>
+  <!-- 5 relief -->
+  <path d="M46 478 L60 456 L70 466 L82 444 L98 478 z" fill="#eee" stroke="#b5462f" stroke-width="2" stroke-linejoin="round"/>
+  <!-- 6 objects -->
+  <g fill="none" stroke="#222" stroke-width="2">
+    <path d="M48 570 V552 L58 543 L68 552 V570 z"/>
+    <circle cx="84" cy="548" r="8"/>
+    <line x1="84" y1="556" x2="84" y2="570"/>
+    <line x1="44" y1="570" x2="98" y2="570"/>
+  </g>
+  <!-- 7 hatching -->
+  <g stroke="#222" stroke-width="1.5">
+    <rect x="50" y="620" width="44" height="44" fill="#fff"/>
+    <line x1="50" y1="632" x2="62" y2="620"/><line x1="50" y1="644" x2="74" y2="620"/>
+    <line x1="50" y1="656" x2="86" y2="620"/><line x1="54" y1="664" x2="94" y2="624"/>
+    <line x1="66" y1="664" x2="94" y2="636"/><line x1="78" y1="664" x2="94" y2="648"/>
+  </g>
+
+  <g font-size="16" font-weight="bold" fill="#222">
+    <text x="120" y="84">1. Les données arrivent d'internet</text>
+    <text x="120" y="176">2. Les altitudes sont rangées dans des images</text>
+    <text x="120" y="268">3. Une grille de points collée à l'écran</text>
+    <text x="120" y="360">4. Les points sont reliés en triangles</text>
+    <text x="120" y="452">5. Chaque point est soulevé : le relief</text>
+    <text x="120" y="544">6. On pose dessus bâtiments, arbres, véhicules, ciel</text>
+    <text x="120" y="636">7. Tout est redessiné à l'encre sur du papier</text>
+  </g>
+  <g font-size="14" fill="#555">
+    <text x="120" y="108">services de l'IGN : altitudes, plan, bâtiments, routes, noms</text>
+    <text x="120" y="200">une tuile = 256 × 256 pixels = 65 536 altitudes</text>
+    <text x="120" y="292">de 66 049 à 1 050 625 points selon le relief, jamais selon le zoom</text>
+    <text x="120" y="384">chaque carré de la grille devient 2 triangles</text>
+    <text x="120" y="476">la carte graphique lit l'altitude sous chaque point et le monte</text>
+    <text x="120" y="568">au sol : même altitude que le relief ; au ciel : au-dessus du plus haut sommet</text>
+    <text x="120" y="660">contours, hachures, grain du papier</text>
+  </g>
+  <g font-size="14" fill="#b5462f">
+    <text x="690" y="96">→ Les données</text>
+    <text x="690" y="188">→ Les données</text>
+    <text x="690" y="280">→ ce chapitre</text>
+    <text x="690" y="372">→ Le terrain</text>
+    <text x="690" y="464">→ Le terrain</text>
+    <text x="640" y="540">→ Les bâtiments</text>
+    <text x="640" y="558">→ La végétation, Les véhicules</text>
+    <text x="640" y="576">→ Le ciel</text>
+    <text x="690" y="648">→ Le dessin</text>
+  </g>
+</svg>

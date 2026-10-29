@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500" font-family="sans-serif">
+  <defs>
+    <marker id="fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#222"/>
+    </marker>
+  </defs>
+  <rect width="800" height="500" fill="#ffffff"/>
+  <text x="400" y="34" font-size="20" font-weight="bold" fill="#222" text-anchor="middle">Le vol Marseille → Paris, vu de côté (vue de 30 km au départ et à l'arrivée)</text>
+
+  <line x1="100" y1="70" x2="100" y2="330" stroke="#222" stroke-width="2" marker-start="url(#fl)"/>
+  <text x="108" y="72" font-size="14" fill="#222">plus haut = on voit plus large</text>
+  <g font-size="14" fill="#555" text-anchor="end">
+    <line x1="94" y1="297" x2="100" y2="297" stroke="#222"/><text x="90" y="302">30 km</text>
+    <line x1="94" y1="221" x2="100" y2="221" stroke="#222"/><text x="90" y="226">100 km</text>
+    <line x1="94" y1="97.5" x2="100" y2="97.5" stroke="#222"/><text x="90" y="102">215 km</text>
+  </g>
+
+  <line x1="60" y1="330" x2="740" y2="330" stroke="#8a6d3b" stroke-width="3"/>
+  <text x="400" y="352" font-size="14" fill="#8a6d3b" text-anchor="middle">le sol (665 km entre les deux villes)</text>
+  <circle cx="100" cy="330" r="7" fill="#222"/><text x="100" y="375" font-size="16" fill="#222" text-anchor="middle" font-weight="bold">Marseille</text>
+  <circle cx="700" cy="330" r="7" fill="#222"/><text x="700" y="375" font-size="16" fill="#222" text-anchor="middle" font-weight="bold">Paris</text>
+
+  <polyline fill="none" stroke="#1f4e79" stroke-width="4" points="100.0,297.3 100.0,297.2 100.1,296.9 100.2,296.4 100.3,295.7 100.5,294.8 100.7,293.7 101.0,292.3 101.4,290.6 101.8,288.6 102.4,286.3 103.1,283.5 104.0,280.4 105.1,276.7 106.4,272.4 108.2,267.4 110.4,261.7 113.1,255.1 116.7,247.5 121.3,238.7 127.3,228.6 135.1,217.2 145.1,204.2 158.3,189.8 175.3,174.0 197.2,157.3 224.9,140.3 259.2,124.1 300.4,110.4 347.9,100.9 400.0,97.5 452.1,100.9 499.6,110.4 540.8,124.1 575.1,140.3 602.8,157.3 624.7,174.0 641.7,189.8 654.9,204.2 664.9,217.2 672.7,228.6 678.7,238.7 683.3,247.5 686.9,255.1 689.6,261.7 691.8,267.4 693.6,272.4 694.9,276.7 696.0,280.4 696.9,283.5 697.6,286.3 698.2,288.6 698.6,290.6 699.0,292.3 699.3,293.7 699.5,294.8 699.7,295.7 699.8,296.4 699.9,296.9 700.0,297.2 700.0,297.3"/>
+
+  <g fill="#c0392b" font-size="14">
+    <circle cx="109" cy="264" r="6"/><text x="119" y="285">0,5 s</text>
+    <circle cx="400" cy="97.5" r="6"/><text x="400" y="85" text-anchor="middle">1 s : à mi-chemin, au plus haut</text>
+    <circle cx="689" cy="259" r="6"/><text x="679" y="285" text-anchor="end">1,4 s</text>
+    <circle cx="700" cy="297" r="6"/><text x="712" y="292">1,9 s</text>
+  </g>
+
+  <g font-size="16" fill="#222" font-weight="bold">
+    <text x="150" y="250">1. monter</text>
+    <text x="330" y="150">2. avancer</text>
+    <text x="490" y="250">3. redescendre</text>
+  </g>
+
+  <g font-size="15" fill="#222">
+    <text x="60" y="415">La première demi-seconde, on monte presque sur place : moins de 2 % du trajet.</text>
+    <text x="60" y="440">Le gros du voyage (de 16 % à 91 %) se fait entre 0,8 s et 1,2 s, tout en haut,</text>
+    <text x="60" y="465">là où un kilomètre ne fait que quelques pixels : l'œil suit sans peine.</text>
+    <text x="60" y="490">Les points rouges indiquent le temps écoulé depuis le départ (1,9 s en tout).</text>
+  </g>
+</svg>

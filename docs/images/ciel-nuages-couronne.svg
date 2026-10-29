@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 560" width="880" height="560" font-family="sans-serif" font-size="15" fill="#222">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222"/></marker>
+  </defs>
+  <rect width="880" height="560" fill="#fff"/>
+  <text x="30" y="34" font-size="19" font-weight="bold">Où vivent les nuages (vu de dessus)</text>
+  <!-- crown sector: center (230,420), radii 110 and 180, angles -45..45 around up (-90deg) -->
+  <path d="M152.2,342.2 A110,110 0 0,1 307.8,342.2 L357.3,292.7 A180,180 0 0,0 102.7,292.7 z" fill="#f0f0f0" stroke="#222" stroke-width="2"/>
+  <ellipse cx="230" cy="420" rx="74" ry="96" fill="#fafafa" stroke="#888" stroke-dasharray="5 4"/>
+  <circle cx="230" cy="420" r="5" fill="#222"/>
+  <text x="200" y="445" font-size="14" stroke="#fafafa" stroke-width="5" paint-order="stroke">point visé</text>
+  <text x="190" y="480" font-size="14" stroke="#fafafa" stroke-width="5" paint-order="stroke">zone dessinée</text>
+  <!-- camera below -->
+  <g transform="translate(230,540) rotate(-90)">
+    <rect x="-16" y="-12" width="32" height="24" rx="3" fill="#fff" stroke="#222" stroke-width="2"/>
+  </g>
+  <line x1="230" y1="520" x2="230" y2="250" stroke="#222" stroke-width="1.5" stroke-dasharray="3 4" marker-end="url(#a)"/>
+  <text x="240" y="262" font-size="14" stroke="#f0f0f0" stroke-width="5" paint-order="stroke">regard</text>
+  <!-- clouds -->
+  <g fill="#222">
+    <rect x="135" y="300" width="22" height="7"/><rect x="280" y="275" width="26" height="7"/><rect x="215" y="285" width="20" height="7"/>
+  </g>
+  <text x="40" y="222" font-size="14">couronne des nuages</text>
+  <line x1="110" y1="228" x2="128" y2="282" stroke="#222" stroke-width="1"/>
+  <text x="255" y="548" font-size="14">caméra</text>
+  <text x="430" y="100">• une couronne devant la caméra :</text>
+  <text x="446" y="122">± 45° autour du regard</text>
+  <text x="430" y="156">• entre 1,1 et 1,8 fois la taille de la</text>
+  <text x="446" y="178">zone dessinée, à partir du point visé</text>
+  <text x="430" y="212">• 12 nuages au plus, 7 avec le réglage actuel</text>
+  <text x="430" y="246">• le vent les pousse lentement (0,7 unité/s)</text>
+  <text x="430" y="280">• sorti de la couronne (ou passé à plus</text>
+  <text x="446" y="302">de 75° du regard) : reposé ailleurs, devant</text>
+  <text x="430" y="336">• hauteur : 12,5° à 17° sous l'horizon</text>
+  <text x="446" y="358">de la caméra, au moins 4 unités</text>
+  <text x="446" y="380">au-dessus du plus haut sommet</text>
+</svg>

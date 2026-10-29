@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" width="900" height="560" font-family="sans-serif">
+  <rect width="900" height="560" fill="#ffffff"/>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0L10,5L0,10z" fill="#222"/></marker>
+  </defs>
+  <text x="450" y="34" text-anchor="middle" font-size="20" font-weight="bold" fill="#222">Choisir les noms à montrer, sans qu'ils se couvrent</text>
+
+  <!-- Colonne de gauche : la liste -->
+  <text x="30" y="80" font-size="16" font-weight="bold" fill="#222">1. Les lieux de la vue, du plus peuplé</text>
+  <text x="30" y="100" font-size="14" fill="#555">(exemple autour de Montpellier, chiffres arrondis)</text>
+  <g font-size="15" fill="#222">
+    <rect x="30" y="114" width="360" height="30" fill="#f2f2f2"/>
+    <text x="42" y="134">Montpellier</text><text x="378" y="134" text-anchor="end">300 000</text>
+    <text x="42" y="166">Nîmes</text><text x="378" y="166" text-anchor="end">150 000</text>
+    <rect x="30" y="178" width="360" height="30" fill="#f2f2f2"/>
+    <text x="42" y="198" fill="#b3452f">Lunel</text><text x="378" y="198" text-anchor="end" fill="#b3452f">26 000</text>
+    <text x="42" y="230">Palavas-les-Flots</text><text x="378" y="230" text-anchor="end">6 000</text>
+    <rect x="30" y="242" width="360" height="30" fill="#f2f2f2"/>
+    <text x="42" y="262" fill="#999">… on s'arrête à 7 noms,</text>
+    <text x="42" y="292" fill="#999">ou sous 0,5 % du premier (1 500 ici)</text>
+  </g>
+
+  <text x="30" y="338" font-size="16" font-weight="bold" fill="#222">2. Un point trop près d'un autre ?</text>
+  <text x="30" y="360" font-size="14" fill="#222">Moins de 120 px de côté et 70 px en hauteur</text>
+  <text x="30" y="378" font-size="14" fill="#222">d'un point déjà pris : écarté (Lunel).</text>
+
+  <text x="30" y="420" font-size="16" font-weight="bold" fill="#222">3. Un étage pour chaque nom</text>
+  <text x="30" y="442" font-size="14" fill="#222">Tige de 90 px, sinon 154, sinon 218 px.</text>
+  <text x="30" y="460" font-size="14" fill="#222">On prend le premier étage où le nom ne</text>
+  <text x="30" y="478" font-size="14" fill="#222">touche aucun nom déjà posé (Palavas monte).</text>
+  <text x="30" y="496" font-size="14" fill="#222">Aucun étage libre : le nom n'est pas montré.</text>
+
+  <!-- Ecran -->
+  <rect x="420" y="70" width="460" height="460" fill="#fbfaf6" stroke="#222" stroke-width="1.5"/>
+  <text x="430" y="90" font-size="14" fill="#555">l'écran</text>
+  <rect x="420" y="70" width="460" height="104" fill="#eeeeee"/>
+  <text x="650" y="118" text-anchor="middle" font-size="14" fill="#555">en-tête de l'interface : 104 px, les noms restent dessous</text>
+  <line x1="420" y1="174" x2="880" y2="174" stroke="#999" stroke-dasharray="5 4"/>
+
+  <!-- zone interdite autour de Montpellier -->
+  <rect x="580" y="340" width="240" height="140" fill="#b3452f" fill-opacity="0.06" stroke="#b3452f" stroke-width="1.2" stroke-dasharray="6 4"/>
+  <text x="590" y="500" font-size="14" fill="#b3452f">zone 240 × 140 px autour de Montpellier</text>
+
+  <!-- Montpellier : etage 0 -->
+  <line x1="700" y1="410" x2="700" y2="320" stroke="#1d2a4d" stroke-width="1.2"/>
+  <circle cx="700" cy="410" r="4.5" fill="#1d2a4d"/>
+  <text x="700" y="320" font-size="15" font-weight="bold" fill="#1d2a4d">MONTPELLIER</text>
+  <line x1="700" y1="327" x2="768" y2="327" stroke="#1d2a4d" stroke-width="1"/>
+
+  <!-- Nimes : etage 0 -->
+  <line x1="760" y1="290" x2="760" y2="200" stroke="#1d2a4d" stroke-width="1.2"/>
+  <circle cx="760" cy="290" r="4.5" fill="#1d2a4d"/>
+  <text x="760" y="200" font-size="15" font-weight="bold" fill="#1d2a4d">NÎMES</text>
+  <line x1="760" y1="207" x2="792" y2="207" stroke="#1d2a4d" stroke-width="1"/>
+  <line x1="866" y1="290" x2="866" y2="204" stroke="#555" marker-end="url(#arr)"/>
+  <line x1="766" y1="290" x2="872" y2="290" stroke="#555" stroke-dasharray="2 3"/>
+  <text x="858" y="252" text-anchor="end" font-size="13" fill="#555">90 px</text>
+
+  <!-- Lunel : ecarte -->
+  <circle cx="650" cy="385" r="4.5" fill="none" stroke="#b3452f" stroke-width="1.5"/>
+  <line x1="643" y1="378" x2="657" y2="392" stroke="#b3452f" stroke-width="1.5"/>
+  <line x1="657" y1="378" x2="643" y2="392" stroke="#b3452f" stroke-width="1.5"/>
+  <text x="634" y="372" text-anchor="end" font-size="13" fill="#b3452f">Lunel</text>
+
+  <!-- Palavas : etage 0 refuse, etage 1 -->
+  <text x="560" y="330" font-size="15" font-weight="bold" fill="#bbbbbb">PALAVAS-LES-FLOTS</text>
+  <rect x="554" y="313" width="166" height="24" fill="none" stroke="#bbbbbb" stroke-dasharray="3 3"/>
+  <line x1="560" y1="420" x2="560" y2="266" stroke="#1d2a4d" stroke-width="1.2"/>
+  <circle cx="560" cy="420" r="4.5" fill="#1d2a4d"/>
+  <text x="560" y="266" font-size="15" font-weight="bold" fill="#1d2a4d">PALAVAS-LES-FLOTS</text>
+  <line x1="560" y1="273" x2="660" y2="273" stroke="#1d2a4d" stroke-width="1"/>
+  <text x="436" y="440" font-size="13" fill="#555">étage 0 : touche</text>
+  <text x="436" y="456" font-size="13" fill="#555">Montpellier</text>
+  <text x="436" y="472" font-size="13" fill="#555">→ étage 1 (154 px)</text>
+</svg>

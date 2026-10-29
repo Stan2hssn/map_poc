@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 440" width="900" height="440" font-family="sans-serif" fill="#222">
+  <rect width="900" height="440" fill="#fff"/>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0L10,5L0,10z" fill="#222"/></marker>
+  </defs>
+
+  <!-- 1. Le modele -->
+  <text x="130" y="40" text-anchor="middle" font-size="17" font-weight="bold">1. Un seul modèle</text>
+  <g transform="translate(130,140)" stroke="#222" stroke-width="2" fill="#a9b197">
+    <polygon points="0,-62 54,-31 54,31 0,62 -54,31 -54,-31"/>
+    <g fill="none" stroke-width="1.4">
+      <polyline points="0,-62 -18,-8 54,-31"/>
+      <polyline points="-54,-31 -18,-8 30,22 54,31"/>
+      <polyline points="-18,-8 -30,40 0,62"/>
+      <polyline points="-54,31 -30,40 30,22 0,62"/>
+      <line x1="30" y1="22" x2="54" y2="-31"/>
+      <line x1="-54" y1="-31" x2="-54" y2="31"/>
+      <line x1="-30" y1="40" x2="-18" y2="-8"/>
+    </g>
+  </g>
+  <text x="130" y="232" text-anchor="middle" font-size="14">boule à 20 faces</text>
+  <text x="130" y="252" text-anchor="middle" font-size="14">(12 sommets seulement)</text>
+
+  <!-- 2. La liste -->
+  <text x="420" y="40" text-anchor="middle" font-size="17" font-weight="bold">2. Une liste d'arbres</text>
+  <g font-size="14">
+    <rect x="300" y="60" width="240" height="185" fill="#f6f6f2" stroke="#222" stroke-width="1.5"/>
+    <text x="315" y="84" font-weight="bold">position</text>
+    <text x="415" y="84" font-weight="bold">rayon</text>
+    <text x="480" y="84" font-weight="bold">forme</text>
+    <line x1="300" y1="94" x2="540" y2="94" stroke="#222"/>
+    <text x="315" y="118">x₁, y₁</text><text x="415" y="118">3,1 m</text><text x="480" y="118">feuillu</text>
+    <text x="315" y="144">x₂, y₂</text><text x="415" y="144">4,2 m</text><text x="480" y="144">feuillu</text>
+    <text x="315" y="170">x₃, y₃</text><text x="415" y="170">2,7 m</text><text x="480" y="170">conifère</text>
+    <text x="315" y="196">…</text><text x="415" y="196">…</text><text x="480" y="196">…</text>
+    <text x="315" y="226" fill="#444">jusqu'à 2 400 lignes</text>
+  </g>
+  <text x="420" y="270" text-anchor="middle" font-size="14">4 petits nombres par arbre (la position en compte 2)</text>
+
+  <!-- 3. Le resultat -->
+  <text x="745" y="40" text-anchor="middle" font-size="17" font-weight="bold">3. Une seule commande</text>
+  <line x1="620" y1="225" x2="880" y2="225" stroke="#888" stroke-width="1.5"/>
+  <g stroke="#222" stroke-width="1.5">
+    <circle cx="640" cy="200" r="16" fill="#a9b197"/>
+    <circle cx="690" cy="190" r="22" fill="#a9b197"/>
+    <ellipse cx="735" cy="180" rx="10" ry="34" fill="#6c7463"/>
+    <circle cx="772" cy="198" r="15" fill="#a9b197"/>
+    <circle cx="815" cy="188" r="21" fill="#a9b197"/>
+    <ellipse cx="855" cy="185" rx="9" ry="30" fill="#6c7463"/>
+    <circle cx="660" cy="130" r="13" fill="#a9b197"/>
+    <circle cx="712" cy="118" r="17" fill="#a9b197"/>
+    <circle cx="792" cy="125" r="14" fill="#a9b197"/>
+    <ellipse cx="840" cy="115" rx="8" ry="26" fill="#6c7463"/>
+  </g>
+  <text x="745" y="252" text-anchor="middle" font-size="14">la carte graphique recopie le modèle</text>
+  <text x="745" y="272" text-anchor="middle" font-size="14">à chaque ligne de la liste</text>
+
+  <line x1="218" y1="140" x2="290" y2="140" stroke="#222" stroke-width="2.5" marker-end="url(#a)"/>
+  <line x1="548" y1="140" x2="612" y2="140" stroke="#222" stroke-width="2.5" marker-end="url(#a)"/>
+  <text x="580" y="128" text-anchor="middle" font-size="22" font-weight="bold">+</text>
+
+  <!-- Comparaison -->
+  <rect x="40" y="305" width="820" height="110" rx="10" fill="#fbf7ee" stroke="#bbb"/>
+  <text x="70" y="338" font-size="15" font-weight="bold">Sans instanciation :</text>
+  <text x="250" y="338" font-size="15">2 400 arbres = 2 400 ordres « dessine ça ici » envoyés un par un.</text>
+  <text x="70" y="368" font-size="15" font-weight="bold">Avec instanciation :</text>
+  <text x="250" y="368" font-size="15">1 ordre « dessine ce modèle 2 400 fois, voici la liste ».</text>
+  <text x="70" y="398" font-size="14" fill="#444">C'est comme un tampon : on grave le motif une fois, puis on tamponne la feuille d'un seul geste.</text>
+</svg>

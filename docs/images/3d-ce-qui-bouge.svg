@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="540" viewBox="0 0 900 540" font-family="sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#222"/>
+    </marker>
+    <g id="cam">
+      <rect x="-18" y="-14" width="36" height="28" rx="4" fill="#fff" stroke="#222" stroke-width="2"/>
+      <path d="M-8 14 L-14 28 L14 28 L8 14 z" fill="#fff" stroke="#222" stroke-width="2"/>
+    </g>
+    <g id="hill">
+      <path d="M-30 0 L-12 -22 L0 -12 L12 -30 L30 0" fill="none" stroke="#222" stroke-width="2" stroke-linejoin="round"/>
+    </g>
+  </defs>
+  <rect width="900" height="540" fill="#fff"/>
+
+  <!-- row 1 -->
+  <text x="24" y="34" font-size="18" font-weight="bold" fill="#222">Ce qu'on imagine : la caméra survole la carte</text>
+  <use href="#cam" x="160" y="80"/>
+  <g opacity="0.35"><use href="#cam" x="560" y="80"/></g>
+  <line x1="200" y1="80" x2="520" y2="80" stroke="#222" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#a)"/>
+  <text x="270" y="70" font-size="14" fill="#555">elle voyage au-dessus du sol</text>
+  <line x1="40" y1="170" x2="860" y2="170" stroke="#222" stroke-width="2"/>
+  <use href="#hill" x="160" y="170"/>
+  <use href="#hill" x="560" y="170"/>
+  <use href="#hill" x="760" y="170"/>
+  <text x="640" y="80" font-size="14" fill="#b5462f">non : ce n'est pas</text>
+  <text x="640" y="98" font-size="14" fill="#b5462f">comme ça dans le code</text>
+
+  <line x1="24" y1="200" x2="876" y2="200" stroke="#ccc" stroke-width="1"/>
+
+  <!-- row 2 -->
+  <text x="24" y="232" font-size="18" font-weight="bold" fill="#222">Ce que fait le code : la caméra reste, la carte change sous elle</text>
+
+  <!-- pan -->
+  <text x="40" y="266" font-size="15" font-weight="bold" fill="#222">Glisser</text>
+  <use href="#cam" x="230" y="300"/>
+  <line x1="230" y1="330" x2="230" y2="370" stroke="#999" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="40" y1="400" x2="420" y2="400" stroke="#222" stroke-width="2"/>
+  <use href="#hill" x="150" y="400"/>
+  <use href="#hill" x="330" y="400"/>
+  <line x1="380" y1="425" x2="100" y2="425" stroke="#222" stroke-width="2" marker-end="url(#a)"/>
+  <text x="40" y="452" font-size="14" fill="#222">le centre de la vue change</text>
+  <text x="40" y="470" font-size="14" fill="#222">(longitude, latitude) : le relief défile</text>
+
+  <!-- zoom -->
+  <text x="480" y="266" font-size="15" font-weight="bold" fill="#222">Zoomer (molette)</text>
+  <use href="#cam" x="670" y="300"/>
+  <g stroke="#222" stroke-width="2">
+    <line x1="520" y1="360" x2="820" y2="360"/>
+    <line x1="520" y1="352" x2="520" y2="368"/>
+    <line x1="820" y1="352" x2="820" y2="368"/>
+  </g>
+  <text x="560" y="350" font-size="14" fill="#222">même largeur à l'écran</text>
+  <g fill="#222">
+    <circle cx="520" cy="395" r="4"/><circle cx="580" cy="395" r="4"/><circle cx="640" cy="395" r="4"/>
+    <circle cx="700" cy="395" r="4"/><circle cx="760" cy="395" r="4"/><circle cx="820" cy="395" r="4"/>
+  </g>
+  <text x="836" y="400" font-size="14" fill="#222">40 km</text>
+  <g fill="#222">
+    <circle cx="520" cy="430" r="4"/><circle cx="640" cy="430" r="4"/><circle cx="760" cy="430" r="4"/>
+  </g>
+  <text x="836" y="435" font-size="14" fill="#222">20 km</text>
+  <text x="480" y="462" font-size="14" fill="#222">l'écran couvre 20 km au lieu de 40 :</text>
+  <text x="480" y="480" font-size="14" fill="#222">les villages (•) s'écartent, tout grossit</text>
+
+  <line x1="24" y1="500" x2="876" y2="500" stroke="#ccc" stroke-width="1"/>
+  <text x="24" y="526" font-size="14" fill="#555">La caméra, elle, ne fait que s'incliner, tourner un peu près du sol et suivre la souris.</text>
+</svg>

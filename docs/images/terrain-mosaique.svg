@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="480" viewBox="0 0 900 480">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222"/></marker>
+<marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/></marker></defs>
+<rect width="900" height="480" fill="#ffffff"/>
+<text x="450" y="32" font-family="Helvetica, Arial, sans-serif" font-size="20" text-anchor="middle" font-weight="bold" fill="#222">La mosaïque : des tuiles assemblées en une seule image</text>
+<rect x="60" y="70" width="120" height="120" fill="#eeeeee" stroke="#888" stroke-width="2"/>
+<rect x="180" y="70" width="120" height="120" fill="#eeeeee" stroke="#888" stroke-width="2"/>
+<rect x="300" y="70" width="120" height="120" fill="#eeeeee" stroke="#888" stroke-width="2"/>
+<rect x="60" y="190" width="120" height="120" fill="#eeeeee" stroke="#888" stroke-width="2"/>
+<rect x="180" y="190" width="120" height="120" fill="#eeeeee" stroke="#888" stroke-width="2"/>
+<rect x="300" y="190" width="120" height="120" fill="#eeeeee" stroke="#888" stroke-width="2"/>
+<rect x="60" y="310" width="120" height="120" fill="#eeeeee" stroke="#888" stroke-width="2"/>
+<rect x="180" y="310" width="120" height="120" fill="#eeeeee" stroke="#888" stroke-width="2"/>
+<rect x="300" y="310" width="120" height="120" fill="#eeeeee" stroke="#888" stroke-width="2"/>
+<rect x="135" y="165" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="165" y="165" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="195" y="165" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="225" y="165" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="255" y="165" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="285" y="165" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="315" y="165" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="135" y="195" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="165" y="195" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="195" y="195" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="225" y="195" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="255" y="195" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="285" y="195" width="30" height="30" fill="none" stroke="#222" stroke-width="1.5" stroke-dasharray="4 3"/>
+<rect x="315" y="195" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="135" y="225" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="165" y="225" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="195" y="225" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="225" y="225" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="255" y="225" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="285" y="225" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="315" y="225" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="135" y="255" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="165" y="255" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="195" y="255" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="225" y="255" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="255" y="255" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="285" y="255" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="315" y="255" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="135" y="285" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="165" y="285" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="195" y="285" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="225" y="285" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="255" y="285" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="285" y="285" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="315" y="285" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="135" y="315" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="165" y="315" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="195" y="315" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="225" y="315" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="255" y="315" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="285" y="315" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="315" y="315" width="30" height="30" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<rect x="147" y="177" width="186" height="156" fill="none" stroke="#c0392b" stroke-width="3"/>
+<text x="240" y="367" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="middle" font-weight="bold" fill="#c0392b">ce qu'on regarde</text>
+<text x="60" y="460" font-family="Helvetica, Arial, sans-serif" font-size="14" text-anchor="start" font-weight="normal" fill="#555">(pas à l'échelle)</text>
+<rect x="470" y="76" width="18" height="18" fill="#eeeeee" stroke="#888" stroke-width="2"/>
+<text x="498" y="90" font-family="Helvetica, Arial, sans-serif" font-size="16" text-anchor="start" font-weight="bold" fill="#222">Aperçu de secours (3 × 3 tuiles)</text>
+<text x="470" y="114" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">grosses tuiles, 1 pixel ≈ 305 m</text>
+<text x="470" y="136" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">couvre trois fois la largeur de la vue</text>
+<text x="470" y="158" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">toujours complet : jamais de trou</text>
+<rect x="470" y="182" width="18" height="18" fill="#bdbdbd" stroke="#222" stroke-width="1.5"/>
+<text x="498" y="196" font-family="Helvetica, Arial, sans-serif" font-size="16" text-anchor="start" font-weight="bold" fill="#222">Détail (7 × 6 tuiles)</text>
+<text x="470" y="220" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">petites tuiles, 1 pixel ≈ 38 m</text>
+<text x="470" y="242" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">seulement autour de ce qu'on regarde</text>
+<rect x="470" y="266" width="18" height="18" fill="none" stroke="#222" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="498" y="280" font-family="Helvetica, Arial, sans-serif" font-size="16" text-anchor="start" font-weight="bold" fill="#222">Tuile pas encore arrivée</text>
+<text x="470" y="304" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">on lit l'aperçu dessous : le relief</text>
+<text x="470" y="326" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#222">est flou un instant, jamais plat</text>
+<text x="470" y="364" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#555">Chaque tuile : 256 × 256 = 65 536 altitudes.</text>
+<text x="470" y="386" font-family="Helvetica, Arial, sans-serif" font-size="15" text-anchor="start" font-weight="normal" fill="#555">Exemple : vue de 40 km au mont Aigoual.</text>
+<line x1="460" y1="318" x2="306" y2="214" stroke="#222" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+</svg>

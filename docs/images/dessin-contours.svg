@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500" width="900" height="500" font-family="sans-serif" font-size="15" fill="#222">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222"/></marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c22"/></marker>
+  </defs>
+  <rect width="900" height="500" fill="#fff"/>
+  <text x="30" y="36" font-size="20" font-weight="bold">Où tracer un contour ? On compare chaque pixel à ses 4 voisins</text>
+
+  <!-- pixel cross -->
+  <g transform="translate(40,90)">
+    <g stroke="#222" stroke-width="1.5" fill="#fff">
+      <rect x="50" y="0" width="50" height="50"/>
+      <rect x="0" y="50" width="50" height="50"/>
+      <rect x="50" y="50" width="50" height="50" fill="#e9e3d3"/>
+      <rect x="100" y="50" width="50" height="50"/>
+      <rect x="50" y="100" width="50" height="50"/>
+    </g>
+    <text x="60" y="80" font-size="14" font-weight="bold">pixel</text>
+    <text x="0" y="180" font-size="14">les voisins sont à 1 pixel</text>
+    <text x="0" y="198" font-size="14">en haut, en bas, à gauche,</text>
+    <text x="0" y="216" font-size="14">à droite</text>
+  </g>
+
+  <!-- case A: depth jump -->
+  <g transform="translate(260,78)">
+    <text x="0" y="0" font-weight="bold">A. Saut de distance</text>
+    <rect x="10" y="20" width="26" height="18" rx="3" fill="#fff" stroke="#222" stroke-width="2"/>
+    <path d="M36,24 L46,20 L46,38 L36,34 z" fill="#fff" stroke="#222" stroke-width="2"/>
+    <text x="0" y="60" font-size="14">œil</text>
+    <line x1="0" y1="190" x2="270" y2="190" stroke="#222" stroke-width="2"/>
+    <path d="M85,190 C110,160 130,150 150,150 C170,150 185,170 205,190 Z" fill="#ddd" stroke="#222" stroke-width="2"/>
+    <line x1="46" y1="30" x2="149" y2="147" stroke="#555" stroke-dasharray="5 4" marker-end="url(#a)"/>
+    <line x1="46" y1="30" x2="240" y2="186" stroke="#555" stroke-dasharray="5 4" marker-end="url(#a)"/>
+    <text x="58" y="100" font-size="14">40 m</text>
+    <text x="214" y="140" font-size="14">60 m</text>
+    <text x="0" y="220" font-size="14">deux voisins : l'un touche le haut de la colline,</text>
+    <text x="0" y="238" font-size="14">l'autre la vallée derrière. Écart :</text>
+    <text x="0" y="256" font-size="14">20 ÷ 40 = 50 % de la distance.</text>
+    <text x="0" y="274" font-size="14" fill="#c22" font-weight="bold">Plus de 1 % → contour.</text>
+  </g>
+
+  <!-- case B: orientation change -->
+  <g transform="translate(590,78)">
+    <text x="0" y="0" font-weight="bold">B. Changement d'orientation</text>
+    <path d="M20,190 L130,90 L260,190" fill="#eee" stroke="#222" stroke-width="2"/>
+    <line x1="75" y1="140" x2="40" y2="102" stroke="#c22" stroke-width="2" marker-end="url(#r)"/>
+    <line x1="195" y1="140" x2="232" y2="98" stroke="#c22" stroke-width="2" marker-end="url(#r)"/>
+    <text x="150" y="40" font-size="14" fill="#c22">flèche = « vers où »</text>
+    <text x="150" y="58" font-size="14" fill="#c22">pointe la surface</text>
+    <text x="0" y="220" font-size="14">les deux versants d'une crête</text>
+    <text x="0" y="238" font-size="14">pointent dans des directions</text>
+    <text x="0" y="256" font-size="14">écartées de 90°.</text>
+    <text x="0" y="274" font-size="14" fill="#c22" font-weight="bold">Plus d'environ 37° → contour.</text>
+  </g>
+
+  <!-- case C -->
+  <g transform="translate(40,385)">
+    <text x="0" y="0" font-weight="bold">C. Rien ne change (une plaine, le milieu d'un toit) → pas de contour.</text>
+    <text x="0" y="26" font-size="14">Le contour se fait progressivement : rien sous le seuil, trait plein au double du seuil (2 % de distance, environ 53°).</text>
+    <text x="0" y="48" font-size="14">Curseur « détail » au minimum : il faut un écart 3 fois plus grand. Les petites cassures (pentes douces) disparaissent,</text>
+    <text x="0" y="66" font-size="14">les vraies silhouettes restent.</text>
+    <text x="0" y="92" font-size="14">Bâtiments en volume : pas de test A (ils ne disent pas leur distance à l'encre), seulement le test B.</text>
+  </g>
+</svg>

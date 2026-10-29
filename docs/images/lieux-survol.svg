@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 660" width="900" height="660" font-family="sans-serif">
+  <rect width="900" height="660" fill="#ffffff"/>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0L10,5L0,10z" fill="#222"/></marker>
+    <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#b3452f"/></marker>
+    <filter id="blur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="9"/></filter>
+    <clipPath id="shape4"><polygon points="509.5,418.8 642.5,395.0 718.5,437.8 690.0,499.5 785.0,480.5 842.0,542.2 766.0,589.8 633.0,570.8 566.5,589.8 500.0,523.2"/></clipPath>
+    <clipPath id="box3"><rect x="245" y="395" width="180" height="180"/></clipPath>
+  </defs>
+  <text x="450" y="32" text-anchor="middle" font-size="20" font-weight="bold" fill="#222">Survoler un territoire : de la souris au rouge sur le sol</text>
+
+  <!-- 1. rayon -->
+  <text x="30" y="68" font-size="16" font-weight="bold" fill="#222">1. Quel lieu est sous la souris ?</text>
+  <text x="30" y="88" font-size="14" fill="#555">vue de côté</text>
+  <polyline points="40,270 150,262 220,240 270,222 320,200 370,215 430,250" fill="none" stroke="#1d2a4d" stroke-width="2.5"/>
+  <text x="330" y="190" font-size="14" fill="#1d2a4d">relief</text>
+  <line x1="40" y1="270" x2="430" y2="270" stroke="#888" stroke-dasharray="6 4"/>
+  <text x="40" y="292" font-size="14" fill="#555">a. sol plat (hauteur 0)</text>
+  <line x1="40" y1="220" x2="430" y2="220" stroke="#b3452f" stroke-dasharray="6 4" stroke-width="1"/>
+  <text x="40" y="212" font-size="14" fill="#b3452f">b. sol remonté à l'altitude lue</text>
+  <circle cx="60" cy="100" r="9" fill="none" stroke="#222" stroke-width="2"/><circle cx="62" cy="100" r="3" fill="#222"/>
+  <text x="76" y="105" font-size="14" fill="#222">œil (caméra)</text>
+  <line x1="60" y1="100" x2="350" y2="270" stroke="#222" stroke-width="1.5"/>
+  <circle cx="350" cy="270" r="5" fill="#888"/>
+  <circle cx="275" cy="226" r="6" fill="#b3452f"/>
+  <text x="290" y="252" font-size="14" fill="#b3452f">≈ point réel</text>
+  <text x="30" y="318" font-size="14" fill="#222">Le point trouvé est traduit en longitude, latitude.</text>
+
+  <!-- 2. contour -->
+  <text x="470" y="68" font-size="16" font-weight="bold" fill="#222">2. Ce point est-il dans le contour ?</text>
+  <polygon points="500,120 640,95 720,140 690,205 790,185 850,250 770,300 630,280 560,300 490,230" fill="#f4f1ea" stroke="#1d2a4d" stroke-width="2"/>
+  <line x1="560" y1="198" x2="880" y2="198" stroke="#2e6b3a" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="470" y1="150" x2="880" y2="150" stroke="#b3452f" stroke-width="1.5" marker-end="url(#arr)"/>
+  <circle cx="693" cy="198" r="4" fill="#fff" stroke="#2e6b3a" stroke-width="2"/><circle cx="725" cy="198" r="4" fill="#fff" stroke="#2e6b3a" stroke-width="2"/><circle cx="802" cy="198" r="4" fill="#fff" stroke="#2e6b3a" stroke-width="2"/>
+  <circle cx="497" cy="150" r="4" fill="#fff" stroke="#b3452f" stroke-width="2"/><circle cx="715" cy="150" r="4" fill="#fff" stroke="#b3452f" stroke-width="2"/>
+  <circle cx="560" cy="198" r="5" fill="#2e6b3a"/><text x="550" y="203" text-anchor="end" font-size="15" font-weight="bold" fill="#2e6b3a">A</text>
+  <circle cx="470" cy="150" r="5" fill="#b3452f"/><text x="470" y="138" text-anchor="middle" font-size="15" font-weight="bold" fill="#b3452f">B</text>
+  <text x="470" y="322" font-size="14" fill="#2e6b3a">On tire un trait vers la droite. A : 3 traversées (impair) → dedans</text>
+  <text x="470" y="340" font-size="14" fill="#b3452f">B : 2 (pair) → dehors</text>
+
+  <line x1="20" y1="352" x2="880" y2="352" stroke="#ddd"/>
+
+  <!-- 3. masque -->
+  <text x="30" y="378" font-size="16" font-weight="bold" fill="#222">3. Le contour devient une petite image</text>
+  <rect x="35" y="395" width="180" height="180" fill="#111"/>
+  <polygon points="54.2,430.0 113.0,410.0 146.6,446.0 134.0,498.0 176.0,482.0 201.2,534.0 167.6,574.0 108.8,558.0 79.4,574.0 50.0,518.0" fill="#fff"/>
+  <line x1="220" y1="485" x2="240" y2="485" stroke="#222" stroke-width="2" marker-end="url(#arr)"/>
+  <rect x="245" y="395" width="180" height="180" fill="#111"/>
+  <g clip-path="url(#box3)"><polygon points="264.2,430.0 323.0,410.0 356.6,446.0 344.0,498.0 386.0,482.0 411.2,534.0 377.6,574.0 318.8,558.0 289.4,574.0 260.0,518.0" fill="#fff" filter="url(#blur)"/></g>
+  <polygon points="264.2,430.0 323.0,410.0 356.6,446.0 344.0,498.0 386.0,482.0 411.2,534.0 377.6,574.0 318.8,558.0 289.4,574.0 260.0,518.0" fill="none" stroke="#b3452f" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <text x="125" y="597" text-anchor="middle" font-size="14" fill="#222">peint dans 256 × 256 px</text>
+  <text x="335" y="597" text-anchor="middle" font-size="14" fill="#222">champ de distance</text>
+  <text x="30" y="622" font-size="14" fill="#222">Pointillé rouge : la limite, là où le gris vaut juste la moitié.</text>
+  <text x="30" y="642" font-size="14" fill="#222">Plus clair : plus loin à l'intérieur. Plus sombre : plus loin dehors.</text>
+
+  <!-- 4. sol -->
+  <text x="470" y="378" font-size="16" font-weight="bold" fill="#222">4. Le sol marque, l'encre colorie</text>
+  <polygon points="509.5,418.8 642.5,395.0 718.5,437.8 690.0,499.5 785.0,480.5 842.0,542.2 766.0,589.8 633.0,570.8 566.5,589.8 500.0,523.2" fill="#f4f1ea"/>
+  <g clip-path="url(#shape4)" fill="#b3452f" fill-opacity="0.35"><circle cx="581" cy="501" r="16"/><circle cx="707" cy="517" r="11"/><circle cx="505" cy="558" r="14"/><circle cx="580" cy="589" r="18"/><circle cx="786" cy="488" r="20"/><circle cx="552" cy="519" r="24"/><circle cx="679" cy="540" r="21"/><circle cx="522" cy="543" r="19"/><circle cx="603" cy="401" r="24"/><circle cx="662" cy="535" r="24"/><circle cx="744" cy="575" r="16"/><circle cx="774" cy="482" r="25"/><circle cx="801" cy="414" r="12"/><circle cx="574" cy="583" r="17"/><circle cx="714" cy="454" r="18"/><circle cx="632" cy="463" r="19"/><circle cx="700" cy="571" r="21"/><circle cx="818" cy="562" r="26"/><circle cx="730" cy="427" r="24"/><circle cx="830" cy="571" r="19"/><circle cx="744" cy="436" r="23"/><circle cx="696" cy="451" r="11"/><circle cx="792" cy="588" r="11"/><circle cx="774" cy="475" r="12"/><circle cx="601" cy="545" r="24"/><circle cx="515" cy="515" r="11"/><circle cx="746" cy="460" r="24"/><circle cx="835" cy="494" r="26"/><circle cx="606" cy="410" r="20"/><circle cx="511" cy="433" r="17"/><circle cx="709" cy="425" r="11"/><circle cx="797" cy="456" r="25"/><circle cx="807" cy="469" r="17"/><circle cx="678" cy="521" r="20"/></g>
+  <polygon points="509.5,418.8 642.5,395.0 718.5,437.8 690.0,499.5 785.0,480.5 842.0,542.2 766.0,589.8 633.0,570.8 566.5,589.8 500.0,523.2" fill="none" stroke="#b3452f" stroke-width="2"/>
+  <text x="470" y="622" font-size="14" fill="#222">Dedans : le rouge arrive par taches, en une seconde environ.</text>
+  <text x="470" y="642" font-size="14" fill="#222">Sur la limite : un trait de même épaisseur à tout zoom.</text>
+</svg>

@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 660" width="880" height="660" font-family="sans-serif" font-size="15" fill="#222">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222"/></marker>
+    <marker id="s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b8860b"/></marker>
+  </defs>
+  <rect width="880" height="660" fill="#fff"/>
+  <text x="30" y="34" font-size="19" font-weight="bold">1. Vu de côté : l'avion vole au-dessus du plus haut sommet</text>
+  <g transform="translate(0,40)">
+  <!-- relief -->
+  <path d="M30,300 L110,280 L170,240 L230,170 L270,150 L310,190 L380,230 L450,250 L520,215 L580,235 L650,270 L720,265 L850,290 L850,320 L30,320 z" fill="#eee" stroke="#222" stroke-width="2"/>
+  <text x="250" y="140" font-size="14">plus haut sommet de la vue</text>
+  <line x1="30" y1="150" x2="850" y2="150" stroke="#888" stroke-dasharray="6 5"/>
+  <line x1="30" y1="95" x2="850" y2="95" stroke="#222" stroke-dasharray="2 4"/>
+  <text x="640" y="88" font-size="14">altitude de vol</text>
+  <line x1="620" y1="97" x2="620" y2="148" stroke="#222" marker-start="url(#a)" marker-end="url(#a)"/>
+  <text x="628" y="128" font-size="14">+ 7 unités (vue de 12 km)</text>
+  <!-- plane -->
+  <g transform="translate(450,95)">
+    <rect x="-26" y="-5" width="52" height="10" fill="#2b3144"/>
+    <rect x="-4" y="-3" width="12" height="6" fill="#2b3144"/>
+    <rect x="-26" y="-16" width="7" height="12" fill="#2b3144"/>
+  </g>
+  <line x1="485" y1="95" x2="560" y2="95" stroke="#222" stroke-width="2" marker-end="url(#a)"/>
+  <text x="490" y="80" font-size="14">ligne droite</text>
+  <!-- sun ray -->
+  <circle cx="395" cy="30" r="14" fill="none" stroke="#b8860b" stroke-width="2"/>
+  <text x="300" y="35" font-size="14" fill="#b8860b">soleil</text>
+  <line x1="407" y1="44" x2="445" y2="88" stroke="#b8860b" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="520" y="168" font-size="14" fill="#b8860b">rayon du soleil</text>
+  <line x1="450" y1="100" x2="560" y2="222" stroke="#b8860b" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#s)"/>
+  <ellipse cx="563" cy="226" rx="24" ry="4" fill="#9a9a9a"/>
+  <text x="575" y="208" font-size="14">ombre : l'avion aplati,</text>
+  <text x="575" y="225" font-size="14">posée sur le relief</text>
+
+  </g>
+  <g transform="translate(0,40)">
+  <text x="30" y="370" font-size="19" font-weight="bold">2. Vu de dessus : une traversée du cercle, puis une pause</text>
+  <circle cx="230" cy="490" r="105" fill="none" stroke="#222" stroke-width="2"/>
+  <ellipse cx="230" cy="490" rx="72" ry="88" fill="#f3f3f3" stroke="#888" stroke-dasharray="5 4"/>
+  <text x="185" y="495" font-size="14">zone</text>
+  <text x="175" y="512" font-size="14">dessinée</text>
+  <circle cx="130" cy="455" r="6" fill="#222"/>
+  <line x1="130" y1="455" x2="330" y2="530" stroke="#222" stroke-width="2" marker-end="url(#a)"/>
+  <text x="62" y="438" font-size="14">entre au bord</text>
+  <text x="300" y="560" font-size="14">ressort en face</text>
+  <text x="300" y="578" font-size="14">(à ± 20° près)</text>
+  <text x="430" y="420">• cercle = 1,2 × la zone dessinée</text>
+  <text x="430" y="448">• traversée ≈ 26 s (vue de 12 km)</text>
+  <text x="430" y="476">• puis 2 à 9 s d'attente avant le suivant</text>
+  <text x="430" y="504">• 4 avions au plus, 2 avec le réglage actuel</text>
+  <text x="430" y="532">• visibles sous 25 km de vue,</text>
+  <text x="446" y="552">disparus au-delà de 70 km</text>
+  </g>
+</svg>
