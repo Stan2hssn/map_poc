@@ -10,7 +10,7 @@ import {
   tilesCovering,
   KM_PER_DEGREE,
   WORLD_HEIGHT_KM,
-} from "./GeoProjection.ts";
+} from "../../../src/graphics/terrain/GeoProjection.ts";
 
 const GARD = { west: 3.2624, south: 43.4603, east: 4.8456, north: 44.4597 };
 const close = (a: number, b: number, eps = 1e-3) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);

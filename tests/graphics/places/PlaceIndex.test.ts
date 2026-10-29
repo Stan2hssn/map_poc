@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { PlaceIndex, type Place } from "./PlaceIndex.ts";
+import { PlaceIndex, type Place } from "../../../src/graphics/places/PlaceIndex.ts";
 
 const place = (name: string, lon: number, lat: number, population: number, country = "FRA"): Place => ({
   name,

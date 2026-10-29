@@ -33,10 +33,10 @@ export default defineNuxtConfig({
     '@adapters': engine('./src/graphics/adapters'),
   },
 
-  // Sans cet ajout, `nuxt typecheck` ignore `src/`. Chemin relatif a `.nuxt/`.
+  // Sans cet ajout, `nuxt typecheck` ignore `src/` et `tests/`. Chemin relatif a `.nuxt/`.
   typescript: {
     tsConfig: {
-      include: ['../src/**/*'],
+      include: ['../src/**/*', '../tests/**/*'],
       compilerOptions: {
         // Ajoutes par Nuxt, absents du contrat du boilerplate : ils feraient echouer le template.
         noUncheckedIndexedAccess: false,

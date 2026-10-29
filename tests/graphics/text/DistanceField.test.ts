@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { signedDistanceField } from "./DistanceField.ts";
+import { signedDistanceField } from "../../../src/graphics/text/DistanceField.ts";
 
 /** Carre plein de 8 x 8 au milieu d'une image de 16 x 16. */
 function square(): Uint8Array {

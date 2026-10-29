@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { flightPath } from "./FlightPath.ts";
+import { flightPath } from "../../../src/graphics/terrain/FlightPath.ts";
 
 const close = (a: number, b: number, tolerance = 1e-6) => assert.ok(Math.abs(a - b) <= tolerance * Math.max(1, Math.abs(b)), `${a} != ${b}`);
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { boatLanes, LANE_STRIDE, roadLanes, Traffic } from "./Traffic.ts";
-import { GEOMETRY, vectorLayer } from "./VectorTile.ts";
+import { boatLanes, LANE_STRIDE, roadLanes, Traffic } from "../../../src/graphics/terrain/Traffic.ts";
+import { GEOMETRY, vectorLayer } from "../../../src/graphics/terrain/VectorTile.ts";
 
 const E = 4096;
 const TILE = { x: 16597, y: 11274 };

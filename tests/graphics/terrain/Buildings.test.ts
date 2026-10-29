@@ -10,8 +10,8 @@ import {
   spreadPeaks,
   SUMMIT_CELL,
   sunShadow,
-} from "./Buildings.ts";
-import { GEOMETRY, vectorLayer, type VectorLayer } from "./VectorTile.ts";
+} from "../../../src/graphics/terrain/Buildings.ts";
+import { GEOMETRY, vectorLayer, type VectorLayer } from "../../../src/graphics/terrain/VectorTile.ts";
 
 const E = 4096;
 const TILE = { x: 16597, y: 11274 };

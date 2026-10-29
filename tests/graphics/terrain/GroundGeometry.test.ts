@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createGroundGeometry, SCREEN_MARGIN } from "./GroundGeometry.ts";
+import { createGroundGeometry, SCREEN_MARGIN } from "../../../src/graphics/terrain/GroundGeometry.ts";
 
 const close = (a: number, b: number, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);
 

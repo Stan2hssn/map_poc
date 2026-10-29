@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { formatDegrees, graticuleStep, graticuleValues } from "./Graticule.ts";
+import { formatDegrees, graticuleStep, graticuleValues } from "../../../src/graphics/terrain/Graticule.ts";
 
 test("pas : au plus N meridiens sur l'emprise", () => {
   assert.equal(graticuleStep({ west: 3.3, east: 3.85, south: 44, north: 44.3 }, 6), 10 / 60);

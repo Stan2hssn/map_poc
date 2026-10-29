@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { decodeVectorTile, GEOMETRY, partsOf } from "./VectorTile.ts";
+import { decodeVectorTile, GEOMETRY, partsOf } from "../../../src/graphics/terrain/VectorTile.ts";
 
 // Encodeur protobuf minimal, juste pour fabriquer des tuiles de test.
 const varint = (n: number): number[] => {

@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { tileBounds } from "./GeoProjection.ts";
-import { encodeHalf, halfToFloat } from "./HalfFloat.ts";
-import { composeMosaic, levelFor, mosaicRange, mosaicSample, mosaicUvTransform, type HeightMosaic } from "./HeightMosaic.ts";
-import type { CachedTile } from "./TileCache.ts";
+import { tileBounds } from "../../../src/graphics/terrain/GeoProjection.ts";
+import { encodeHalf, halfToFloat } from "../../../src/graphics/terrain/HalfFloat.ts";
+import { composeMosaic, levelFor, mosaicRange, mosaicSample, mosaicUvTransform, type HeightMosaic } from "../../../src/graphics/terrain/HeightMosaic.ts";
+import type { CachedTile } from "../../../src/graphics/terrain/TileCache.ts";
 
 const close = (a: number, b: number, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);
 const filled = (value: number) => encodeHalf(new Float32Array(256 * 256).fill(value));

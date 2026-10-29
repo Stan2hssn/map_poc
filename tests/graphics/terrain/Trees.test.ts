@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { scatterTrees, TREE_STRIDE } from "./Trees.ts";
-import { GEOMETRY, vectorLayer } from "./VectorTile.ts";
+import { scatterTrees, TREE_STRIDE } from "../../../src/graphics/terrain/Trees.ts";
+import { GEOMETRY, vectorLayer } from "../../../src/graphics/terrain/VectorTile.ts";
 
 const E = 4096;
 const TILE = { x: 16597, y: 11274 };

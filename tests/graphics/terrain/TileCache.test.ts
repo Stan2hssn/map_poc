@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { halfToFloat, HALF_NAN } from "./HalfFloat.ts";
-import { TileCache } from "./TileCache.ts";
+import { halfToFloat, HALF_NAN } from "../../../src/graphics/terrain/HalfFloat.ts";
+import { TileCache } from "../../../src/graphics/terrain/TileCache.ts";
 
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { drawLandcoverTile, landcoverZoom, mercatorTiles, tilePointToLonLat, type Pen } from "./Landcover.ts";
-import { GEOMETRY, vectorLayer } from "./VectorTile.ts";
+import { drawLandcoverTile, landcoverZoom, mercatorTiles, tilePointToLonLat, type Pen } from "../../../src/graphics/terrain/Landcover.ts";
+import { GEOMETRY, vectorLayer } from "../../../src/graphics/terrain/VectorTile.ts";
 
 const close = (a: number, b: number, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);
 

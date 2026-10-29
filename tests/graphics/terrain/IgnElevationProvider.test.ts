@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { IGN_LAYERS, IgnElevationProvider, ignTileUrl, markNoData } from "./IgnElevationProvider.ts";
+import { IGN_LAYERS, IgnElevationProvider, ignTileUrl, markNoData } from "../../../src/graphics/terrain/IgnElevationProvider.ts";
 
 const CELLS = 256 * 256;
 

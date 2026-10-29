@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { sampleEase } from "./ease.ts";
-import { sampleTrack, Theatre } from "./Theatre.ts";
+import { sampleEase } from "../../../src/graphics/timeline/ease.ts";
+import { sampleTrack, Theatre } from "../../../src/graphics/timeline/Theatre.ts";
 
 test("une piste tient sa valeur de bord hors de ses cles et interpole entre elles", () => {
   const track = [
