@@ -126,27 +126,55 @@ Chaque référence compte pour ce qu'elle apporte à Archives.
 
 ## Où en est le dépôt
 
-Le socle technique existe ; le contenu éditorial est encore à construire.
+Le socle technique existe ; le contenu éditorial est encore à construire. Les branches `feat/*` (`terrain-gard`, `map-fullscreen`, `map-elevations`, `core-webgpu`) sont toutes fusionnées dans la branche courante.
 
-- **Rendu** : Nuxt 4, three.js en WebGPU avec repli WebGL2, shaders en TSL. Architecture `_core` / `graphics` issue du boilerplate `three-pipeline-boilerplate`.
-- **Territoire** : relief chargé en direct depuis l'IGN, sans fichiers précalculés. RGE ALTI en métropole (jusqu'à ~5 m), SRTM ailleurs, dont l'outre-mer pour l'instant. Glisser, molette, vols vers Paris / France / Monde.
-- **Villes** : Natural Earth pour le monde, `geo.api.gouv.fr` pour les communes. Étiquettes cliquables.
-- **Branches** :
-  - `feat/terrain-gard` : bloc de relief, brume, relevés flottants ;
-  - `feat/map-fullscreen` : carte plein écran, caméra à parallaxe, navigation inspirée de Chartogne-Taillet ;
-  - `feat/map-elevations` : bâti en relief (argile), parallaxe ou volumes extrudés, à comparer dans le panneau de debug.
+- **Rendu** : Nuxt 4, three.js en WebGPU avec repli WebGL2, shaders en TSL. Une passe plein écran redessine la scène en gravure (contours, hachures, papier, journal). Moteur `_core` issu du template `three-pipeline-boilerplate`.
+- **Territoire** : relief chargé en direct depuis la Géoplateforme IGN, sans fichiers précalculés. RGE ALTI en métropole, SRTM ailleurs, dont l'outre-mer pour l'instant. Glisser, molette, pincement, vols vers Paris / France / Monde.
+- **Occupation du sol** : plan IGN (eau, bois, routes, noms de voies, bâti) imprimé par le sol, arbres, voitures et bateaux, nuages et avions.
+- **Lieux** : Natural Earth pour le monde, `geo.api.gouv.fr` pour les communes, départements et régions. Noms en SDF cliquables, survol qui colorie le territoire, recherche, fil d'Ariane, panneau « fonds » d'un lieu.
+- **Variantes au panneau `?debug`** : elles cohabitent et se comparent en direct. Bâti « aucun » ou « volumes » (extrusion), le sol gardant sa marche en parallaxe dans les hauteurs ; « dessin » à 1 pour l'encre, à 0 pour le mode nuit.
 - **Pas encore là** :
-  - les archives médiatiques et les données électorales ;
-  - les régions, départements et contours ;
-  - la direction artistique presse et papier ;
-  - la frise temporelle.
+  - les archives médiatiques et les données électorales (le panneau « fonds » est factice) ;
+  - la frise temporelle agissante (elle est décorative) ;
+  - la direction artistique presse aboutie.
 - **Écart à trancher** : aujourd'hui la molette zoome et le survol ne fait que mettre en évidence. Le geste visé plus haut (défiler pour se déplacer, survoler pour changer d'échelle) reste à prototyper.
 
-Documents :
-- [cadrage technique initial](docs/cadrage-technique.md) : architecture des données temps réel, collecte côté serveur, légalité du scraping ;
-- [conception du relief](docs/superpowers/specs/2026-09-17-relief-gard-design.md) ;
-- [conception de la carte plein écran](docs/superpowers/specs/2026-09-17-map-fullscreen-design.md) ;
-- [boilerplate](docs/BOILERPLATE.md) et [règles du `_core`](src/_core/README.md).
+## Architecture
+
+```
+app/                    Nuxt : page, chrome HTML, curseur, panneau « fonds », publication du device
+src/_core/              moteur générique (runtime, univers, nodes, debug, stats), identique au template partagé
+src/graphics/
+  universes/            univers Main : construit la scène, réglages, contrat IMapNavigator pour Vue
+  terrain/              relief IGN, tuiles, projection, plan vectoriel (worker), bâti, arbres, trafic
+  nodes/                terrain, bâti, caméra et gestes, étiquettes, ciel, relevés, intro, panneau
+  materials/            matériaux TSL (sol, bâti, étiquettes, arbres, trafic)
+  postprocessing/       composer, passes, effet d'encre, transition de page
+  places/               sources de lieux, index, contours, masques de zone
+  text/                 champ de distance et atlas de police SDF
+  timeline/             théâtre et pistes de l'intro (réglées dans SONDE)
+  config/               réglages du panneau et pistes en JSON, vues, focus, terrain, bâti
+  debug/, device/       onglets du panneau, mesures, qualité dynamique
+docs/                   documentation technique ; docs/archive/ pour les anciens documents
+scripts/                conversion des assets au build
+public/                 assets servis (images, modèles, décodeur draco)
+```
+
+Flux global :
+
+**démarrage (`ThreeStage` -> `ThreeDevice`) -> univers Main -> terrain (relief IGN) -> occupation du sol (plan, bâti, vie) -> rendu encre -> UI (étiquettes, chrome Vue)**
+
+## Documentation technique
+
+- [Architecture et moteur](docs/architecture.md) : couches `_core` / `graphics` / `app`, démarrage, boucle, panneau et réglages persistants.
+- [Terrain et relief](docs/terrain.md) : tuiles IGN, mosaïques d'altitudes, grille d'écran, masque elliptique.
+- [Occupation du sol](docs/occupation-du-sol.md) : plan IGN, worker, bâti extrudé, arbres, trafic.
+- [Rendu encre et papier](docs/rendu.md) : sol, MRT, passe d'encre, mode nuit, réglages effectifs.
+- [Scène](docs/scene.md) : lieux, texte SDF, survol, caméra et gestes, ciel, intro, timeline.
+- [Interface](docs/interface.md) : Nuxt, contrat Vue -> scène, chrome, SONDE, build.
+- [Cadrage technique initial](docs/cadrage-technique.md) : données temps réel, collecte côté serveur, légalité du scraping.
+- [Règles du `_core`](src/_core/README.md) : référence du moteur partagé.
+- [`docs/archive/`](docs/archive/) : conceptions et plans précédents (relief, carte plein écran, boilerplate, audit).
 
 ## Lancer le projet
 
@@ -166,4 +194,6 @@ pnpm test
 pnpm typecheck
 ```
 
-`?debug` ouvre le panneau de réglages (Tweakpane) ; Shift+C bascule sur la caméra orbitale de debug.
+Le volet de prévisualisation lance `nuxt dev --port 7830` (`.claude/launch.json`).
+
+`?debug` ouvre le panneau de réglages (Tweakpane) et branche SONDE ; `?stats` affiche stats-gl. Les deux restent actifs pour l'onglet (`?debug=0` efface). Shift+C bascule sur la caméra orbitale de debug.
